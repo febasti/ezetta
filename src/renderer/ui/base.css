@@ -1,0 +1,100 @@
+/* The foundation (tokens), the kit for plain DOM, and the styles of what the editor draws inside
+ * CodeMirror. Nothing else is global: every component styles only itself. */
+@import './foundation.css';
+@import './kit/dom.css';
+@import './notes.css';
+@import './figures.css';
+@import './math.css';
+@import './quotes.css';
+@import './chip-tooltip.css';
+@import './cite.css';
+@import './tables.css';
+@import './refs.css';
+@import './proof.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+:root {
+  /* Native checkboxes, radios and sliders take the accent, not the system's blue. */
+  accent-color: var(--color-accent);
+}
+
+body {
+  background: var(--color-window);
+  color: var(--color-label);
+  font: var(--type-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Like a native app, the interface is not selectable text and its pictures cannot be dragged out;
+ * the writing, every field, and messages worth copying (errors, the versions' text) are. */
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.cm-editor,
+input,
+textarea,
+[contenteditable],
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+img {
+  -webkit-user-drag: none;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+/* The window's frame (lib/windowChrome.ts). On macOS the title bar is merged with the toolbar: the
+ * traffic lights take --chrome-inset at the left of the toolbar (none in full screen), the toolbar's
+ * empty space moves the window, and what floats above it (menus, dialogs, toasts) does not. */
+:root[data-chrome='inset'] {
+  /* The three lights end 78 px from the window's edge (at 18 px, 14 px each, 9 px apart, on
+   * macOS 26 and later); the first tool keeps the toolbar's own 12 px from them. */
+  --chrome-inset: 90px;
+}
+:root[data-chrome='inset'][data-fullscreen='true'] {
+  --chrome-inset: 0px;
+}
+.drag-strip {
+  display: none;
+}
+:root[data-chrome='inset'] .drag-strip {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 1;
+  display: block;
+  height: 40px;
+  -webkit-app-region: drag;
+}
+.backdrop,
+.menu,
+.toast,
+[role='dialog'],
+[role='menu'],
+[role='tooltip'] {
+  -webkit-app-region: no-drag;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

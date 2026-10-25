@@ -1,0 +1,233 @@
+/* The kit for plain DOM: what the editor draws inside CodeMirror (popovers, pickers, the tooltip of
+ * a chip) cannot use the Svelte blocks, so it uses these classes, which draw exactly what the blocks
+ * draw (Popover, Button, IconButton, TextField, ListRow). Change both together. */
+
+/* Popover (kit/Popover.svelte). `k-bar` makes it a row of tools (the toolbar of a table, the tools
+ * over an image): a smaller inset, the tools side by side. Inside the editor it is a CodeMirror tooltip, whose own theme is
+ * overruled by the longer selector. */
+.k-popover,
+.cm-editor .cm-tooltip.k-popover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  max-width: calc(100vw - var(--sp-32));
+  padding: var(--sp-12) var(--inset-pane);
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--color-window);
+  box-shadow: var(--shadow-float);
+  color: var(--color-label);
+  font: var(--type-body);
+}
+.k-popover [hidden] {
+  display: none;
+}
+.k-popover.k-bar,
+.cm-editor .cm-tooltip.k-popover.k-bar {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+}
+/* A group of tools in a bar, a hairline after it. */
+.k-bar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: var(--sp-4);
+  border-right: 1px solid var(--color-separator);
+}
+.k-bar-group:last-child {
+  padding-right: 0;
+  border-right: 0;
+}
+
+/* Button (kit/Button.svelte): secondary unless a variant is named; `k-button-sm` in dense places. */
+.k-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  height: var(--control-md);
+  padding: 0 var(--sp-12);
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--color-control);
+  color: var(--color-label);
+  font: var(--type-body);
+  white-space: nowrap;
+  cursor: default;
+  transition: background var(--duration);
+}
+.k-button:hover:not(:disabled) {
+  background: var(--color-control-hover);
+}
+.k-button:active:not(:disabled) {
+  background: var(--color-control-pressed);
+}
+.k-button-sm {
+  height: var(--control-sm);
+  padding: 0 var(--sp-8);
+}
+.k-button-primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.k-button-primary:hover:not(:disabled) {
+  background: color-mix(in oklch, var(--color-accent) 90%, black);
+}
+.k-button-primary:active:not(:disabled) {
+  background: color-mix(in oklch, var(--color-accent) 80%, black);
+}
+.k-button-plain {
+  background: transparent;
+}
+.k-button-plain:hover:not(:disabled) {
+  background: var(--color-control);
+}
+.k-button-danger {
+  color: var(--color-danger);
+}
+.k-button:disabled {
+  opacity: 0.45;
+}
+.k-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+/* IconButton (kit/IconButton.svelte); `aria-pressed` makes it a toggle that shows its state. */
+.k-icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-md);
+  height: var(--control-md);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--color-label-secondary);
+  cursor: default;
+  transition: background var(--duration);
+}
+.k-icon-button-sm {
+  width: var(--control-sm);
+  height: var(--control-sm);
+  border-radius: var(--r-sm);
+}
+.k-icon-button:hover:not(:disabled) {
+  background: var(--color-control);
+  color: var(--color-label);
+}
+.k-icon-button:active:not(:disabled) {
+  background: var(--color-control-pressed);
+}
+.k-icon-button[aria-pressed='true'],
+.k-icon-button[aria-checked='true'] {
+  background: var(--color-selection);
+  color: var(--color-accent);
+}
+.k-icon-button:disabled {
+  opacity: 0.4;
+}
+.k-icon-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+/* TextField (kit/TextField.svelte). */
+.k-field {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-md);
+  padding: 0 var(--sp-8);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--r-sm);
+  background: var(--color-field);
+  color: var(--color-label);
+  font: var(--type-body);
+  transition: box-shadow var(--duration);
+}
+.k-field::placeholder {
+  color: var(--color-label-tertiary);
+}
+.k-field:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+.k-field[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+/* A field of several lines (a textarea): as high as its rows. */
+.k-field-multiline {
+  height: auto;
+  padding: var(--sp-4) var(--sp-8);
+  resize: none;
+}
+
+/* Segmented (kit/Segmented.svelte): a quiet track, the chosen segment raised on it. The segments
+ * are buttons with `role="radio"` and `aria-checked`. */
+.k-segmented {
+  display: inline-flex;
+  gap: 2px;
+  height: var(--control-md);
+  padding: 2px;
+  border-radius: var(--r-md);
+  background: var(--color-control);
+}
+.k-segmented-sm {
+  height: var(--control-sm);
+}
+.k-segmented > button {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--sp-12);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--color-label);
+  font: var(--type-body);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: default;
+  transition: background var(--duration);
+}
+.k-segmented-sm > button {
+  padding: 0 var(--sp-8);
+}
+.k-segmented > button:hover:not([aria-checked='true']) {
+  background: var(--color-control-hover);
+}
+.k-segmented > button[aria-checked='true'] {
+  background: var(--color-control-raised);
+  box-shadow: var(--shadow-raised);
+  font-weight: 500;
+}
+.k-segmented > button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+/* ListRow (kit/ListRow.svelte), one line: in a picker the row the keys or the pointer are on is
+ * `active`, on the selection's ground. */
+.k-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: var(--row-single);
+  padding: 0 var(--sp-8);
+  border-radius: var(--r-md);
+  color: var(--color-label);
+  font: var(--type-body);
+  cursor: default;
+}
+.k-row.active {
+  background: var(--color-selection);
+}

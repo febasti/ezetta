@@ -1,0 +1,120 @@
+# Margin notes (Tufte style): a narrow column of text, and every footnote stands in the outer margin
+# beside the line that refers to it. Italic headings without numbers, rules of a hair, and a
+# quiet dark red for links. What an element does not set comes from the element it belongs to or
+# from the engine's own default (see `src/core/export/elements.ts`).
+engine = 2
+
+[element.palette]
+accent = "#8a2c2c"
+accent_secondary = "#6a6a6a"
+
+[element.page]
+paper = "a4"
+facing = "single"
+margin_top = "2.6cm"
+margin_bottom = "2.6cm"
+margin_inside = "2.4cm"
+margin_outside = "1.8cm"
+
+[element.body]
+font = "New Computer Modern"
+size = "10.5pt"
+justify = false
+hyphenate = false
+line_spacing = "0.78em"
+line_spacing_wide = "1.1em"
+paragraph_spacing = "1em"
+
+[element.footer]
+size = "0.85em"
+italic = true
+color = "accent_secondary"
+slot_left = "title"
+slot_center = "none"
+slot_right = "page"
+distance = "40%"
+
+[element.heading]
+weight = "regular"
+italic = true
+number_depth = "0"
+
+[element.heading_1]
+size = "2em"
+above = "0em"
+below = "1.2em"
+break_before = "page"
+
+[element.heading_2]
+size = "1.45em"
+above = "2em"
+below = "0.7em"
+
+[element.heading_3]
+size = "1.15em"
+above = "1.6em"
+below = "0.5em"
+
+[element.heading_4]
+size = "1em"
+above = "1.2em"
+below = "0.4em"
+color = "accent_secondary"
+
+[element.quote]
+size = "0.95em"
+italic = true
+indent_left = "0em"
+indent_right = "0em"
+above = "1em"
+below = "1em"
+bar = true
+bar_color = "accent"
+bar_thickness = "1.5pt"
+bar_gap = "0.9em"
+
+[element.epigraph]
+width = "75%"
+above = "1em"
+below = "2em"
+
+[element.figure_caption]
+size = "0.85em"
+italic = true
+
+[element.table]
+border_style = "booktabs"
+rule_width = "0.4pt"
+rule_strong_width = "0.8pt"
+inset = "0.45em"
+size = "0.95em"
+
+[element.table_caption]
+caption_position = "above"
+
+[element.footnote]
+placement = "margin"
+margin_width = "5.6cm"
+margin_gap = "0.8cm"
+size = "0.8em"
+color = "#333333"
+note_gap = "0.8em"
+
+[element.contents]
+show_depth = "2"
+
+[element.bibliography]
+hanging_indent = "1.2em"
+entry_spacing = "0.4em"
+
+[element.link]
+color = "accent"
+
+[element.references]
+color = "accent"
+
+[element.citations]
+color = "accent"
+
+[element.highlight]
+fill = "#f6e3b4"

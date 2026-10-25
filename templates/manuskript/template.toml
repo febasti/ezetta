@@ -1,0 +1,54 @@
+# A manuscript for readers and editors: typewriter face, wide line spacing, first-line indents, a running head with author, title and page, and highlights and comments that stand out.
+# The engine (`templates/engine.typ`) holds no visual values: they are in `style.toml`, per element.
+
+[template]
+id = "manuskript"
+name = { de = "Manuskript", en = "Manuscript" }
+description = { de = "Manuskriptseiten für Lektorat und Gutachten: Schreibmaschinenschrift, weiter Zeilenabstand, breiter Rand für Notizen.", en = "Manuscript pages for editors and reviewers: typewriter face, wide line spacing, wide margin for notes." }
+engine = 2
+
+[[options]]
+id = "author"
+type = "text"
+default = ""
+label = { de = "Autorin oder Autor", en = "Author" }
+
+[[options]]
+id = "subtitle"
+type = "text"
+default = ""
+label = { de = "Untertitel", en = "Subtitle" }
+
+[[options]]
+id = "line_spacing"
+type = "enum"
+default = "wide"
+label = { de = "Zeilenabstand", en = "Line spacing" }
+values = [
+  { id = "normal", label = { de = "Normal", en = "Normal" } },
+  { id = "wide", label = { de = "Weit (1,5-fach)", en = "Wide (1.5)" } },
+]
+
+[[options]]
+id = "title_page"
+type = "bool"
+default = true
+label = { de = "Titelseite", en = "Title page" }
+
+[[options]]
+id = "contents"
+type = "bool"
+default = false
+label = { de = "Inhaltsverzeichnis", en = "Table of contents" }
+
+[[options]]
+id = "list_of_figures"
+type = "bool"
+default = false
+label = { de = "Abbildungsverzeichnis", en = "List of figures" }
+
+[[options]]
+id = "list_of_tables"
+type = "bool"
+default = false
+label = { de = "Tabellenverzeichnis", en = "List of tables" }

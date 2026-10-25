@@ -1,0 +1,220 @@
+/* The design foundation (docs/DESIGN.md, "Foundation"). A small, closed set: colours by role, one
+ * spacing scale, three radii, five type roles, fixed control and row sizes, in the proportions of
+ * macOS. The building blocks in `ui/kit/` are made only of these, and the screens are made only of
+ * the building blocks. A value that is not here is not used; a new need is added here first.
+ *
+ * Colours are named by what they are for, not by how they look, as in the system's own palette:
+ * the label colours for text and icons, the separator for hairlines, the control colours for the
+ * fills of buttons and tracks. Each theme sets all of them. */
+
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  /* The accent: one hue at this theme's lightness (see :root below), and text on it. */
+  --accent-lightness: 0.5;
+  --color-on-accent: #ffffff;
+  /* The colours a folder's symbol can have (ui/folderIcons.ts). */
+  --color-tag-red: #c7473a;
+  --color-tag-orange: #cf7a2b;
+  --color-tag-yellow: #b8921c;
+  --color-tag-green: #3f9a56;
+  --color-tag-teal: #2a8a85;
+  --color-tag-blue: #3b70c2;
+  --color-tag-purple: #8659c0;
+  --color-tag-pink: #c2528c;
+  /* Grounds */
+  --color-window: #ffffff; /* the writing area, dialogs, popovers */
+  --color-sidebar: #faf9f6; /* the left sidebar */
+  --color-panel: #f5f4ef; /* what stands apart: callouts, the preview's desk */
+  /* Text and icons */
+  --color-label: #1f1e1c;
+  --color-label-secondary: #5f5d58;
+  --color-label-tertiary: #908d86;
+  /* Lines and fills */
+  --color-separator: #e7e4dc;
+  --color-control: #efede8; /* a secondary button, a segmented track, a switch that is off */
+  --color-control-hover: #e8e5de;
+  --color-control-pressed: #dedad1;
+  --color-control-raised: #ffffff; /* the chosen segment, raised on its track */
+  --color-field: #ffffff;
+  --color-field-border: #d2cec4;
+  --selection-strength: 16%; /* how much accent is in the selection's ground */
+  --color-danger: #c9473b;
+  --color-warning: #b9821a;
+  --color-success: #3f9a56;
+  --color-mark: #f8e9a8; /* the ground of what is marked to check later */
+  --color-danger-ground: #f8dcd8; /* the ground of what must still be dealt with */
+  --color-quote: rgba(
+    124,
+    92,
+    190,
+    0.055
+  ); /* the faint ground of a quote in the text (translucent: the
+   * selection is drawn behind the text) */
+  --color-quote-inner: rgba(124, 92, 190, 0.1); /* a quote inside a quote */
+  --shadow-float: 0 8px 24px rgba(31, 30, 28, 0.12), 0 0 0 0.5px rgba(31, 30, 28, 0.18);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --accent-lightness: 0.78;
+  --color-on-accent: oklch(0.2 0.03 var(--accent-hue));
+  --color-tag-red: #e8786c;
+  --color-tag-orange: #e89c5a;
+  --color-tag-yellow: #ddc163;
+  --color-tag-green: #72b583;
+  --color-tag-teal: #5dbab3;
+  --color-tag-blue: #74a2e2;
+  --color-tag-purple: #b08ce0;
+  --color-tag-pink: #e286b5;
+  --color-window: #1f1f1e;
+  --color-sidebar: #262625;
+  --color-panel: #2a2a28;
+  --color-label: #ecebe7;
+  --color-label-secondary: #aeaca6;
+  --color-label-tertiary: #7c7a75;
+  --color-separator: #353533;
+  --color-control: #353533;
+  --color-control-hover: #3e3e3b;
+  --color-control-pressed: #4a4a46;
+  --color-control-raised: #5a5a56;
+  --color-field: #2a2a28;
+  --color-field-border: #4a4a46;
+  --selection-strength: 28%;
+  --color-danger: #ee7d72;
+  --color-warning: #e0a840;
+  --color-success: #72b583;
+  --color-mark: #5d501d;
+  --color-danger-ground: #4d2825;
+  --color-quote: rgba(170, 140, 235, 0.085);
+  --color-quote-inner: rgba(170, 140, 235, 0.15);
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 0 0.5px rgba(255, 255, 255, 0.12);
+}
+
+:root[data-theme='sepia'] {
+  color-scheme: light;
+  --accent-lightness: 0.47;
+  --color-on-accent: #fbf6ea;
+  --color-tag-red: #b04a38;
+  --color-tag-orange: #b36d2a;
+  --color-tag-yellow: #9c7f1f;
+  --color-tag-green: #55803f;
+  --color-tag-teal: #3b7c75;
+  --color-tag-blue: #4a6ca2;
+  --color-tag-purple: #7a5ca4;
+  --color-tag-pink: #a6567e;
+  --color-window: #fbf6ea;
+  --color-sidebar: #f6efdf;
+  --color-panel: #f1e9d6;
+  --color-label: #3b3226;
+  --color-label-secondary: #6b5f4e;
+  --color-label-tertiary: #9a8d77;
+  --color-separator: #e6dbc2;
+  --color-control: #eee5d0;
+  --color-control-hover: #e7ddc5;
+  --color-control-pressed: #dccfb1;
+  --color-control-raised: #fffbf2;
+  --color-field: #fffbf2;
+  --color-field-border: #cfc1a3;
+  --selection-strength: 18%;
+  --color-danger: #b04a38;
+  --color-warning: #a8731b;
+  --color-success: #55803f;
+  --color-mark: #efd98f;
+  --color-danger-ground: #efd2c6;
+  --color-quote: rgba(120, 85, 160, 0.065);
+  --color-quote-inner: rgba(120, 85, 160, 0.115);
+  --shadow-float: 0 8px 24px rgba(59, 50, 38, 0.16), 0 0 0 0.5px rgba(59, 50, 38, 0.2);
+}
+
+:root {
+  /* The accent: one hue and chroma (petrol, a deep blue-green that is not the usual interface blue)
+   * in OKLCH, so every theme has the same colour at its own lightness; and what is drawn with it: a
+   * selection's ground and the focus ring. */
+  --accent-hue: 205;
+  --accent-chroma: 0.075;
+  --color-accent: oklch(var(--accent-lightness) var(--accent-chroma) var(--accent-hue));
+  --color-selection: color-mix(
+    in oklch,
+    var(--color-accent) var(--selection-strength),
+    var(--color-window)
+  );
+  --color-focus: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  /* A sheet of paper is white in every theme, as it prints: the export's pages, the pictures of the
+   * templates. Its shadow lifts it a little off the desk it lies on. */
+  --color-paper: #fff;
+  --shadow-paper: 0 1px 3px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.14);
+
+  /* Spacing: the only distances between and inside things. */
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-12: 12px;
+  --sp-16: 16px;
+  --sp-24: 24px;
+  --sp-32: 32px;
+
+  /* Radii: small (fields, tags), medium (buttons, rows), large (popovers, dialogs). */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+
+  /* Type: five roles, each a whole `font` value (weight, size/line height, family). macOS sizes:
+   * 13 px is the body of the interface. The writing surface has its own (tokens.css). */
+  --type-caption: 400 11px / 14px var(--font-ui);
+  --type-body: 400 13px / 18px var(--font-ui);
+  --type-emphasis: 600 13px / 18px var(--font-ui);
+  --type-title: 600 15px / 20px var(--font-ui);
+  --type-large-title: 700 22px / 28px var(--font-ui);
+
+  /* Sizes: controls (small for bars and dense lists, medium the default, large for the one main
+   * action of a dialog), rows (one line, two lines), and the insets of panes and dialogs. */
+  --control-sm: 22px;
+  --control-md: 28px;
+  --control-lg: 32px;
+  --row-single: 28px;
+  --row-double: 44px;
+  --inset-pane: 16px;
+  --inset-dialog: 20px;
+  /* The label column of a form (the system's settings: labels right-aligned left of the controls). */
+  --form-label-width: 120px;
+  /* The header bar of a pane (a sidebar column, a side panel): its title and its few buttons. */
+  --bar-height: 44px;
+  /* The toolbar, which is the title bar on macOS: the traffic lights are centred in it (main/window.ts
+   * puts them 17 px down), so it is this high. The status bar at the foot of the window. */
+  --titlebar-height: 48px;
+  --statusbar-height: 28px;
+
+  /* What is raised a little on its track: the chosen segment, the knob of a switch. */
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.16);
+
+  /* The one duration of a state change (zero when the system asks for less motion). */
+  --duration: 120ms;
+
+  /* Layers: a popover over the window, a dialog over it, a question (Alert) over a dialog. */
+  --z-popover: 180;
+  --z-modal: 200;
+  --z-confirm: 250;
+
+  /* Faces: the system's own for the interface (San Francisco on macOS), with the bundled Inter where
+   * there is none; on the writing surface the face the writer chooses (Source Serif 4 by default;
+   * ui/typography.svelte.ts sets it, with the size and the line spacing). Fonts are bundled. */
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', 'Inter Variable', Inter, sans-serif;
+  --font-writing: 'Source Serif 4 Variable', 'Source Serif 4', Literata, Georgia, serif;
+  /* A serif face the system has, for the one glyph the bundled writing faces lack (see `quotes.css`). */
+  --font-serif-system: Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* The writing surface: its text size and line spacing (both the writer's choice), and the width
+   * of its column with the side padding, about 74 characters of text. */
+  --text-writing: 17.5px;
+  --line-writing: 1.65;
+  --paragraph-gap-writing: calc(var(--text-writing) * 0.9);
+  --measure-writing: 760px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration: 0ms;
+  }
+}

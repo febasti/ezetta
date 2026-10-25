@@ -1,0 +1,136 @@
+# Journal: a compact article in two columns, in New Computer Modern. Sections run on, figures
+# and tables may span both columns, a running head sits over a hairline. What an element does not
+# set comes from the element it belongs to or from the engine's own default (see
+# `src/core/export/elements.ts`).
+engine = 2
+
+[element.palette]
+accent = "#1f4e79"
+accent_secondary = "#555555"
+
+[element.page]
+paper = "a4"
+facing = "single"
+columns = "2"
+column_gap = "0.7cm"
+margin_top = "2.4cm"
+margin_bottom = "2.2cm"
+margin_inside = "1.9cm"
+margin_outside = "1.9cm"
+
+[element.body]
+font = "New Computer Modern"
+size = "9.5pt"
+justify = true
+hyphenate = true
+line_spacing = "0.55em"
+line_spacing_wide = "0.95em"
+paragraph_spacing = "0.55em"
+first_line_indent = "1em"
+
+[element.header]
+size = "0.82em"
+text_case = "smallcaps"
+letter_spacing = "0.02em"
+color = "accent_secondary"
+slot_left = "title"
+slot_right = "page"
+divider = true
+divider_color = "accent_secondary"
+divider_thickness = "0.4pt"
+divider_gap = "0.5em"
+distance = "40%"
+
+[element.footer]
+slot_center = "none"
+
+[element.heading]
+number_depth = "3"
+number_gap = "0.5em"
+number_suffix = "point"
+
+[element.heading_1]
+size = "1.15em"
+text_case = "smallcaps"
+letter_spacing = "0.02em"
+above = "1.4em"
+below = "0.6em"
+break_before = "none"
+
+[element.heading_2]
+size = "1em"
+above = "1.1em"
+below = "0.4em"
+
+[element.heading_3]
+size = "1em"
+weight = "regular"
+italic = true
+above = "0.9em"
+below = "0.3em"
+
+[element.heading_4]
+size = "1em"
+weight = "regular"
+italic = true
+above = "0.8em"
+below = "0.25em"
+
+[element.list]
+indent_left = "0.8em"
+item_spacing = "0.3em"
+marker = "dash"
+
+[element.quote]
+size = "0.95em"
+indent_left = "0.8em"
+indent_right = "0.4em"
+above = "0.7em"
+below = "0.7em"
+
+[element.epigraph]
+width = "85%"
+above = "1em"
+below = "1.2em"
+
+[element.figure]
+above = "0.6em"
+below = "0.6em"
+span_columns = true
+
+[element.figure_caption]
+size = "0.88em"
+caption_separator = "period"
+
+[element.table]
+border_style = "booktabs"
+size = "0.9em"
+inset = "0.35em"
+rule_width = "0.4pt"
+rule_strong_width = "0.8pt"
+
+[element.table_caption]
+caption_position = "above"
+
+[element.footnote]
+size = "0.8em"
+rule_width = "0.4pt"
+rule_length = "30%"
+note_gap = "0.3em"
+
+[element.contents]
+show_depth = "2"
+
+[element.bibliography]
+size = "0.9em"
+hanging_indent = "1em"
+entry_spacing = "0.25em"
+
+[element.link]
+color = "accent"
+
+[element.references]
+color = "accent"
+
+[element.highlight]
+fill = "#ffe680"

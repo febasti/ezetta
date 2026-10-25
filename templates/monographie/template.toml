@@ -1,0 +1,60 @@
+# A book-style monograph or thesis: facing pages with mirrored running heads, chapters on new pages with a short rule and the word "Kapitel", a burgundy accent, small-caps section headings, indented paragraphs and a title page.
+# The engine (`templates/engine.typ`) holds no visual values: they are in `style.toml`, per element.
+
+[template]
+id = "monographie"
+name = { de = "Monographie", en = "Monograph" }
+description = { de = "Buchsatz für Monographie und Abschlussarbeit: Doppelseiten mit wechselnden Kopfzeilen, Kapitel auf neuer Seite, Kapitälchen.", en = "Book setting for a monograph or thesis: facing pages with running heads, chapters on a new page, small caps." }
+engine = 2
+
+[[options]]
+id = "author"
+type = "text"
+default = ""
+label = { de = "Autorin oder Autor", en = "Author" }
+
+[[options]]
+id = "subtitle"
+type = "text"
+default = ""
+label = { de = "Untertitel", en = "Subtitle" }
+
+[[options]]
+id = "line_spacing"
+type = "enum"
+default = "normal"
+label = { de = "Zeilenabstand", en = "Line spacing" }
+values = [
+  { id = "normal", label = { de = "Normal", en = "Normal" } },
+  { id = "wide", label = { de = "Weit (1,5-fach)", en = "Wide (1.5)" } },
+]
+
+[[options]]
+id = "title_page"
+type = "bool"
+default = true
+label = { de = "Titelseite", en = "Title page" }
+
+[[options]]
+id = "contents"
+type = "bool"
+default = true
+label = { de = "Inhaltsverzeichnis", en = "Table of contents" }
+
+[[options]]
+id = "list_of_figures"
+type = "bool"
+default = false
+label = { de = "Abbildungsverzeichnis", en = "List of figures" }
+
+[[options]]
+id = "list_of_tables"
+type = "bool"
+default = false
+label = { de = "Tabellenverzeichnis", en = "List of tables" }
+
+[[options]]
+id = "chapter_new_page"
+type = "bool"
+default = true
+label = { de = "Kapitel auf neuer Seite", en = "Chapters on a new page" }

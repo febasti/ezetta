@@ -1,0 +1,12 @@
+[project]
+version = 1
+title = "Beispielprojekt"
+language = "de"
+bibliography = "library.bib"
+citation_style = "apa-7"
+
+[goals]
+words = 1000
+
+[order]
+"" = ["einleitung"]

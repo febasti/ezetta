@@ -1,0 +1,168 @@
+# Monograph: a book in burgundy and small caps. Indented paragraphs, a chapter heading that is
+# centred above a short rule, running chapter and section titles in the header, footnotes at the
+# foot of the page. What an element does not set comes from the element it belongs to or from the
+# engine's own default (see `src/core/export/elements.ts`).
+engine = 2
+
+[element.palette]
+accent = "#7a1f2b"
+accent_secondary = "#6b6b6b"
+
+[element.page]
+paper = "a4"
+facing = "facing"
+margin_top = "2.9cm"
+margin_bottom = "2.9cm"
+margin_inside = "3.3cm"
+margin_outside = "2.5cm"
+
+[element.body]
+font = "Libertinus Serif"
+size = "11pt"
+justify = true
+hyphenate = true
+line_spacing = "0.7em"
+line_spacing_wide = "1.1em"
+paragraph_spacing = "0.7em"
+first_line_indent = "1.3em"
+
+[element.header]
+size = "0.85em"
+color = "accent_secondary"
+text_case = "smallcaps"
+letter_spacing = "0.03em"
+slot_left = "chapter"
+slot_right = "section"
+mirror = true
+skip_chapter_start = true
+divider = true
+divider_color = "accent_secondary"
+divider_thickness = "0.4pt"
+divider_gap = "0.5em"
+
+[element.footer]
+slot_center = "page"
+size = "0.95em"
+
+[element.page_number]
+page_style = "plain"
+number_format = "arabic"
+front_format = "roman_lower"
+
+[element.heading]
+weight = "regular"
+number_depth = "3"
+number_gap = "0.7em"
+
+[element.heading_1]
+size = "2em"
+align = "center"
+color = "accent"
+text_case = "smallcaps"
+letter_spacing = "0.03em"
+above = "3cm"
+below = "2.2cm"
+break_before = "page"
+line_below = true
+line_below_color = "accent"
+line_below_thickness = "0.8pt"
+line_below_width = "3cm"
+line_below_distance = "1.1em"
+
+[element.heading_2]
+size = "1.35em"
+weight = "bold"
+above = "2em"
+below = "0.9em"
+
+[element.heading_3]
+size = "1.1em"
+italic = true
+above = "1.6em"
+below = "0.7em"
+
+[element.heading_4]
+size = "1em"
+italic = true
+color = "accent_secondary"
+above = "1.2em"
+below = "0.5em"
+
+[element.quote]
+size = "0.95em"
+indent_left = "1.6em"
+indent_right = "1.6em"
+above = "1em"
+below = "1em"
+
+[element.epigraph]
+width = "60%"
+above = "1.5em"
+below = "2.5em"
+italic = true
+
+[element.epigraph_source]
+italic = false
+size = "0.9em"
+
+[element.figure_caption]
+size = "0.9em"
+italic = true
+
+[element.table]
+border_style = "booktabs"
+rule_width = "0.5pt"
+rule_strong_width = "0.9pt"
+inset = "0.5em"
+size = "0.95em"
+
+[element.table_caption]
+caption_position = "above"
+
+[element.footnote]
+size = "0.85em"
+rule_width = "0.4pt"
+rule_length = "25%"
+note_gap = "0.4em"
+
+[element.contents]
+indent = "1.4em"
+show_depth = "2"
+chapter_weight = "bold"
+
+[element.bibliography]
+hanging_indent = "1.5em"
+entry_spacing = "0.4em"
+
+[element.link]
+color = "accent"
+
+[element.references]
+color = "accent"
+
+[element.highlight]
+fill = "#f3d9a4"
+
+[element.title_page]
+space_above = "5.5cm"
+
+[element.title_page_title]
+size = "2.8em"
+weight = "regular"
+color = "accent"
+letter_spacing = "0.03em"
+
+[element.title_page_subtitle]
+size = "1.3em"
+italic = true
+above = "1.2em"
+
+[element.title_page_author]
+size = "1.15em"
+letter_spacing = "0.12em"
+above = "5cm"
+
+[element.title_page_date]
+size = "0.9em"
+color = "accent_secondary"
+above = "1.5em"

@@ -1,0 +1,141 @@
+# Manuscript: typewriter pages for readers and editors. A monospaced face, wide line spacing,
+# indented paragraphs, a running head with author, title and page, a wide outer margin for notes,
+# and highlights, links and citations that are easy to find. What an element does not set comes from
+# the element it belongs to or from the engine's own default (see `src/core/export/elements.ts`).
+engine = 2
+
+[element.palette]
+accent = "#0b57d0"
+accent_secondary = "#6a6a6a"
+
+[element.page]
+paper = "a4"
+facing = "single"
+margin_top = "2.6cm"
+margin_bottom = "2.6cm"
+margin_inside = "2.8cm"
+margin_outside = "5cm"
+
+[element.body]
+font = "DejaVu Sans Mono"
+size = "10pt"
+justify = false
+hyphenate = false
+line_spacing = "0.85em"
+line_spacing_wide = "1.35em"
+paragraph_spacing = "0.85em"
+first_line_indent = "2em"
+
+[element.code]
+size = "1em"
+
+[element.header]
+size = "0.85em"
+color = "accent_secondary"
+slot_left = "author"
+slot_center = "title"
+slot_right = "page"
+distance = "35%"
+
+[element.footer]
+slot_center = "none"
+
+[element.heading]
+weight = "bold"
+text_case = "upper"
+number_depth = "2"
+number_gap = "0.8em"
+number_suffix = "point"
+
+[element.heading_1]
+size = "1.1em"
+above = "2.4em"
+below = "1.2em"
+break_before = "none"
+
+[element.heading_2]
+size = "1em"
+above = "2em"
+below = "1em"
+
+[element.heading_3]
+size = "1em"
+text_case = "normal"
+above = "1.6em"
+below = "0.8em"
+
+[element.heading_4]
+size = "1em"
+text_case = "normal"
+weight = "regular"
+italic = true
+above = "1.3em"
+below = "0.6em"
+
+[element.quote]
+size = "1em"
+indent_left = "3em"
+indent_right = "3em"
+above = "1.2em"
+below = "1.2em"
+
+[element.epigraph]
+width = "70%"
+
+[element.figure_caption]
+size = "0.9em"
+
+[element.table]
+border_style = "grid"
+rule_width = "0.4pt"
+inset = "0.5em"
+size = "0.95em"
+
+[element.footnote]
+size = "0.85em"
+rule_width = "0.4pt"
+note_gap = "0.5em"
+
+[element.contents]
+show_depth = "3"
+
+[element.bibliography]
+hanging_indent = "2em"
+entry_spacing = "0.6em"
+
+[element.link]
+color = "accent"
+underline = true
+
+[element.references]
+color = "accent"
+underline = true
+
+[element.citations]
+fill = "#e8efff"
+
+[element.highlight]
+fill = "#ffd43b"
+
+[element.title_page]
+space_above = "7cm"
+
+[element.title_page_title]
+size = "1.6em"
+align = "left"
+weight = "bold"
+
+[element.title_page_subtitle]
+size = "1.1em"
+align = "left"
+above = "1em"
+
+[element.title_page_author]
+size = "1em"
+align = "left"
+above = "2.5em"
+
+[element.title_page_date]
+size = "0.9em"
+align = "left"
+above = "1em"

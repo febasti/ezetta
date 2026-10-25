@@ -1,0 +1,116 @@
+/* Tables in the editor: a table drawn in the text, whose cells are edited in place, and
+ * the toolbar above it (`k-popover k-bar` with `k-icon-button`s, kit/dom.css). Plain DOM inside the
+ * editor, so these classes are global. Space around a block widget is padding, never margin. */
+
+.cm-table-block {
+  display: block;
+  margin: 0;
+  padding: var(--sp-24) 0;
+  font-family: var(--font-writing);
+  font-size: 0.94em;
+  line-height: 1.45;
+}
+.cm-table-block.selected .cm-table-scroll {
+  border-radius: var(--r-sm);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+.cm-table-scroll {
+  overflow-x: auto;
+}
+/* The rules of a table as the PDF draws them: strong above and below, a hairline under the header
+ * and between the rows. */
+.cm-table {
+  margin: 0 auto;
+  border-collapse: collapse;
+  border-top: 2px solid var(--color-label-tertiary);
+  border-bottom: 2px solid var(--color-label-tertiary);
+}
+.cm-table th,
+.cm-table td {
+  min-width: 4em;
+  padding: var(--sp-8) var(--sp-16);
+  border-bottom: 1px solid var(--color-separator);
+  text-align: left;
+  vertical-align: top;
+}
+.cm-table th {
+  border-bottom: 1px solid var(--color-label-tertiary);
+  font-weight: 600;
+}
+.cm-table tr:last-child td {
+  border-bottom: 0;
+}
+.cm-table .align-center {
+  text-align: center;
+}
+.cm-table .align-right {
+  text-align: right;
+}
+.cm-table td:hover,
+.cm-table th:hover {
+  background: var(--color-panel);
+  cursor: text;
+}
+/* The cell being edited: the selection's ground and the accent ring. */
+.cm-table td.editing,
+.cm-table th.editing {
+  background: var(--color-selection);
+  box-shadow: inset 0 0 0 2px var(--color-accent);
+}
+.cm-table-shown {
+  min-height: 1.45em;
+  white-space: pre-wrap;
+}
+.cm-table-shown[hidden],
+.cm-table-field[hidden] {
+  display: none;
+}
+.cm-table-field {
+  display: block;
+  width: 100%;
+  min-height: 1.45em;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-label);
+  font: inherit;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+}
+.cm-table-field.align-center {
+  text-align: center;
+}
+.cm-table-field.align-right {
+  text-align: right;
+}
+.cm-table-field[aria-invalid='true'] {
+  color: var(--color-danger);
+}
+/* "Tabelle N:" and the caption, as for a figure (figures.css has the field). */
+.cm-table-caption {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--sp-8);
+  padding-top: var(--sp-12);
+  color: var(--color-label-secondary);
+  font-family: var(--font-writing);
+  font-size: 0.82em;
+}
+.cm-table-number {
+  color: var(--color-label);
+  font-weight: 600;
+}
+
+/* The toolbar above the table. */
+.cm-table-toolbar {
+  max-width: min(640px, calc(100vw - var(--sp-32)));
+}
+/* What deletes something is in the danger colour. */
+.cm-table-toolbar .danger,
+.cm-table-toolbar .danger:hover:not(:disabled) {
+  color: var(--color-danger);
+}

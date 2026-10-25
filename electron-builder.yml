@@ -1,0 +1,60 @@
+# Packaging. `npm run package` builds the code, gathers the resources (scripts/package-resources.mjs), and makes the macOS app
+# and a dmg in dist/. `npm run package:linux` makes the Linux AppImage (see scripts/package-resources.mjs).
+appId: org.ezetta.app
+productName: Ezetta
+copyright: Copyright © 2026 Felix Schorn
+directories:
+  output: dist
+  buildResources: build
+# All dependencies are bundled into out/ (electron.vite.config.ts), so no node_modules ship.
+files:
+  - out/**/*
+  - package.json
+asar: true
+extraResources:
+  - from: dist-resources/typst
+    to: typst
+  - from: dist-resources/languagetool
+    to: languagetool
+  - from: dist-resources/java
+    to: java
+  - from: dist-resources/morph
+    to: morph
+  - from: dist-resources/thesaurus
+    to: thesaurus
+  - from: templates
+    to: templates
+  - from: THIRD-PARTY-NOTICES.txt
+    to: THIRD-PARTY-NOTICES.txt
+  - from: LICENSE
+    to: LICENSE
+mac:
+  target:
+    - target: dmg
+      arch: [arm64]
+  category: public.app-category.productivity
+  # No Developer ID yet: signed ad hoc, which runs on this Mac. A signed and notarized dmg
+  # needs the certificate, then the hardened runtime and Java's entitlements.
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    NSHumanReadableCopyright: Copyright © 2026 Felix Schorn
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  category: Office
+  artifactName: ${productName}-${version}-${arch}.${ext}
+dmg:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+# Hardening: no running as Node, no Node options or inspector flags, the app only from its archive,
+# and the archive checked against its hash.
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false

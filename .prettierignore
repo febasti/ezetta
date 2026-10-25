@@ -1,0 +1,15 @@
+node_modules
+out
+out-gallery
+dist
+_build
+coverage
+test-results
+playwright-report
+package-lock.json
+SPEC.md
+tests/fixtures
+tests/golden
+# local tool folders
+.*/
+!.github/

@@ -1,0 +1,120 @@
+/* Footnotes: the marker in the text, the margin cards, and the popover with a small
+ * editor on one note (a `k-popover`, kit/dom.css). Plain DOM inside the editor, so these classes are
+ * global. */
+
+.cm-footnote-marker {
+  padding: 0 2px;
+  border-radius: var(--r-sm);
+  color: var(--color-accent);
+  font-family: var(--font-writing);
+  font-size: 0.7em;
+  font-weight: 600;
+  line-height: 0;
+  vertical-align: super;
+  cursor: default;
+}
+.cm-footnote-marker:hover,
+.cm-footnote-marker.active,
+.cm-footnote-marker.selected {
+  background: var(--color-selection);
+}
+.cm-footnote-marker.selected {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+.cm-footnote-source {
+  color: var(--color-label-tertiary);
+}
+
+/* The margin column: cards are absolutely placed inside the editor's scroller. A note is part of
+ * the text, so it is set in the writing face, smaller; the open one is on the selection's ground. */
+.cm-notes-margin {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+.cm-note-card {
+  position: absolute;
+  display: flex;
+  gap: var(--sp-8);
+  padding: var(--sp-8) var(--sp-12);
+  border-radius: var(--r-md);
+  background: var(--color-panel);
+  color: var(--color-label-secondary);
+  font-family: var(--font-writing);
+  font-size: 0.75em;
+  line-height: 1.4;
+  cursor: default;
+  transition: background var(--duration);
+}
+.cm-note-card:hover {
+  background: var(--color-control);
+}
+.cm-note-card.active {
+  background: var(--color-selection);
+  color: var(--color-label);
+}
+.cm-note-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+.cm-note-number {
+  flex: none;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.cm-note-text {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
+}
+.cm-note-text.empty {
+  color: var(--color-label-tertiary);
+}
+/* The open note is written in its card (mode "Randnotizen"), or in its row of the list. */
+.cm-note-card.editing {
+  flex-wrap: wrap;
+  cursor: text;
+}
+.cm-note-card.editing .cm-note-text {
+  display: none;
+}
+.cm-note-edit {
+  flex: 1;
+  min-width: 0;
+}
+.cm-note-edit .cm-editor,
+.cm-note-editor .cm-editor {
+  height: auto;
+}
+
+/* The popover with a small editor on one note. */
+.cm-editor .cm-tooltip.cm-note-editor {
+  width: 380px;
+  gap: var(--sp-4);
+}
+.cm-note-editor-title {
+  color: var(--color-label-tertiary);
+  font: var(--type-caption);
+}
+
+/* A note's words drawn like the text (see `drawNote`): the marks the editor's theme gives. */
+.cm-note-text .cm-highlight,
+.note-words .cm-highlight {
+  border-radius: var(--r-sm);
+  background: var(--color-mark);
+}
+.cm-note-text .cm-link,
+.note-words .cm-link {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+.cm-note-text .cm-smallcaps,
+.note-words .cm-smallcaps {
+  font-variant-caps: small-caps;
+}

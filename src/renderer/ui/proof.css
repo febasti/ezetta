@@ -1,0 +1,107 @@
+/* Spelling and grammar: the underlines in the editor, the card shown on hover, and the
+ * parts it shares with the entries of the Prüfung tab (the dot of a kind, the suggestion buttons,
+ * the quiet actions), so the two look the same. Plain DOM in the editor, so these classes are
+ * global; tokens only. */
+
+.cm-editor .cm-proof {
+  text-decoration: underline wavy;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.25em;
+  text-decoration-skip-ink: none;
+}
+.cm-editor .cm-proof-spelling {
+  text-decoration-color: var(--color-danger);
+}
+.cm-editor .cm-proof-grammar {
+  text-decoration-color: var(--color-warning);
+}
+.cm-editor .cm-proof-style {
+  text-decoration-color: var(--color-accent);
+}
+.cm-editor .cm-proof-typography {
+  text-decoration-color: var(--color-label-tertiary);
+}
+
+/* The issue the list in the sidebar has open. */
+.cm-editor .cm-proof-focus {
+  background-color: var(--color-selection);
+  border-radius: var(--r-sm);
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+/* --- shared with the Prüfung tab ------------------------------------------------------------- */
+
+.proof-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-label-tertiary);
+}
+.proof-dot.spelling {
+  background: var(--color-danger);
+}
+.proof-dot.grammar {
+  background: var(--color-warning);
+}
+.proof-dot.style {
+  background: var(--color-accent);
+}
+
+/* The suggestions and the other actions are the DOM kit's small buttons (`k-button k-button-sm`,
+ * the actions `k-button-plain`); a suggestion is set in the emphasis role so it stands out, the
+ * actions are quiet, under a hairline. */
+.proof-suggestion {
+  font: var(--type-emphasis);
+}
+.proof-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  padding-top: var(--sp-8);
+  border-top: 1px solid var(--color-separator);
+}
+.proof-action {
+  color: var(--color-label-secondary);
+}
+.proof-action:hover:not(:disabled) {
+  color: var(--color-label);
+}
+
+/* --- the card on hover ------------------------------------------------------------------------- */
+
+/* The foundation's popover: the window's ground, the large radius, the float shadow. */
+.cm-editor .cm-tooltip:has(> .cm-proof-tip),
+.cm-editor .cm-tooltip.cm-proof-tip {
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--color-window);
+  box-shadow: var(--shadow-float);
+}
+.cm-proof-tip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  width: max-content;
+  max-width: 340px;
+  padding: var(--sp-12) var(--inset-pane);
+  color: var(--color-label);
+  font: var(--type-body);
+}
+.cm-proof-tip-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+.cm-proof-tip-title {
+  font: var(--type-emphasis);
+}
+.cm-proof-tip-explain {
+  margin: 0;
+  color: var(--color-label-secondary);
+}
+.cm-proof-tip-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+}

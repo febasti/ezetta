@@ -1,0 +1,117 @@
+# Essay: A5 pages, a small ornamental rule under centred headings, no numbers, indented paragraphs,
+# and page numbers between dashes. What an element does not set comes from the element it belongs to
+# or from the engine's own default (see `src/core/export/elements.ts`).
+engine = 2
+
+[element.palette]
+accent = "#6b4f3a"
+accent_secondary = "#7a7a7a"
+
+[element.page]
+paper = "a5"
+facing = "facing"
+margin_top = "1.9cm"
+margin_bottom = "2.2cm"
+margin_inside = "2.3cm"
+margin_outside = "1.8cm"
+
+[element.body]
+font = "Libertinus Serif"
+size = "10.5pt"
+justify = true
+hyphenate = true
+line_spacing = "0.65em"
+line_spacing_wide = "1em"
+paragraph_spacing = "0.65em"
+first_line_indent = "1.2em"
+
+[element.footer]
+size = "0.9em"
+color = "accent_secondary"
+slot_center = "page"
+distance = "45%"
+
+[element.page_number]
+page_style = "dashes"
+
+[element.heading]
+weight = "regular"
+align = "center"
+number_depth = "0"
+
+[element.heading_1]
+size = "1.4em"
+text_case = "smallcaps"
+letter_spacing = "0.04em"
+above = "2.2em"
+below = "1.4em"
+break_before = "none"
+line_below = true
+line_below_color = "accent"
+line_below_thickness = "0.8pt"
+line_below_width = "1.6cm"
+line_below_distance = "0.8em"
+
+[element.heading_2]
+size = "1.15em"
+italic = true
+above = "1.8em"
+below = "0.8em"
+
+[element.heading_3]
+size = "1em"
+text_case = "smallcaps"
+above = "1.4em"
+below = "0.6em"
+
+[element.heading_4]
+size = "1em"
+italic = true
+align = "left"
+above = "1.2em"
+below = "0.5em"
+
+[element.quote]
+size = "0.95em"
+indent_left = "1.5em"
+indent_right = "1.5em"
+above = "0.9em"
+below = "0.9em"
+
+[element.epigraph]
+width = "70%"
+italic = true
+above = "1.2em"
+below = "1.8em"
+
+[element.figure_caption]
+size = "0.88em"
+italic = true
+
+[element.table]
+border_style = "booktabs"
+rule_width = "0.4pt"
+rule_strong_width = "0.8pt"
+inset = "0.45em"
+size = "0.92em"
+
+[element.table_caption]
+caption_position = "above"
+
+[element.footnote]
+size = "0.82em"
+rule_width = "0.4pt"
+rule_length = "20%"
+
+[element.bibliography]
+hanging_indent = "1.2em"
+entry_spacing = "0.35em"
+
+[element.link]
+color = "accent"
+
+[element.references]
+color = "accent"
+
+[element.highlight]
+fill = "#f2e0b8"

@@ -1,0 +1,151 @@
+/* Images in the editor: figures with a caption, bare images, and images in the text.
+ * Plain DOM inside the editor, so these classes are global; the tools are the kit's DOM classes
+ * (kit/dom.css). Space around a block widget is padding, never margin (CodeMirror ignores margins). */
+
+.cm-figure {
+  display: block;
+  margin: 0; /* a <figure> has a browser margin, which CodeMirror cannot measure */
+  padding: var(--sp-24) 0;
+  text-align: center;
+}
+.cm-figure.inline {
+  display: inline;
+  padding: 0;
+  text-align: left;
+}
+.cm-figure-frame {
+  display: flex;
+  justify-content: center;
+}
+.cm-figure.inline .cm-figure-frame {
+  display: inline;
+}
+/* The picture and the tools over it. The holder is the box of the picture, as wide as the picture is
+ * (its width is set on it), so the tools and the mark of a chosen figure follow the picture. */
+.cm-figure-holder {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+.cm-figure-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: var(--r-sm);
+}
+.cm-inline-image {
+  display: inline-block;
+  max-height: 3em;
+  /* Typst puts a boxed image's bottom edge on the baseline, so the editor does too. */
+  vertical-align: baseline;
+  border-radius: var(--r-sm);
+}
+/* A chosen picture has the accent ring, a little apart from it. */
+.cm-figure.selected .cm-inline-image,
+.cm-figure.selected .cm-figure-holder {
+  border-radius: var(--r-sm);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* The tools over the picture, while it is chosen: a small bar in its corner (`k-popover k-bar`)
+ * with the widths as a segmented control and the button to replace the image. */
+.cm-figure-tools {
+  position: absolute;
+  z-index: 2;
+  top: var(--sp-8);
+  right: var(--sp-8);
+  white-space: nowrap;
+  visibility: hidden;
+}
+.cm-figure.selected .cm-figure-tools {
+  visibility: visible;
+}
+
+/* A figure without an image, or with one that is not there: an empty frame on the panel's ground
+ * with a dashed edge, and the way to choose one. */
+.cm-figure-empty,
+.cm-figure-missing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-12);
+  box-sizing: border-box;
+  border: 1px dashed var(--color-field-border);
+  border-radius: var(--r-md);
+  background: var(--color-panel);
+  color: var(--color-label-tertiary);
+  font: var(--type-body);
+  cursor: default;
+}
+.cm-figure-empty {
+  width: 520px;
+  max-width: 100%;
+  min-height: 200px;
+  padding: var(--sp-24);
+}
+.cm-figure-missing {
+  min-height: 96px;
+  padding: var(--sp-16);
+}
+.cm-figure-missing.inline {
+  display: inline-flex;
+  min-height: 0;
+  padding: 0 var(--sp-4);
+  font: var(--type-caption);
+  vertical-align: baseline;
+}
+.cm-figure-empty-icon {
+  color: var(--color-label-tertiary);
+}
+.cm-figure-source {
+  color: var(--color-label-tertiary);
+}
+
+/* "Abbildung N:" and the caption, in the writing face, as the PDF prints them. */
+.cm-figure-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--sp-8);
+  padding-top: var(--sp-12);
+  color: var(--color-label-secondary);
+  font-family: var(--font-writing);
+  font-size: 0.82em;
+  line-height: 1.4;
+}
+.cm-figure-number {
+  color: var(--color-label);
+  font-weight: 600;
+}
+/* The caption is typed in place, like a table's: a plain line that shows its field on hover. */
+.cm-figure-caption-input,
+.cm-table-caption-input {
+  flex: 0 1 28em;
+  min-width: 8em;
+  padding: 0 var(--sp-4);
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: none;
+  color: var(--color-label);
+  font: inherit;
+}
+.cm-figure-caption-input::placeholder,
+.cm-table-caption-input::placeholder {
+  color: var(--color-label-tertiary);
+}
+.cm-figure-caption-input:hover,
+.cm-table-caption-input:hover {
+  border-bottom-color: var(--color-separator);
+}
+.cm-figure-caption-input:focus,
+.cm-table-caption-input:focus {
+  outline: none;
+  border-bottom-color: var(--color-accent);
+}
+.cm-figure-caption-input[aria-invalid='true'] {
+  border-bottom-color: var(--color-danger);
+}

@@ -1,0 +1,16 @@
+node_modules/
+out/
+out-gallery/
+dist/
+_build/
+coverage/
+test-results/
+playwright-report/
+.DS_Store
+*.log
+.dev/
+tests/perf/report.json
+dist-resources/
+
+# a personal helper, not part of the app
+tools/ulysses2typst/

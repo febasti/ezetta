@@ -1,0 +1,146 @@
+/* Quotes in the editor: the quotation marks of an inline quote, the hint that offers a
+ * block quote for a long one, and the sources of block quotes and epigraphs. Plain DOM inside the
+ * editor, so these classes are global. */
+
+/* An inline quote has a faint ground, the quotation marks drawn by the editor included, so that a
+ * real quote can be told from marks typed by hand. One inside another is a step deeper. The ground
+ * is on the text and on both marks (which are widgets, outside the text's decoration), and only the
+ * outer corners are rounded, so the three read as one. */
+.cm-quote-inline {
+  background: var(--color-quote);
+}
+.cm-quote-inline.inner {
+  background: var(--color-quote-inner);
+}
+.cm-quote-mark {
+  color: inherit;
+}
+/* „ is empty in the bundled Libertinus faces (see `QuoteMark`), so it is set in a serif face of the system. */
+.cm-quote-mark.low-base {
+  font-family: var(--font-serif-system);
+}
+.cm-quote-mark.ground {
+  background: var(--color-quote);
+}
+.cm-quote-mark.ground.inner {
+  background: var(--color-quote-inner);
+}
+.cm-quote-mark.ground.open {
+  padding-left: 2px;
+  border-radius: var(--r-sm) 0 0 var(--r-sm);
+}
+.cm-quote-mark.ground.close {
+  padding-right: 2px;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+}
+
+/* The marks of the quote the caret is in are in the accent, so it shows where the quote begins and
+ * ends and that the marks are a pair. A press next to the marks marks the quote for removal: it is
+ * drawn on the selection's ground, marks and all, until the next press takes it off. */
+.cm-quote-mark.current,
+.cm-quote-mark.armed {
+  color: var(--color-accent);
+}
+.cm-quote-mark.armed,
+.cm-quote-inline.armed {
+  background: var(--color-selection);
+}
+
+/* Small buttons in the line of text, in the interface's face: the hint for a long quote (on the
+ * selection's ground in the accent, as it offers something), and the offer of a source (quiet until
+ * hovered). */
+.cm-quote-hint,
+.cm-quote-source-add {
+  margin-left: var(--sp-8);
+  padding: 1px var(--sp-4);
+  border: 0;
+  border-radius: var(--r-sm);
+  font: var(--type-caption);
+  font-style: normal;
+  vertical-align: baseline;
+  cursor: default;
+  transition: background var(--duration);
+}
+.cm-quote-hint {
+  background: var(--color-selection);
+  color: var(--color-accent);
+}
+.cm-quote-hint:hover {
+  background: color-mix(
+    in oklch,
+    var(--color-accent) calc(var(--selection-strength) * 1.6),
+    var(--color-window)
+  );
+}
+.cm-quote-source-add {
+  background: none;
+  color: var(--color-label-tertiary);
+}
+.cm-quote-source-add:hover {
+  background: var(--color-selection);
+  color: var(--color-accent);
+}
+.cm-quote-hint:focus-visible,
+.cm-quote-source-add:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+
+/* The source of a block quote: its citations as chips at the end of the text, outside the quoted
+ * words. */
+.cm-quote-source {
+  margin-left: var(--sp-8);
+  font-style: normal;
+  white-space: nowrap;
+}
+.cm-quote-source-text {
+  margin-right: var(--sp-4);
+  color: var(--color-label-secondary);
+  font-family: var(--font-writing);
+}
+.cm-quote-source .cm-cite {
+  margin-right: var(--sp-4);
+}
+
+/* The source of an epigraph: free text on a line of its own, under the epigraph, typed in place. */
+.cm-epigraph-source {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--sp-8);
+  padding-left: var(--sp-32);
+  color: var(--color-label-secondary);
+  font-family: var(--font-writing);
+  font-size: 0.85em;
+}
+.cm-epigraph-source-text {
+  font-style: normal;
+}
+.cm-epigraph-source-input {
+  /* As wide as its text, so the dash stays next to it. */
+  field-sizing: content;
+  min-width: 8em;
+  max-width: 24em;
+  padding: 2px var(--sp-8);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: right;
+  transition: background var(--duration);
+}
+.cm-epigraph-source-input::placeholder {
+  color: var(--color-label-tertiary);
+}
+.cm-epigraph-source-input:hover,
+.cm-epigraph-source-input:focus {
+  background: var(--color-control);
+  outline: none;
+}
+.cm-epigraph-source-input:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+.cm-epigraph-source-input[aria-invalid='true'] {
+  box-shadow: 0 0 0 2px var(--color-danger);
+}

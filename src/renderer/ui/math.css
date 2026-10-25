@@ -1,0 +1,151 @@
+/* Formulas in the editor: the drawing made by the Typst compiler, a placeholder for an
+ * empty one, and the field to edit one (in a `k-popover`, or inside a block formula; the field is a
+ * `k-field`, kit/dom.css). Plain DOM inside the editor, so these classes are global. Space around a
+ * block widget is padding, never margin. */
+
+.cm-math-widget {
+  color: inherit;
+  cursor: default;
+}
+.cm-math-widget.block {
+  display: block;
+  text-align: center;
+}
+.cm-math-drawing {
+  padding: var(--sp-24) 0;
+  overflow-x: auto;
+}
+.cm-math-widget:not(.block) {
+  display: inline-block;
+  border-radius: var(--r-sm);
+  vertical-align: baseline;
+}
+.cm-math-widget:not(.block):hover,
+.cm-math-widget:not(.block).active,
+.cm-math-widget.selected {
+  background: var(--color-selection);
+}
+.cm-math-widget.selected {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+/* An open block formula is a card: the drawing, and under a hairline its field on the panel's
+ * ground. */
+.cm-math-widget.block.active {
+  border-radius: var(--r-md);
+  outline: 1px solid var(--color-separator);
+  outline-offset: 0;
+}
+.cm-math-widget.display:not(.block) {
+  /* A block formula that shares its line with text is drawn in the text. */
+  padding: 0 var(--sp-4);
+}
+.cm-math-svg {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.cm-math-widget.invalid .cm-math-svg,
+.cm-math-drawing.invalid .cm-math-svg {
+  opacity: 0.55;
+}
+.cm-math-widget.invalid,
+.cm-math-widget.unavailable,
+.cm-math-drawing.invalid,
+.cm-math-drawing.unavailable {
+  text-decoration: underline wavy var(--color-danger);
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
+.cm-math-source,
+.cm-math-checking {
+  color: var(--color-label-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+.cm-math-empty {
+  display: inline-block;
+  padding: 0 var(--sp-4);
+  border: 1px dashed var(--color-field-border);
+  border-radius: var(--r-sm);
+  color: var(--color-label-tertiary);
+  font: var(--type-caption);
+}
+
+/* The field: the source and a hint. The drawing in the text is the preview, so there is none here. */
+.cm-math-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  font: var(--type-body);
+  text-align: left;
+}
+.cm-math-widget.block .cm-math-edit {
+  padding: var(--sp-12) var(--inset-pane);
+  border-top: 1px solid var(--color-separator);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  background: var(--color-panel);
+  cursor: default;
+}
+.cm-editor .cm-tooltip.cm-math-editor {
+  width: 360px;
+  max-height: calc(100vh - var(--sp-32));
+  overflow-y: auto;
+}
+.k-field.cm-math-source-field {
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  line-height: 1.5;
+}
+.cm-math-hint {
+  color: var(--color-label-tertiary);
+  font: var(--type-caption);
+}
+
+/* What is wrong with a formula: the problem in words, the place in the source, the compiler's message. */
+.cm-math-problem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-8) var(--sp-12);
+  border-left: 2px solid var(--color-danger);
+  border-radius: var(--r-sm);
+  background: var(--color-danger-ground);
+  font: var(--type-caption);
+}
+.cm-math-problem[hidden] {
+  display: none;
+}
+.cm-math-problem-title {
+  color: var(--color-label);
+  font: var(--type-emphasis);
+}
+.cm-math-problem-hint {
+  color: var(--color-label-secondary);
+}
+.cm-math-problem-place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-8);
+  color: var(--color-label-secondary);
+}
+.cm-math-excerpt {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--color-label);
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+}
+.cm-math-excerpt mark {
+  border-bottom: 2px solid var(--color-danger);
+  background: transparent;
+  color: var(--color-danger);
+}
+.cm-math-excerpt mark.cm-math-excerpt-end::after {
+  content: '⎵';
+}
+.cm-math-problem-compiler {
+  color: var(--color-label-tertiary);
+}

@@ -1,0 +1,54 @@
+# Tufte style: a wide column of text with the footnotes in the outer margin beside the line they belong to, italic headings, no numbers.
+# The engine (`templates/engine.typ`) holds no visual values: they are in `style.toml`, per element.
+
+[template]
+id = "randnotizen"
+name = { de = "Randnotizen", en = "Margin notes" }
+description = { de = "Schmale Textspalte mit Fußnoten als Randnotizen neben dem Text (Tufte-Stil).", en = "Narrow text column with footnotes as margin notes beside the text (Tufte style)." }
+engine = 2
+
+[[options]]
+id = "author"
+type = "text"
+default = ""
+label = { de = "Autorin oder Autor", en = "Author" }
+
+[[options]]
+id = "subtitle"
+type = "text"
+default = ""
+label = { de = "Untertitel", en = "Subtitle" }
+
+[[options]]
+id = "line_spacing"
+type = "enum"
+default = "normal"
+label = { de = "Zeilenabstand", en = "Line spacing" }
+values = [
+  { id = "normal", label = { de = "Normal", en = "Normal" } },
+  { id = "wide", label = { de = "Weit (1,5-fach)", en = "Wide (1.5)" } },
+]
+
+[[options]]
+id = "title_page"
+type = "bool"
+default = false
+label = { de = "Titelseite", en = "Title page" }
+
+[[options]]
+id = "contents"
+type = "bool"
+default = false
+label = { de = "Inhaltsverzeichnis", en = "Table of contents" }
+
+[[options]]
+id = "list_of_figures"
+type = "bool"
+default = false
+label = { de = "Abbildungsverzeichnis", en = "List of figures" }
+
+[[options]]
+id = "list_of_tables"
+type = "bool"
+default = false
+label = { de = "Tabellenverzeichnis", en = "List of tables" }

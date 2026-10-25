@@ -1,0 +1,54 @@
+/* The tooltip of a chip (a citation or a cross-reference): the whole title of the work, or the
+ * heading a reference points at. A plain element on the page, so these classes are global; it is
+ * drawn as the foundation's popover, smaller. */
+.cm-chip-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 420px;
+  padding: var(--sp-8) var(--sp-12);
+  border-radius: var(--r-md);
+  background: var(--color-window);
+  box-shadow: var(--shadow-float);
+  color: var(--color-label);
+  font: var(--type-caption);
+  pointer-events: none;
+}
+.cm-chip-tip-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+.cm-chip-tip-work {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cm-chip-tip-title {
+  font: var(--type-emphasis);
+  overflow-wrap: anywhere;
+}
+.cm-chip-tip-meta {
+  color: var(--color-label-secondary);
+  overflow-wrap: anywhere;
+}
+.cm-chip-tip-ref {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  color: var(--color-accent);
+  font: var(--type-emphasis);
+}
+.cm-chip-tip-icon {
+  flex: none;
+}
+.cm-chip-tip-note {
+  color: var(--color-label-secondary);
+}
+.cm-chip-tip-note.missing {
+  color: var(--color-danger);
+}
+.cm-chip-tip-flag {
+  margin-right: var(--sp-4);
+  color: var(--color-warning);
+  vertical-align: -0.1em;
+}

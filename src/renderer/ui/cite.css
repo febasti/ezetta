@@ -1,0 +1,328 @@
+/* Citations in the editor: the chip, the citation editor, and the menu that `@` opens.
+ * Plain DOM inside the editor, so these classes are global. The editor is a `k-popover` and its
+ * controls are the kit's DOM classes (kit/dom.css); this file adds only what is its own. */
+
+/* --- the chip in the text ------------------------------------------------------------------------ */
+
+/* A citation is a pill in the writing face at the size and weight of the text around it, in the
+ * accent on a pale ground: about half the selection's, so it is seen without standing out. A hover
+ * gives it the selection's full ground. */
+/* Its baseline is the text's; the ground hugs the letters evenly above and below (a tight line
+ * height, a hair more room on top), so the pill does not look lifted or sunk in the line. */
+.cm-cite {
+  display: inline-block;
+  padding: 1px var(--sp-4) 0;
+  border-radius: var(--r-sm);
+  background: color-mix(
+    in oklch,
+    var(--color-accent) calc(var(--selection-strength) * 0.55),
+    var(--color-window)
+  );
+  color: var(--color-accent);
+  font-family: var(--font-writing);
+  font-size: 1em;
+  font-weight: inherit;
+  line-height: 1.2;
+  vertical-align: baseline;
+  cursor: default;
+}
+.cm-cite:hover {
+  background: var(--color-selection);
+}
+.cm-cite.active,
+.cm-cite.selected,
+.cm-cite-needed.active,
+.cm-cite-needed.selected {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+/* One to check later is on the mark's ground with a small flag; one that is not in the bibliography
+ * has a dashed outline in the danger colour; one that prints nothing a dashed outline in the accent. */
+.cm-cite.check {
+  background: var(--color-mark);
+  color: var(--color-label);
+}
+.cm-cite-flag {
+  margin-left: var(--sp-4);
+  color: var(--color-warning);
+  vertical-align: -0.1em;
+}
+/* The dashed line is an outline drawn just inside the edge, not a border, so these pills keep the
+ * size of the others. */
+.cm-cite.missing,
+.cm-cite.unprinted {
+  background: none;
+  outline: 1px dashed var(--color-danger);
+  outline-offset: -1px;
+  color: var(--color-danger);
+}
+.cm-cite.unprinted {
+  outline-color: var(--color-accent);
+  color: var(--color-accent);
+}
+/* A citation that is part of the sentence ("Meier (2015) zeigt", or the author alone) reads as
+ * text: the text's own colour, marked by a strong underline in the accent instead
+ * of a pill, so it is told apart from the citations in brackets at a glance. Its states keep their
+ * signs: the mark's ground to check later, a dashed underline in the danger colour when the work is
+ * not in the bibliography, and the accent ring while it is open or selected. */
+.cm-cite.prose {
+  padding: 0;
+  background: none;
+  color: inherit;
+  line-height: inherit;
+  text-decoration: underline 2px var(--color-accent);
+  text-underline-offset: 0.2em;
+  text-decoration-skip-ink: none;
+}
+.cm-cite.prose:hover {
+  background: var(--color-selection);
+}
+.cm-cite.prose.check {
+  background: var(--color-mark);
+}
+.cm-cite.prose.missing {
+  outline: none;
+  color: var(--color-danger);
+  text-decoration: underline 2px dashed var(--color-danger);
+}
+
+/* A place that still needs a citation ("Beleg fehlt"): on the danger ground, as it must be dealt
+ * with, at the size of a citation. It is a comment right behind the text, with no space: the gap is
+ * its margin. */
+.cm-cite-needed {
+  display: inline-block;
+  margin-left: var(--sp-4);
+  padding: 1px var(--sp-4) 0;
+  border-radius: var(--r-sm);
+  background: var(--color-danger-ground);
+  color: var(--color-danger);
+  font-family: var(--font-writing);
+  font-size: 1em;
+  line-height: 1.2;
+  vertical-align: baseline;
+  cursor: default;
+}
+
+/* --- the citation editor ------------------------------------------------------------------------- */
+
+.cm-editor .cm-tooltip.cm-cite-editor {
+  width: 600px;
+  max-height: calc(100vh - var(--sp-32));
+  overflow-y: auto;
+}
+
+/* The form and the field are one control: a field with the form's pop-up button fused to its left. */
+.cm-cite-top {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--r-sm);
+  background: var(--color-field);
+  transition: box-shadow var(--duration);
+}
+.cm-cite-top:focus-within {
+  box-shadow: 0 0 0 3px var(--color-focus);
+}
+.cm-cite-formbox {
+  position: relative;
+  display: flex;
+  flex: none;
+  border-right: 1px solid var(--color-field-border);
+  background: var(--color-control);
+}
+.cm-cite-formbox:hover {
+  background: var(--color-control-hover);
+}
+.cm-cite-form {
+  min-height: calc(var(--control-md) - 2px);
+  padding: 0 calc(var(--sp-8) + var(--sp-16)) 0 var(--sp-8);
+  border: 0;
+  background: none;
+  color: var(--color-label);
+  font: var(--type-body);
+  appearance: none;
+  cursor: default;
+}
+.cm-cite-form:focus {
+  outline: none;
+}
+.cm-cite-form-chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--sp-8);
+  color: var(--color-label-secondary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* The field: the works as tags, and the search after them. */
+.cm-cite-field {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+  min-width: 0;
+  min-height: calc(var(--control-md) - 2px);
+  padding: var(--sp-4) var(--sp-4);
+}
+.cm-cite-tokens {
+  display: contents;
+}
+.cm-cite-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 20px;
+  padding: 0 2px 0 var(--sp-4);
+  border-radius: var(--r-sm);
+  background: var(--color-selection);
+  color: var(--color-accent);
+  font: var(--type-body);
+  font-weight: 500;
+  cursor: default;
+}
+.cm-cite-token.selected {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+.cm-cite-token.missing {
+  background: none;
+  border: 1px dashed var(--color-danger);
+  color: var(--color-danger);
+}
+.cm-cite-token-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: inherit;
+  font: var(--type-body);
+  cursor: default;
+}
+.cm-cite-token-remove:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.cm-cite-search {
+  flex: 1;
+  min-width: 8em;
+  height: 20px;
+  padding: 0 var(--sp-4);
+  border: 0;
+  background: none;
+  color: var(--color-label);
+  font: var(--type-body);
+}
+.cm-cite-search::placeholder {
+  color: var(--color-label-tertiary);
+}
+.cm-cite-search:focus {
+  outline: none;
+}
+
+/* The results, while typing: rows of the kit's list. */
+.cm-cite-results,
+.cm-ref-results {
+  max-height: 14em;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.cm-cite-results .label,
+.cm-ref-results .label {
+  flex: none;
+  font: var(--type-emphasis);
+}
+.cm-cite-results .detail,
+.cm-ref-results .detail {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-label-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cm-cite-results kbd,
+.cm-ref-results .where {
+  flex: none;
+  color: var(--color-label-tertiary);
+  font: var(--type-caption);
+}
+.cm-cite-results li.none,
+.cm-ref-results li.none {
+  color: var(--color-label-tertiary);
+}
+/* "Beleg fehlt" stays at the top while the list scrolls. */
+.cm-cite-results li.missing {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-window);
+}
+.cm-cite-results li.missing.active {
+  background: var(--color-selection);
+}
+.cm-cite-results li.missing .label {
+  color: var(--color-danger);
+}
+
+/* The selected work, under a hairline: its title, then page reference, flag, and remove. */
+.cm-cite-member {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding-top: var(--sp-12);
+  border-top: 1px solid var(--color-separator);
+}
+.cm-cite-work {
+  overflow: hidden;
+  color: var(--color-label-secondary);
+  font: var(--type-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cm-cite-work.missing,
+.cm-cite-error,
+.cm-cite-problems {
+  color: var(--color-danger);
+}
+.cm-cite-error,
+.cm-cite-problems,
+.cm-cite-hint {
+  font: var(--type-caption);
+}
+.cm-cite-hint {
+  color: var(--color-label-tertiary);
+}
+.cm-cite-member-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.cm-cite-check .on,
+.cm-cite-check[aria-pressed='true'] .off {
+  display: none;
+}
+.cm-cite-check[aria-pressed='true'] .on {
+  display: block;
+}
+/* The flag, when set, is in the mark's colour rather than the accent. */
+.cm-cite-check[aria-pressed='true'] {
+  background: var(--color-mark);
+  color: var(--color-warning);
+}
+.cm-cite-remove:hover:not(:disabled) {
+  color: var(--color-danger);
+}
+/* The note of a flagged work, marked with the flag's colour. */
+.k-field.cm-cite-note {
+  border-left: 3px solid var(--color-warning);
+}
+
+/* The menu that `@` opens is CodeMirror's completion list, drawn by the editor's theme
+ * (editor/theme.ts), which outranks CodeMirror's own. */

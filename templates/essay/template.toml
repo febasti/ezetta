@@ -1,0 +1,54 @@
+# A small-format essay: A5 pages, centred headings with a short ornamental rule, no numbers, indented paragraphs, page numbers between dashes.
+# The engine (`templates/engine.typ`) holds no visual values: they are in `style.toml`, per element.
+
+[template]
+id = "essay"
+name = { de = "Essay", en = "Essay" }
+description = { de = "Kleines Format (A5) mit zentrierten Überschriften, Zierlinie und Einzug statt Absatzabstand.", en = "Small format (A5) with centred headings, an ornamental rule and indented paragraphs." }
+engine = 2
+
+[[options]]
+id = "author"
+type = "text"
+default = ""
+label = { de = "Autorin oder Autor", en = "Author" }
+
+[[options]]
+id = "subtitle"
+type = "text"
+default = ""
+label = { de = "Untertitel", en = "Subtitle" }
+
+[[options]]
+id = "line_spacing"
+type = "enum"
+default = "normal"
+label = { de = "Zeilenabstand", en = "Line spacing" }
+values = [
+  { id = "normal", label = { de = "Normal", en = "Normal" } },
+  { id = "wide", label = { de = "Weit (1,5-fach)", en = "Wide (1.5)" } },
+]
+
+[[options]]
+id = "title_page"
+type = "bool"
+default = false
+label = { de = "Titelseite", en = "Title page" }
+
+[[options]]
+id = "contents"
+type = "bool"
+default = false
+label = { de = "Inhaltsverzeichnis", en = "Table of contents" }
+
+[[options]]
+id = "list_of_figures"
+type = "bool"
+default = false
+label = { de = "Abbildungsverzeichnis", en = "List of figures" }
+
+[[options]]
+id = "list_of_tables"
+type = "bool"
+default = false
+label = { de = "Tabellenverzeichnis", en = "List of tables" }
