@@ -31,9 +31,9 @@ extraResources:
   - from: LICENSE
     to: LICENSE
 mac:
-  target:
-    - target: dmg
-      arch: [arm64]
+  # The architecture comes from the command line (`npm run package`, `npm run package:mac-x64`): one
+  # named here would be built besides it.
+  target: dmg
   category: public.app-category.productivity
   # No Developer ID yet: signed ad hoc, which runs on this Mac. A signed and notarized dmg
   # needs the certificate, then the hardened runtime and Java's entitlements.

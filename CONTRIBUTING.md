@@ -64,6 +64,7 @@ The decisions in SPEC sections 2 (the stack), 6 (the architecture) and 8 (the de
 | `npm run dev`                                         | Start the app with hot reload                                                                                                        |
 | `npm run build`                                       | Build main, preload and renderer into `out/`                                                                                         |
 | `npm run package`                                     | The macOS app and a dmg in `dist/` (needs `npm run fetch:dev-data`, Typst 0.15.1 and a JDK 17+)                                      |
+| `npm run package:mac-x64`                             | The same for Intel Macs, on an Intel Mac (its Typst and JDK must be x64)                                                             |
 | `npm run package:linux`                               | The Linux AppImage in `dist/` (on a Mac: set `EZETTA_TYPST` to a Linux Typst binary and `EZETTA_LINUX_JDK` to an unpacked Linux JDK) |
 | `npm test`                                            | Unit tests                                                                                                                           |
 | `npm run test:e2e`                                    | Build, then drive the real app with Playwright                                                                                       |
@@ -76,6 +77,12 @@ The decisions in SPEC sections 2 (the stack), 6 (the architecture) and 8 (the de
 | `npm run test:gallery`                                | Screenshot tests of the gallery in every theme (`-- -u` writes new pictures)                                                         |
 | `npm run bench:core`, `npm run bench:app`             | Timings and memory on a large generated project (`bench:app` needs `npm run build` first)                                            |
 | `npm run fetch:dev-data`                              | Download LanguageTool and the thesaurus files into `.dev/`                                                                           |
+
+## Releases
+
+Pushing a tag such as `v0.9.0` (the version in `package.json`, on `main`) runs `.github/workflows/release.yml`. It builds the macOS dmg for Apple Silicon and for Intel and the Linux AppImage, each on a machine of its own, and attaches them with a `SHA256SUMS.txt` to a draft release. Nothing is published until the maintainer reads the draft and publishes it. Versions below 1.0 are marked as pre-releases.
+
+The release uses the same inputs everywhere: Typst 0.15.1 (the workflow checks each download against its published SHA-256), Temurin 17, and the LanguageTool and thesaurus versions that `npm run fetch:dev-data` pins and checks. To move one of them, change its pin and run the tests.
 
 ## License
 

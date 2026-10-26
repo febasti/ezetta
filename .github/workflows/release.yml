@@ -1,0 +1,138 @@
+name: Release
+
+# Pushing a tag such as v0.9.0 builds the macOS (Apple Silicon and Intel) and Linux packages and
+# attaches them, with their checksums, to a draft release. The release stays a draft until the
+# maintainer reads it and publishes it. Nothing is signed beyond macOS's ad hoc signature, and
+# nothing is notarized (see electron-builder.yml).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+env:
+  TYPST_VERSION: 0.15.1
+
+jobs:
+  tag:
+    name: Check the tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: The tag names the version in package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "The tag is $GITHUB_REF_NAME, but package.json says $version." >&2
+            exit 1
+          fi
+      - name: The tagged commit is on main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+  build:
+    name: Build for ${{ matrix.name }}
+    needs: tag
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (Apple Silicon)
+            runner: macos-latest
+            script: package
+            java-arch: aarch64
+            typst-target: aarch64-apple-darwin
+            typst-sha256: 48f62ed034aa3a7978309579ac6ca00045e2ef0da73114e8af27cfd8e74dc05a
+            files: dist/Ezetta-*-arm64.dmg
+          - name: macOS (Intel)
+            runner: macos-15-intel
+            script: package:mac-x64
+            java-arch: x64
+            typst-target: x86_64-apple-darwin
+            typst-sha256: 7f9fdd9584866245de9a79e0add8f9236fae6f40a8a45e2c4771ccc14db4e0fa
+            files: dist/Ezetta-*-x64.dmg
+          - name: Linux (x64)
+            runner: ubuntu-24.04
+            script: package:linux
+            java-arch: x64
+            typst-target: x86_64-unknown-linux-musl
+            typst-sha256: a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c
+            files: dist/Ezetta-*-x64.AppImage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # The Java runtime that ships with the app is trimmed from this JDK (scripts/package-resources.mjs).
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          architecture: ${{ matrix.java-arch }}
+      - name: Typst ${{ env.TYPST_VERSION }}, checked against its published checksum
+        run: |
+          url="https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-${{ matrix.typst-target }}.tar.xz"
+          curl -fsSL -o typst.tar.xz "$url"
+          echo "${{ matrix.typst-sha256 }}  typst.tar.xz" | shasum -a 256 -c -
+          mkdir typst-bin
+          tar -xJf typst.tar.xz -C typst-bin --strip-components=1
+          echo "EZETTA_TYPST=$PWD/typst-bin/typst" >> "$GITHUB_ENV"
+      - uses: actions/cache@v4
+        with:
+          path: .dev
+          key: dev-data-${{ runner.os }}-${{ hashFiles('scripts/fetch-dev-data.sh') }}
+      - run: npm ci
+      - run: npm run fetch:dev-data
+      - name: Package
+        env:
+          EZETTA_JDK: ${{ env.JAVA_HOME }}
+        run: npm run ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.typst-target }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  release:
+    name: Draft the release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+      - name: Checksums
+        working-directory: packages
+        run: sha256sum Ezetta-* | tee SHA256SUMS.txt
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # A version below 1.0, or one with a suffix such as -rc.1, is a pre-release.
+          case "$GITHUB_REF_NAME" in v0.* | *-*) pre=--prerelease ;; *) pre= ;; esac
+          cat > notes.md <<'EOF'
+          ## Installing
+
+          **macOS.** Open the dmg and drag Ezetta to Applications. The app is not notarized, so the first time, right-click it and choose Öffnen (Open), then confirm.
+
+          **Linux.** Make the AppImage executable (`chmod +x Ezetta-*.AppImage`) and run it.
+
+          Formulas, spelling and grammar, synonyms and the export work out of the box. Verify a download with `SHA256SUMS.txt`.
+          EOF
+          gh release create "$GITHUB_REF_NAME" packages/* \
+            --draft --verify-tag $pre \
+            --title "Ezetta ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md
