@@ -7,12 +7,12 @@ Ezetta is in active development, and its first release (0.9) is a pre-release: e
 ## What it does
 
 - **Projects of sheets.** A text is split into sheets, ordered in groups that are folders on disk. Each sheet has a status and a word goal, and the statistics cover a sheet, a group or the whole project. An outline shows the headings of the whole project, numbered as the PDF numbers them.
-- **An editor over plain Typst.** Emphasis, headings, lists, links and quotes are shown styled, and their syntax stays out of the way. Nothing is stored in a hidden format, so every file also compiles without the app.
-- **Citations** from a BibTeX file (from Zotero, for example), shown as chips, in five forms, with a marker for places that still need one and a list of the works cited.
+- **An editor over plain Typst.** Emphasis, headings, lists, links and quotes, figures and tables are shown styled, and their syntax stays out of the way. Nothing is stored in a hidden format, so every file also compiles without the app.
+- **Citations** from a BibTeX file (from Zotero, for example), shown as chips, with a marker for places that still need one and a list of the works cited. Adding citations is easy from within Ezetta.
 - **Cross-references** to headings, figures, tables and formulas, which say what the PDF will print ("Abbildung 3", "Abschnitt 2.1").
 - **Footnotes, images, tables and formulas**, edited where they stand. Formulas are drawn by Typst itself.
-- **Spelling, grammar and synonyms** with [LanguageTool](https://languagetool.org), running on the machine and never sending text anywhere. Synonyms come in the form the sentence needs.
-- **Versions** are kept automatically, and backups go to a folder of the writer's choice (one a cloud service syncs, for example).
+- **Spelling, grammar and synonyms** with [LanguageTool](https://languagetool.org), running on the machine and never sending text anywhere.
+- **Versions** are kept automatically, and backups go to a folder of the users's choice.
 - **PDF export** with six bundled templates and a template editor with a live preview, custom fonts included.
 
 ## Download
@@ -53,19 +53,6 @@ chmod +x Ezetta-*.AppImage
 
 AppImages need FUSE 2 (the package `libfuse2`, or `fuse2` on Arch). Without it, `./Ezetta-*.AppImage --appimage-extract-and-run` starts the app anyway.
 
-### The first start in the app
-
-The first start shows a welcome screen, where you create a project or open a folder that contains a `project.toml`. Try it with a copy of real material, never the only copy. There are no automatic updates: to update, install the newer package over the old one. Projects are plain files and are not touched by that.
-
-## Known limits
-
-- **Platforms.** macOS (Apple Silicon and Intel) and Linux (x64, as an AppImage). The Linux build has been tried on Arch only and has not been checked on both X11 and Wayland, and there are no packages for Arch, Debian or Fedora. There is no Windows version.
-- **No notarization, no automatic updates.** See above.
-- **Languages.** The interface, the spelling and grammar check and the synonyms cover German and English only.
-- **Bibliography.** Citations come from a BibTeX file that is edited outside the app (Zotero can export one, for example). The app shows and checks the references, but does not add or edit them, and it reads no other format.
-- **Export.** The export makes a PDF, and nothing else.
-- **Templates belong to the app, not to the project.** A project names the template it exports with. To move a project to another computer, save its template to a `.ezetta-template` file (in the export dialog) and load it there.
-- **Typst outside the subset.** The editor knows a small subset of Typst (SPEC section 4). Anything else in a file is kept exactly as written and shown as source, so it is never lost and never breaks the editor.
 
 ## Building from source
 
@@ -82,7 +69,6 @@ Formulas and the export need [Typst](https://github.com/typst/typst) 0.15.1 (`br
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): setting up, the rules the code keeps to, tests and commands
 - [docs/DESIGN.md](docs/DESIGN.md): the design system
-- [docs/PERFORMANCE.md](docs/PERFORMANCE.md): measurements on a large project, and the budgets
 
 ## License
 
