@@ -12,7 +12,7 @@ Ezetta is in active development, and its first release (0.9) is a pre-release: e
 - **Cross-references** to headings, figures, tables and formulas, which say what the PDF will print ("Abbildung 3", "Abschnitt 2.1").
 - **Footnotes, images, tables and formulas**, edited where they stand. Formulas are drawn by Typst itself.
 - **Spelling, grammar and synonyms** with [LanguageTool](https://languagetool.org), running on the machine and never sending text anywhere.
-- **Versions** are kept automatically, and backups go to a folder of the users's choice.
+- **Versions** are kept automatically, and backups go to a folder of the writer's choice.
 - **PDF export** with six bundled templates and a template editor with a live preview, custom fonts included.
 
 ## Download
@@ -44,6 +44,8 @@ xattr -dr com.apple.quarantine /Applications/Ezetta.app
 
 ### Linux
 
+The Linux version has only been tested on Arch Linux.
+
 Make the file executable and start it:
 
 ```bash
@@ -52,7 +54,6 @@ chmod +x Ezetta-*.AppImage
 ```
 
 AppImages need FUSE 2 (the package `libfuse2`, or `fuse2` on Arch). Without it, `./Ezetta-*.AppImage --appimage-extract-and-run` starts the app anyway.
-
 
 ## Building from source
 
