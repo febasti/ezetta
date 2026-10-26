@@ -1,6 +1,6 @@
 # Design system
 
-The working reference for the look. The source of truth for values is `src/renderer/ui/foundation.css`; for building blocks, `src/renderer/ui/kit/`. If this file and the code disagree, fix this file. The history of each choice is in `docs/DECISIONS.md` (the foundation: 2026-10-18 and 2026-10-19).
+The working reference for the look. The source of truth for values is `src/renderer/ui/foundation.css`; for building blocks, `src/renderer/ui/kit/`. If this file and the code disagree, fix this file.
 
 ## Character
 
@@ -35,7 +35,7 @@ Button (primary, secondary, plain, danger; sm, md, lg), IconButton (sm, md; `pre
 2. Grouping is done with sections and hairlines, never with cards or boxes. A grey box (Callout) is only for what stands apart. Deliberate exceptions: the sheet cards in the sidebar and the badge in the corner of the text (status and words as chips on a translucent ground).
 3. Rows do not light up under the pointer; the chosen row has the selection's ground. Buttons and fields show hover and pressed states.
 4. One main action per dialog or view, and it is the only `primary` button there. A dialog's buttons are at the right of its footer, the main one last; the × closes it.
-5. A new need (a colour, a size, a block) goes into the foundation first, with a reason in `docs/DECISIONS.md`, and is then used.
+5. A new need (a colour, a size, a block) goes into the foundation first, with the reason in the commit message, and is then used.
 
 ## Enforcement
 

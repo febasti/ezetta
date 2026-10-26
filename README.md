@@ -81,9 +81,7 @@ Formulas and the export need [Typst](https://github.com/typst/typst) 0.15.1 (`br
 ## Documentation
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): setting up, the rules the code keeps to, tests and commands
-- [SPEC.md](SPEC.md): what the app is meant to be, in full
 - [docs/DESIGN.md](docs/DESIGN.md): the design system
-- [docs/DECISIONS.md](docs/DECISIONS.md): the decisions made so far, and why
 - [docs/PERFORMANCE.md](docs/PERFORMANCE.md): measurements on a large project, and the budgets
 
 ## License

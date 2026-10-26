@@ -1,5 +1,5 @@
 // Vendored: marginalia 0.3.1 (https://typst.app/universe/package/marginalia, by nleanba), the margin notes
-// of the footnote placement "in the margin" (SPEC 7.3). Unlicense (public domain), unchanged; copied
+// of the footnote placement "in the margin". Unlicense (public domain), unchanged; copied
 // here so that an export never needs the network. The engine (`engine.typ`) uses it as `marginalia`.
 
 /* Config Setup */

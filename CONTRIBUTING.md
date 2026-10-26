@@ -1,6 +1,6 @@
 # Contributing to Ezetta
 
-Thank you for helping. This guide covers setting up, the rules the code keeps to, and what to run before a commit. The product itself is described in [SPEC.md](SPEC.md), the look in [docs/DESIGN.md](docs/DESIGN.md), and the reasons behind past choices in [docs/DECISIONS.md](docs/DECISIONS.md).
+Thank you for helping. This guide covers setting up, the rules the code keeps to, and what to run before a commit. The look is described in [docs/DESIGN.md](docs/DESIGN.md).
 
 ## Setting up
 
@@ -48,7 +48,7 @@ Try things with a copy of real material, never the only copy. The tests use the 
 - **Content files hold no styling.** How the PDF looks is up to the templates and export profiles (SPEC 7).
 - **Spelling and grammar** are checked by LanguageTool running locally as a child process, never by a web service (SPEC 4.7).
 
-The decisions in SPEC sections 2 (the stack), 6 (the architecture) and 8 (the design system) change only after a discussion in an issue; an accepted change is logged in `docs/DECISIONS.md`.
+The stack, the architecture and the design system are settled; a change to one of them needs a discussion in an issue first.
 
 ## Tests
 
