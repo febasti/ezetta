@@ -11,6 +11,8 @@ files:
   - out/**/*
   - package.json
 asar: true
+# Electron's other 50-odd locale files are not needed: the app speaks German and English.
+electronLanguages: [de, en]
 extraResources:
   - from: dist-resources/typst
     to: typst
@@ -47,7 +49,12 @@ linux:
   category: Office
   artifactName: ${productName}-${version}-${arch}.${ext}
 dmg:
+  # electron-builder's schema has no ULMO (LZMA); this is the image before scripts/dmg-ulmo.mjs
+  # recompresses it.
+  format: UDBZ
   artifactName: ${productName}-${version}-${arch}.${ext}
+# Recompresses the dmg with LZMA (ULMO), which `dmg.format` cannot name.
+afterAllArtifactBuild: scripts/dmg-ulmo.mjs
 # Hardening: no running as Node, no Node options or inspector flags, the app only from its archive,
 # and the archive checked against its hash.
 electronFuses:
