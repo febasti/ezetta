@@ -5,6 +5,9 @@ import type { Page } from '@playwright/test'
 import { createSandbox, launch, launchAt, MOD, openSheet } from './helpers'
 import type { Sandbox } from './helpers'
 
+/** The window's least size (`MIN_SIZE` in `src/main/windowState.ts`). */
+const LEAST_SIZE = { width: 1100, height: 700 }
+
 const SHEET = 'content/methoden/design.typ'
 const SAMPLE = `= Methoden
 
@@ -336,6 +339,7 @@ test('the toolbar switches the sidebars, and the project menu is in the groups c
 })
 
 test('it behaves like a Mac app: arrow cursor, no selectable chrome, the system font, its window kept', async () => {
+  let placed: { x: number; y: number; width: number; height: number } | undefined
   const first = await open()
   try {
     const { page, app } = first
@@ -353,13 +357,25 @@ test('it behaves like a Mac app: arrow cursor, no selectable chrome, the system 
     // The system font for the interface (San Francisco on macOS), the writing font for the text.
     expect(await css('body', 'font-family')).toMatch(/^-apple-system/)
 
-    // The window opens again where it was.
-    await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()[0]!.setBounds({ x: 140, y: 120, width: 1200, height: 800 }),
-    )
-    await expect
-      .poll(() => readFile(join(sandbox.userData, 'settings.json'), 'utf8').catch(() => ''))
-      .toMatch(/"width": 1200/)
+    // The window opens again where it was: somewhere on this machine's screen, whose size a
+    // virtual display of a CI service keeps small.
+    const area = await app.evaluate(({ screen }) => screen.getPrimaryDisplay().workArea)
+    // A screen smaller than the window's least size cannot show where a window was put.
+    if (area.width >= LEAST_SIZE.width + 80 && area.height >= LEAST_SIZE.height + 80) {
+      placed = {
+        x: area.x + 40,
+        y: area.y + 40,
+        width: Math.min(1200, area.width - 80),
+        height: Math.min(800, area.height - 80),
+      }
+      await app.evaluate(
+        ({ BrowserWindow }, bounds) => BrowserWindow.getAllWindows()[0]!.setBounds(bounds),
+        placed,
+      )
+      await expect
+        .poll(() => readFile(join(sandbox.userData, 'settings.json'), 'utf8').catch(() => ''))
+        .toMatch(new RegExp(`"width": ${placed.width}`))
+    }
   } finally {
     await first.app.close()
   }
@@ -368,7 +384,7 @@ test('it behaves like a Mac app: arrow cursor, no selectable chrome, the system 
     const bounds = await second.app.evaluate(({ BrowserWindow }) =>
       BrowserWindow.getAllWindows()[0]!.getBounds(),
     )
-    expect(bounds).toMatchObject({ x: 140, y: 120, width: 1200, height: 800 })
+    if (placed) expect(bounds).toMatchObject(placed)
   } finally {
     await second.app.close()
   }
