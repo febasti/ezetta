@@ -126,7 +126,7 @@ jobs:
           cat > notes.md <<'EOF'
           ## Installing
 
-          **macOS.** Open the dmg and drag Ezetta to Applications. The app is not notarized, so the first time, right-click it and choose Öffnen (Open), then confirm.
+          **macOS.** Open the dmg and drag Ezetta to Applications. The app is not notarized, so the first time, open System Settings, Privacy & Security, and choose Open Anyway (details in the README).
 
           **Linux.** Make the AppImage executable (`chmod +x Ezetta-*.AppImage`) and run it.
 
