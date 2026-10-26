@@ -36,7 +36,15 @@ jobs:
       # tests start the app on several workers at once, which would race to download it.
       - name: Electron's binary
         run: node node_modules/electron/install.js
-      - run: npm run test:e2e
+      - name: End-to-end tests
+        timeout-minutes: 30
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-macos-results
+          path: test-results
+          if-no-files-found: ignore
 
   e2e-linux:
     # The release is for Linux too. Ubuntu 24.04 does not let Chromium's sandbox create user
@@ -61,4 +69,16 @@ jobs:
           sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
       - name: A virtual display, larger than the app's least window size
         run: sudo apt-get update && sudo apt-get install -y xvfb
-      - run: xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npm run test:e2e
+      # The tests keep their windows hidden by default. On a virtual display that makes drawing
+      # slow (the heaviest tests took minutes), so here the windows are shown; nobody sees them.
+      - name: End-to-end tests
+        timeout-minutes: 30
+        env:
+          EZETTA_E2E_FOREGROUND: '1'
+        run: xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-linux-results
+          path: test-results
+          if-no-files-found: ignore
