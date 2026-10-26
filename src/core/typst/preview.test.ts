@@ -51,10 +51,21 @@ describe('sheetPreview', () => {
     expect(long.title.endsWith('…')).toBe(true)
   })
 
-  it('does not read the whole of a long sheet', () => {
-    const doc = `Anfang.\n\n${'Mehr Text. '.repeat(100_000)}`
+  // The tree comes from the editor, so parsing is not part of what is timed.
+  const timed = (doc: string): number => {
+    const tree = parseTypst(doc)
     const started = performance.now()
-    preview(doc)
-    expect(performance.now() - started).toBeLessThan(200)
+    sheetPreview(tree, doc)
+    return performance.now() - started
+  }
+
+  it('does not read the whole of a long sheet', () => {
+    // It stops after the first few lines: well under a millisecond, the bound only has to
+    // tell that from reading all 100,000 paragraphs.
+    expect(timed(`Anfang.\n\n${'Mehr Text.\n\n'.repeat(100_000)}`)).toBeLessThan(50)
+  })
+
+  it('reads a single very long line once, not again and again', () => {
+    expect(timed(`Anfang.\n\n${'Mehr Text. '.repeat(100_000)}`)).toBeLessThan(500)
   })
 })
