@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { createSandbox, launch, MOD } from './helpers'
+import { createSandbox, launch, MOD, TO_END } from './helpers'
 import type { Sandbox } from './helpers'
 
 let sandbox: Sandbox
@@ -118,7 +118,7 @@ test('typing is saved to disk, and text typed just before quitting is flushed', 
   const { app, page } = await launch(sandbox)
   await openSheet(page, 'methoden', 'methoden/auswertung.typ')
   await page.locator('.cm-content').click()
-  await page.keyboard.press(`${MOD}+ArrowDown`)
+  await page.keyboard.press(TO_END)
   await page.keyboard.type(' Größe, Äpfel, Übung, Maß.')
   await expect
     .poll(() => read('content/methoden/auswertung.typ'))
@@ -169,7 +169,7 @@ test('keeps typing in a sheet going to its file when its group is renamed', asyn
   await input.press('Enter')
   await expect(row(page, 'verfahren/design.typ')).toBeVisible()
   await page.locator('.cm-content').click()
-  await page.keyboard.press(`${MOD}+ArrowDown`)
+  await page.keyboard.press(TO_END)
   await page.keyboard.type('Nachtrag.')
   await expect.poll(() => read('content/verfahren/design.typ')).toContain('Nachtrag.')
   await app.close()
@@ -320,7 +320,7 @@ test('text typed just before switching to the continuous view is shown in it', a
   try {
     await openSheet(page, 'methoden', 'methoden/auswertung.typ')
     await page.locator('.cm-content').click()
-    await page.keyboard.press(`${MOD}+ArrowDown`)
+    await page.keyboard.press(TO_END)
     await page.keyboard.type(' Frisch getippt.')
     await group(page, 'methoden').click() // within the autosave delay
     await expect(flowText(page)).toContainText('Frisch getippt.')

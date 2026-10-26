@@ -98,7 +98,7 @@ test('a new shortcut for a text command works at once, the old one does not, and
     // The tooltip of the toolbar names the new key.
     await expect(page.locator('.toolbar').getByRole('button', { name: 'Wichtig' })).toHaveAttribute(
       'title',
-      new RegExp(`\\(${keys('J', { alt: true })}\\)`),
+      new RegExp(`\\(${keys('J', { alt: true }).replace(/[+]/g, '\\+')}\\)`),
     )
 
     // The reset button brings the default back, and with it the stored choice goes.

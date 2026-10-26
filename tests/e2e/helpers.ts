@@ -10,6 +10,11 @@ import type { ElectronApplication, Page } from '@playwright/test'
 
 /** The modifier of the app's shortcuts: Cmd on macOS, Ctrl elsewhere. */
 export const MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
+/** The caret to the end of the text (Cmd+Down on a Mac, Ctrl+End elsewhere). */
+export const TO_END = process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End'
+/** The selection one word to the left (Option+Shift+Left on a Mac, Ctrl+Shift+Left elsewhere). */
+export const SELECT_WORD_LEFT =
+  process.platform === 'darwin' ? 'Shift+Alt+ArrowLeft' : 'Shift+Control+ArrowLeft'
 
 /**
  * The Typst compiler for the tests that need it (formulas, preview, export, templates): the one in

@@ -2,7 +2,7 @@ import { readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { createSandbox, launch, MOD, openSheet } from './helpers'
+import { createSandbox, launch, MOD, openSheet, TO_END } from './helpers'
 import type { Sandbox } from './helpers'
 
 const SHEET = 'content/methoden/design.typ'
@@ -47,7 +47,7 @@ async function open(): Promise<{
 
 /** Puts the caret at the end of the document and returns after a short settle. */
 async function toEnd(page: Page): Promise<void> {
-  await page.keyboard.press(`${MOD}+ArrowDown`)
+  await page.keyboard.press(TO_END)
 }
 
 test('shows simple markup as styled text, with syntax hidden where it reads better', async () => {

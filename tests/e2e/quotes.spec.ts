@@ -2,7 +2,7 @@ import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { createSandbox, launchAt, MOD } from './helpers'
+import { createSandbox, launchAt, MOD, TO_END, SELECT_WORD_LEFT } from './helpers'
 import type { Sandbox } from './helpers'
 
 const SHEET = 'content/methoden/design.typ'
@@ -273,7 +273,7 @@ test('the marks of the quote the caret is in are in the accent, and a block quot
     // In a quote inside another, only the inner one.
     await page.locator('.cm-content').getByText('nne').click() // inside "innen"
     await expect(current).toHaveText(['‚', '‘'])
-    await page.keyboard.press(`${MOD}+ArrowDown`) // the empty last line, outside every quote
+    await page.keyboard.press(TO_END) // the empty last line, outside every quote
     await expect(current).toHaveCount(0)
     await expect(page.locator('.cm-content .cm-line.cm-quote-current')).toHaveCount(0)
     await page.locator('.cm-content .cm-line.cm-quote').click()
@@ -290,7 +290,7 @@ test('the quote tool wraps a selection, and takes the quote off again', async ()
     await line(page, 'Er sagte').click()
     await page.keyboard.press('End')
     await page.keyboard.press('ArrowLeft') // in front of the full stop
-    await page.keyboard.press('Shift+Alt+ArrowLeft')
+    await page.keyboard.press(SELECT_WORD_LEFT)
     const tool = page.locator('.toolbar').getByRole('button', { name: 'Zitat', exact: true })
     await tool.click()
     await page.getByRole('menuitem', { name: 'Zitat im Text' }).click()

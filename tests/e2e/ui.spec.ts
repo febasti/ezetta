@@ -2,7 +2,7 @@ import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { createSandbox, launch, launchAt, MOD, openSheet } from './helpers'
+import { createSandbox, launch, launchAt, MOD, openSheet, TO_END } from './helpers'
 import type { Sandbox } from './helpers'
 
 /** The window's least size (`MIN_SIZE` in `src/main/windowState.ts`). */
@@ -263,7 +263,7 @@ test('undo with the keyboard still works alongside the toolbar', async () => {
   const { app, page } = await open()
   try {
     await page.locator('.cm-content').getByText('Ein Wort und noch ein Satz.').click()
-    await page.keyboard.press(`${MOD}+ArrowDown`)
+    await page.keyboard.press(TO_END)
     await page.keyboard.type(' Neu.')
     await expect.poll(read).toContain('Neu.')
     await page.keyboard.press(`${MOD}+z`)
