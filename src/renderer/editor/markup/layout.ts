@@ -56,7 +56,8 @@ const unsampled = Decoration.mark({})
 
 /**
  * The writer's space at every line break, as classes on the lines (styled in `writingTheme`): a
- * blank line is that tall (`cm-blank`), a line that directly follows another is set off by it
+ * line that is drawn with nothing on it although it has text (all of it hidden) is that tall
+ * (`cm-blank`), a line that directly follows another, an empty one too, is set off by it
  * (`cm-spaced`), and a line followed by a block quote carries the space below it
  * (`cm-before-quote`), so the rule beside the quote does not reach up into it. A line follows
  * another when nothing is drawn between them: a block widget (a figure, a table, a formula on its
@@ -113,7 +114,7 @@ export function lineSpacing(
     else classes.set(n, [className])
   }
   let span = 0
-  /** Whether line `n` is drawn with nothing on it: no text, or all of it hidden. */
+  /** Whether line `n` is drawn with nothing on it: all of its text is hidden (or it has none). */
   const blank = (n: number): boolean => {
     const line = doc.line(n)
     if (drawn.has(n)) return false
@@ -128,7 +129,9 @@ export function lineSpacing(
       previous = null
       continue
     }
-    const isBlank = blank(n)
+    // An empty line is a line like any other, with the space of the line break above it: the writer
+    // types into it, and it must not change when the first character is typed.
+    const isBlank = doc.line(n).length > 0 && blank(n)
     if (isBlank) give(n, 'cm-blank')
     if (previous && !previous.blank && !afterWidget.has(n)) {
       if (quotes.has(n) && !quotes.has(previous.n) && !headings.has(n))

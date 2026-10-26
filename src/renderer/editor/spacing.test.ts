@@ -36,8 +36,14 @@ function spacing(doc: string): string[] {
 }
 
 describe('the space between lines', () => {
-  it('sets off a line that follows another, and makes a blank line the gap', () => {
-    expect(spacing('Eins.\nZwei.\n\nDrei.')).toEqual(['', 'cm-spaced', 'cm-blank', ''])
+  it('sets off a line that follows another', () => {
+    expect(spacing('Eins.\nZwei.')).toEqual(['', 'cm-spaced'])
+  })
+
+  it('sets off an empty line like any other, so nothing moves when it is typed into', () => {
+    expect(spacing('Eins.\n\nDrei.')).toEqual(['', 'cm-spaced', 'cm-spaced'])
+    expect(spacing('== Titel\n')).toEqual(['', 'cm-spaced'])
+    expect(spacing('\nText.')).toEqual(['', 'cm-spaced'])
   })
 
   it('spaces a heading that follows a line', () => {
@@ -53,7 +59,11 @@ describe('the space between lines', () => {
   })
 
   it('spaces the lines inside a block quote from each other', () => {
-    expect(spacing('\n#quote(block: true)[Eins.\nZwei.]')).toEqual(['cm-blank', '', 'cm-spaced'])
+    expect(spacing('\n#quote(block: true)[Eins.\nZwei.]')).toEqual([
+      'cm-before-quote',
+      '',
+      'cm-spaced',
+    ])
   })
 
   it('does not space a line from a block widget above it', () => {
