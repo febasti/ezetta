@@ -2,7 +2,8 @@
   import { i18n } from '../../i18n/i18n.svelte'
   import Button from '../../ui/kit/Button.svelte'
   import ListRow from '../../ui/kit/ListRow.svelte'
-  import Icon from '../../ui/Icon.svelte'
+  import logoLight from '../../assets/logo-light.png'
+  import logoDark from '../../assets/logo-dark.png'
   import { backup } from '../history/backup.svelte'
   import { project } from '../sidebar/project.svelte'
 
@@ -47,9 +48,11 @@
   <section class="start">
     <div class="column">
       <header>
-        <span class="mark"><Icon name="notebook" size={40} /></span>
+        <span class="mark">
+          <img class="light" src={logoLight} alt="" width="64" height="64" />
+          <img class="dark" src={logoDark} alt="" width="64" height="64" />
+        </span>
         <h1>{i18n.t('app.title')}</h1>
-        <p class="subtitle">{i18n.t('welcome.subtitle')}</p>
       </header>
       <ul class="actions">
         {#each actions as action (action.id)}
@@ -117,17 +120,22 @@
   .mark {
     display: flex;
     margin-bottom: var(--sp-8);
-    color: var(--color-accent);
+  }
+  .mark img {
+    width: 64px;
+    height: 64px;
+  }
+  .dark,
+  :global(:root[data-theme='dark']) .light {
+    display: none;
+  }
+  :global(:root[data-theme='dark']) .dark {
+    display: block;
   }
   h1 {
     margin: 0;
     color: var(--color-label);
     font: var(--type-large-title);
-  }
-  .subtitle {
-    margin: 0;
-    color: var(--color-label-secondary);
-    font: var(--type-body);
   }
   .actions {
     margin: 0;
