@@ -91,7 +91,10 @@ describe('editor performance on a long sheet', () => {
     const state = EditorState.create({ doc: longSheet(), extensions: FIELDS })
     keystrokeMs(state, 1500, 10) // warm up
     const ms = keystrokeMs(state, 2000, 41)
-    expect(ms, `median keystroke took ${ms.toFixed(2)} ms`).toBeLessThan(10)
+    // A shared machine of a CI service is two to three times slower than a Mac; what the guard is
+    // for, a keystroke that costs a lot more than it did, still shows.
+    const budget = process.env['CI'] ? 30 : 10
+    expect(ms, `median keystroke took ${ms.toFixed(2)} ms`).toBeLessThan(budget)
   })
 })
 
