@@ -2,7 +2,7 @@
 
 A desktop app for writing long academic texts, such as a doctoral thesis. The text stays plain [Typst](https://typst.app) in ordinary files, while the editor shows it the way a writer thinks of it: citations as chips, footnotes in the margin, tables and formulas drawn in place. The PDF comes from Typst, with templates the writer can adjust.
 
-Ezetta is in active development, and its first release (0.9) is a pre-release: expect rough edges, and keep a copy of anything that matters. It is made for macOS and Linux; Windows comes later. The interface is in German and English.
+Ezetta is in active development, and its first release (0.9) is a pre-release: expect rough edges, and keep a copy of anything that matters. It is made for macOS and Linux. The interface is in German and English.
 
 ## What it does
 
@@ -29,7 +29,7 @@ The packages are on the [releases page](https://github.com/febasti/ezetta/releas
 
 ### macOS: the first start
 
-The app is not notarized yet (that needs a paid Apple developer account), so macOS asks before it opens a downloaded copy for the first time. Open the dmg, drag Ezetta into Applications, then:
+The app is not notarized (that needs a paid Apple developer account), so macOS asks before it opens a downloaded copy for the first time. Open the dmg, drag Ezetta into Applications, then:
 
 1. Open Ezetta from Applications. macOS says it cannot verify the app.
 2. Open System Settings, then Privacy & Security, scroll down to the Security section and choose **Open Anyway** (in German: "Dennoch öffnen"). Confirm with your password. This is needed once.
@@ -59,11 +59,11 @@ The first start shows a welcome screen, where you create a project or open a fol
 
 ## Known limits
 
-- **Platforms.** macOS (Apple Silicon and Intel) and Linux (x64, as an AppImage). The Linux build has been tried on Arch only, it has not been checked on both X11 and Wayland yet, and there are no packages for Arch, Debian or Fedora yet. Windows comes later.
+- **Platforms.** macOS (Apple Silicon and Intel) and Linux (x64, as an AppImage). The Linux build has been tried on Arch only and has not been checked on both X11 and Wayland, and there are no packages for Arch, Debian or Fedora. There is no Windows version.
 - **No notarization, no automatic updates.** See above.
 - **Languages.** The interface, the spelling and grammar check and the synonyms cover German and English only.
-- **Bibliography.** Citations come from a BibTeX file that is edited outside the app (Zotero can export one, for example). The app shows and checks the references, but does not add them yet. Direct Zotero support and other formats are planned.
-- **Export.** The export makes a PDF. Word and Markdown export are planned.
+- **Bibliography.** Citations come from a BibTeX file that is edited outside the app (Zotero can export one, for example). The app shows and checks the references, but does not add or edit them, and it reads no other format.
+- **Export.** The export makes a PDF, and nothing else.
 - **Templates belong to the app, not to the project.** A project names the template it exports with. To move a project to another computer, save its template to a `.ezetta-template` file (in the export dialog) and load it there.
 - **Typst outside the subset.** The editor knows a small subset of Typst (SPEC section 4). Anything else in a file is kept exactly as written and shown as source, so it is never lost and never breaks the editor.
 
