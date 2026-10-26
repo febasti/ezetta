@@ -1226,3 +1226,13 @@ Everything Ezetta ships that is not its own code is named with its license in `T
 ## 2026-10-26: Where references come from
 
 The bibliography stays a BibTeX or BibLaTeX file that is edited outside the app (SPEC 4.6). The app reads it, shows the works cited, and checks the citations; it does not add or edit references. Removed from the SPEC: the "Hinzufügen" button of the Literatur tab (the add-reference flow of SPEC 3.6, never built) and the direct Zotero integration in the later stages (SPEC 12). The auto-exported Better BibTeX file stays the recommended Zotero workflow. The README says what the app does and leaves out what might come.
+
+## 2026-10-26: The last three provisional looks confirmed
+
+The maintainer looked at the three choices that were marked **needs confirmation** and keeps them as they are:
+
+- **The writing faces** (Libertinus Serif, Libertinus Sans, IBM Plex Mono) and the size correction of each, so that one number looks alike in all three (entry "Three writing faces").
+- **The numeric writing settings**: the ranges (text size 12 to 32 px, line spacing 1 to 3 times, the space at a line break 0 to 3 times, text width 480 to 1400 px) and the 760 px default text width (entry "Numeric writing settings and a text width").
+- **The looks of the six bundled templates** (colours, sizes, margins), as seen in the export dialog (entry "Six new templates").
+
+No provisional choice is left open in this file. The items marked **[OPEN]** in SPEC section 2 are a separate list.

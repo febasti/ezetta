@@ -13,7 +13,7 @@ Ezetta is in active development, and its first release (0.9) is a pre-release: e
 - **Footnotes, images, tables and formulas**, edited where they stand. Formulas are drawn by Typst itself.
 - **Spelling, grammar and synonyms** with [LanguageTool](https://languagetool.org), running on the machine and never sending text anywhere. Synonyms come in the form the sentence needs.
 - **Versions** are kept automatically, and backups go to a folder of the writer's choice (one a cloud service syncs, for example).
-- **PDF export** with three bundled templates and a template editor with a live preview, custom fonts included.
+- **PDF export** with six bundled templates and a template editor with a live preview, custom fonts included.
 
 ## Download
 
