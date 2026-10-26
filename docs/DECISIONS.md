@@ -1222,3 +1222,7 @@ Everything Ezetta ships that is not its own code is named with its license in `T
 - **macOS.** The app is not notarized for now: it is signed ad hoc, and the first start needs a right click and "Öffnen" (to be written in the README). Intel Macs are supported by a second package, one dmg per architecture (a universal build would carry Typst and Java twice); it needs an x64 Typst and an x64 JDK to gather its resources.
 - **No automatic updates** in the first release; a new version is a new download.
 - **Size.** The package is reduced where that is safe: only the German and English locales of Electron, and a more strongly compressed dmg.
+
+## 2026-10-26: Where references come from
+
+The bibliography stays a BibTeX or BibLaTeX file that is edited outside the app (SPEC 4.6). The app reads it, shows the works cited, and checks the citations; it does not add or edit references. Removed from the SPEC: the "Hinzufügen" button of the Literatur tab (the add-reference flow of SPEC 3.6, never built) and the direct Zotero integration in the later stages (SPEC 12). The auto-exported Better BibTeX file stays the recommended Zotero workflow. The README says what the app does and leaves out what might come.
