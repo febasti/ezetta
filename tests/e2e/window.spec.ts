@@ -78,8 +78,10 @@ test('the welcome screen has a strip at the top that moves the window', async ()
 test('without a project the window is a small fixed launcher, and a project opens in a window of its own size', async () => {
   const { app, page } = await launch(sandbox, { project: false })
   try {
-    const look = () =>
-      app.evaluate(({ BrowserWindow }) => {
+    // Electron's setMaximizable does nothing on Linux, so isMaximizable stays true there: the
+    // property is left out of what is compared (a property that is undefined counts as absent).
+    const look = async () => {
+      const seen = await app.evaluate(({ BrowserWindow }) => {
         const window = BrowserWindow.getAllWindows()[0]!
         const [width, height] = window.getContentSize()
         return {
@@ -89,19 +91,27 @@ test('without a project the window is a small fixed launcher, and a project open
           maximizable: window.isMaximizable(),
         }
       })
-    expect(await look()).toEqual({ width: 720, height: 440, resizable: false, maximizable: false })
+      return process.platform === 'linux' ? { ...seen, maximizable: undefined } : seen
+    }
+    const maximizable = (value: boolean) => (process.platform === 'linux' ? undefined : value)
+    expect(await look()).toEqual({
+      width: 720,
+      height: 440,
+      resizable: false,
+      maximizable: maximizable(false),
+    })
 
     // Open the project as the page does when the writer picks it, and let the page see it.
     await page.evaluate((path) => window.api.project.openRecent({ path }), sandbox.projectDir)
     await page.reload()
-    await expect.poll(look).toMatchObject({ resizable: true, maximizable: true })
+    await expect.poll(look).toMatchObject({ resizable: true, maximizable: maximizable(true) })
     expect((await look()).width).toBeGreaterThan(720)
 
     await page.evaluate(() => window.api.project.close({}))
     await page.reload()
     await expect
       .poll(look)
-      .toEqual({ width: 720, height: 440, resizable: false, maximizable: false })
+      .toEqual({ width: 720, height: 440, resizable: false, maximizable: maximizable(false) })
   } finally {
     await app.close()
   }
