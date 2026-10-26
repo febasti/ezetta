@@ -32,6 +32,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Electron's package downloads its binary the first time it is used, not at install. The
+      # tests start the app on several workers at once, which would race to download it.
+      - name: Electron's binary
+        run: node node_modules/electron/install.js
       - run: npm run test:e2e
 
   e2e-linux:
@@ -47,6 +51,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Electron's package downloads its binary the first time it is used, not at install. The
+      # tests start the app on several workers at once, which would race to download it.
+      - name: Electron's binary
+        run: node node_modules/electron/install.js
       - name: Give Chromium's sandbox helper to root, with the setuid bit
         run: |
           sudo chown root:root node_modules/electron/dist/chrome-sandbox
