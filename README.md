@@ -19,11 +19,11 @@ Ezetta is in active development, and its first release (0.9) is a pre-release: e
 
 The packages are on the [releases page](https://github.com/febasti/ezetta/releases). They bring everything the app needs (Typst, LanguageTool, a Java runtime and the thesaurus files), which is why they are about 260 MB. Nothing else has to be installed.
 
-| System               | File                            |
-| -------------------- | ------------------------------- |
-| macOS, Apple Silicon | `Ezetta-<version>-arm64.dmg`    |
-| macOS, Intel         | `Ezetta-<version>-x64.dmg`      |
-| Linux, 64 bit        | `Ezetta-<version>-x64.AppImage` |
+| System               | File                               |
+| -------------------- | ---------------------------------- |
+| macOS, Apple Silicon | `Ezetta-<version>-arm64.dmg`       |
+| macOS, Intel         | `Ezetta-<version>-x64.dmg`         |
+| Linux, 64 bit        | `Ezetta-<version>-x86_64.AppImage` |
 
 `SHA256SUMS.txt` on the same page lists the checksum of each file (`shasum -a 256 <file>` on macOS, `sha256sum <file>` on Linux).
 
@@ -47,11 +47,11 @@ xattr -dr com.apple.quarantine /Applications/Ezetta.app
 Make the file executable and start it:
 
 ```bash
-chmod +x Ezetta-*-x64.AppImage
-./Ezetta-*-x64.AppImage
+chmod +x Ezetta-*.AppImage
+./Ezetta-*.AppImage
 ```
 
-AppImages need FUSE 2 (the package `libfuse2`, or `fuse2` on Arch). Without it, `./Ezetta-*-x64.AppImage --appimage-extract-and-run` starts the app anyway.
+AppImages need FUSE 2 (the package `libfuse2`, or `fuse2` on Arch). Without it, `./Ezetta-*.AppImage --appimage-extract-and-run` starts the app anyway.
 
 ### The first start in the app
 

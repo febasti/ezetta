@@ -64,7 +64,7 @@ jobs:
             java-arch: x64
             typst-target: x86_64-unknown-linux-musl
             typst-sha256: a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c
-            files: dist/Ezetta-*-x64.AppImage
+            files: dist/Ezetta-*.AppImage
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -72,7 +72,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       # The Java runtime that ships with the app is trimmed from this JDK (scripts/package-resources.mjs).
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
