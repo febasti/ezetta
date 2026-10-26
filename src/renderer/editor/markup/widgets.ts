@@ -39,6 +39,19 @@ export class CommentPill extends WidgetType {
   }
 }
 
+/** Three dots in the words, drawn as the single character the PDF prints. */
+export class Ellipsis extends WidgetType {
+  override eq(): boolean {
+    return true
+  }
+
+  override toDOM(): HTMLElement {
+    const ellipsis = document.createElement('span')
+    ellipsis.textContent = '…'
+    return ellipsis
+  }
+}
+
 /** A footnote's marker: a small superscript number. A click opens the note. */
 export class FootnoteMarker extends WidgetType {
   constructor(

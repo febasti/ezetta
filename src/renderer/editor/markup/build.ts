@@ -5,6 +5,7 @@ import type { DecorationSet } from '@codemirror/view'
 import { Builder, mark, readCall } from './builder'
 import type { Call } from './builder'
 import { ChipMarkup } from './chips'
+import { EllipsisMarkup } from './ellipsis'
 import { EmbedMarkup } from './embeds'
 import { keepTogether, lineSpacing } from './layout'
 import { QuoteMarkup } from './quotes'
@@ -41,6 +42,7 @@ export function build(state: EditorState): Built {
   const chips = new ChipMarkup(b)
   const quotes = new QuoteMarkup(b, chips)
   const embeds = new EmbedMarkup(b)
+  const ellipsis = new EllipsisMarkup(b)
 
   const call = (c: Call): void => {
     if (chips.longRef(c) || chips.longCite(c)) return
@@ -53,6 +55,7 @@ export function build(state: EditorState): Built {
   tree.iterate({
     enter: (ref) => {
       const node = ref.node
+      ellipsis.note(node)
       if (quotes.inSource(node)) return false
       switch (ref.name) {
         case 'Heading':
@@ -93,6 +96,7 @@ export function build(state: EditorState): Built {
     },
   })
 
+  ellipsis.draw()
   const { doc, ranges } = b
   ranges.push(...lineSpacing(doc, ranges, b.headingLines, b.quoteLines))
   return {

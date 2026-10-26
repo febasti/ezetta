@@ -44,9 +44,11 @@ export function drawNote(host: HTMLElement, source: string, view: EditorView): v
   const inside = (pos: number): Citation[] | undefined =>
     groups.find((group) => group[0]!.from <= pos && pos < group.at(-1)!.end)
 
-  const text = (parent: Node, from: number, to: number): void => {
-    if (to > from)
-      parent.appendChild(document.createTextNode(source.slice(from, to).replace(/\s+/g, ' ')))
+  /** Words into `parent`; in prose every three dots are the ellipsis the PDF prints. */
+  const text = (parent: Node, from: number, to: number, prose = false): void => {
+    if (to <= from) return
+    const words = source.slice(from, to).replace(/\s+/g, ' ')
+    parent.appendChild(document.createTextNode(prose ? words.replaceAll('...', '…') : words))
   }
 
   /** The words between `from` and `to`, with what is inside drawn, into `parent`. */
@@ -70,11 +72,11 @@ export function drawNote(host: HTMLElement, source: string, view: EditorView): v
       while (at < b) {
         const group = [...starts.keys()].find((start) => start >= at && start < b)
         if (group === undefined) break
-        text(parent, at, group)
+        text(parent, at, group, true)
         chip(starts.get(group)!)
         at = Math.max(at, pos)
       }
-      if (at < b) text(parent, at, b)
+      if (at < b) text(parent, at, b, true)
       pos = Math.max(pos, b)
     }
     for (let child = node?.firstChild ?? null; child; child = child.nextSibling) {
