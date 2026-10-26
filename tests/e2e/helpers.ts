@@ -84,7 +84,9 @@ export async function launch(
   options: { project?: boolean; env?: Record<string, string> } = {},
 ): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
-    args: [resolve('.'), `--user-data-dir=${sandbox.userData}`],
+    // The tests read the interface in German, which the app chooses by the system's languages;
+    // a machine that has only English (a CI service, say) would show English.
+    args: [resolve('.'), `--user-data-dir=${sandbox.userData}`, '--lang=de'],
     env: {
       ...process.env,
       // The tests click the app's own menus; a system menu is not part of the page.
