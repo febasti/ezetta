@@ -86,6 +86,82 @@ test('shows each footnote as a superscript number with a card in the margin, lev
   }
 })
 
+test('many colliding notes all get a card, and a card stays put while the sheet scrolls', async () => {
+  // Twelve paragraphs with four notes each, so the cards stand in a column far longer than the text
+  // they belong to, then a long stretch of text to scroll through.
+  const dense = Array.from(
+    { length: 12 },
+    (_, p) =>
+      `Absatz ${p + 1}. ` +
+      Array.from(
+        { length: 4 },
+        (_, i) => `Satz ${i + 1}.#footnote[Anmerkung ${p * 4 + i + 1}.]`,
+      ).join(' '),
+  ).join('\n\n')
+  const filler = Array.from({ length: 60 }, (_, i) => `Füllabsatz ${i + 1}.`).join('\n\n')
+  await rm(sandbox.base, { recursive: true, force: true })
+  sandbox = await createSandbox({ [SHEET]: `${dense}\n\n${filler}\n` })
+  const { app, page } = await open()
+  try {
+    const scroller = page.locator('.cm-scroller')
+    const numbers = (): Promise<number[]> =>
+      cards(page).evaluateAll((els) =>
+        els.map((el) => Number(el.querySelector('.cm-note-number')?.textContent)),
+      )
+    const tops = (): Promise<Record<number, number>> =>
+      cards(page).evaluateAll((els) =>
+        Object.fromEntries(
+          els.map((el) => [
+            Number(el.querySelector('.cm-note-number')?.textContent),
+            parseFloat((el as HTMLElement).style.top),
+          ]),
+        ),
+      )
+    const scrollTo = async (y: number): Promise<void> => {
+      await scroller.evaluate((el, top) => (el.scrollTop = top), y)
+      await page.waitForTimeout(300)
+    }
+    /** The numbers of the cards that are in the visible part of the sheet. */
+    const inView = (): Promise<number[]> =>
+      cards(page).evaluateAll((els) => {
+        const sc = document.querySelector('.cm-scroller') as HTMLElement
+        return els
+          .filter((el) => {
+            const top = parseFloat((el as HTMLElement).style.top)
+            return top + el.clientHeight > sc.scrollTop && top < sc.scrollTop + sc.clientHeight
+          })
+          .map((el) => Number(el.querySelector('.cm-note-number')?.textContent))
+      })
+
+    await expect(cards(page).first()).toBeVisible()
+    // The notes of the first sheet's own note come first: the sheet's notes are 2 to 49.
+    expect(await inView()).toContain(2)
+
+    // Scrolling down past the text of the notes, the column goes on: every card is reached, in order.
+    const seen = new Set<number>()
+    for (let y = 0; y <= 2200; y += 150) {
+      await scrollTo(y)
+      for (const n of await inView()) seen.add(n)
+    }
+    expect([...seen].sort((a, b) => a - b)).toEqual(Array.from({ length: 48 }, (_, i) => i + 2))
+
+    // A card does not move when the notes above it leave the drawn part of the text.
+    await scrollTo(0)
+    let before = await tops()
+    for (let y = 100; y <= 1800; y += 100) {
+      await scrollTo(y)
+      const now = await tops()
+      for (const [n, top] of Object.entries(now))
+        if (before[Number(n)] !== undefined)
+          expect(top, `card ${n} at ${y}`).toBe(before[Number(n)])
+      before = { ...before, ...now }
+    }
+    expect((await numbers()).length).toBeGreaterThan(0)
+  } finally {
+    await app.close()
+  }
+})
+
 test('a click lands on the line clicked after the margin narrowed the text', async () => {
   const { app, page } = await open()
   try {

@@ -22,7 +22,10 @@ const MIN_ROOM = MIN_TEXT + GAP + CARD_WIDTH + 2 * EDGE
  * appearing or disappearing does not flip the layout back and forth. */
 const HYSTERESIS = 32
 const CARD_GAP = 8
+/** The height of a card that has not been drawn yet and has no neighbour to guess from. */
 const GUESS_HEIGHT = 56
+/** Cards are drawn this many screens above and below the visible part of the sheet. */
+const SCREENS_AROUND = 1
 
 /**
  * CodeMirror measures the heights of the lines again when the editor gets wider or narrower, or
@@ -38,14 +41,20 @@ interface Measure {
   layout: NotesLayout
   textWidth: number
   left: number
+  /** Every note of the sheet, drawn or not: where a card stands depends on all the ones before it. */
   items: { note: NoteView; index: number; wanted: number; height: number }[]
   active: number | null
+  /** The visible part of the scrolled content. */
+  scrollTop: number
+  clientHeight: number
 }
 
 /**
  * The margin column: one card per footnote to the right of the text, level with its
  * marker. Positions come from the marker's coordinates and are recalculated in CodeMirror's
- * measure cycle. Cards that would overlap are pushed down. When there are notes, the text column
+ * measure cycle. Cards that would overlap are pushed down, and every note takes part in that, not
+ * only those CodeMirror has drawn: a card must not jump when the notes above it scroll out of
+ * sight. Only the cards near the visible part are made, but the column is as tall as all of them. When there are notes, the text column
  * moves left and narrows to make room; when there is not enough room, nothing is drawn and the
  * layout is reported as `panel`, so the notes panel can show the notes instead.
  */
@@ -60,9 +69,15 @@ class MarginPlugin implements PluginValue {
   private layout: NotesLayout = 'none'
   private left = 0
   private textWidth = 0
+  /** The heights the cards of the notes had when they were drawn, by the same order. */
+  private readonly heights = new Map<number, number>()
+  /** How far below the top of its line each marker was when last seen, by the same order. */
+  private readonly offsets = new Map<number, number>()
   private needsHeights = false
   private otherTheme = false
   private destroyed = false
+
+  private readonly onScroll = (): void => this.view.requestMeasure(this.request)
 
   private readonly request = {
     read: (view: EditorView): Measure => this.read(view),
@@ -72,6 +87,7 @@ class MarginPlugin implements PluginValue {
   constructor(private readonly view: EditorView) {
     this.container.className = 'cm-notes-margin'
     view.scrollDOM.append(this.container)
+    view.scrollDOM.addEventListener('scroll', this.onScroll, { passive: true })
     view.requestMeasure(this.request)
   }
 
@@ -91,6 +107,7 @@ class MarginPlugin implements PluginValue {
 
   destroy(): void {
     this.destroyed = true
+    this.view.scrollDOM.removeEventListener('scroll', this.onScroll)
     for (const index of [...this.editors.keys()]) this.unmount(index)
     for (const text of this.texts.values()) text.destroy()
     this.texts.clear()
@@ -114,19 +131,46 @@ class MarginPlugin implements PluginValue {
     const items: Measure['items'] = []
     if (layout === 'margin') {
       const origin = scroller.getBoundingClientRect().top - scroller.scrollTop
+      const documentTop = view.documentTop - origin
+      /** Where CodeMirror puts the line of a note, drawn or only estimated, in the scrolled content. */
+      const lineTop = (pos: number): number => documentTop + view.lineBlockAt(pos).top
+      // The marker stands a little below the top of its line (the space above it, which not every
+      // line has). A note that is not drawn has no marker to measure, so it keeps the offset it had
+      // when it was last seen, and one never seen takes the offset of another.
+      let offset: number | null = null
+      const exact = new Map<number, number>()
       for (const [index, note] of notes.entries()) {
         if (note.from < view.viewport.from || note.from > view.viewport.to) continue
         const coords = view.coordsAtPos(note.from)
         if (!coords) continue
+        exact.set(index, coords.top - origin)
+        const below = coords.top - origin - lineTop(note.from)
+        this.offsets.set(index, below)
+        offset ??= below
+      }
+      const fallback = this.heights.size
+        ? [...this.heights.values()].reduce((sum, h) => sum + h, 0) / this.heights.size
+        : GUESS_HEIGHT
+      for (const [index, note] of notes.entries()) {
+        const height = this.cards.get(index)?.offsetHeight
+        if (height) this.heights.set(index, height)
         items.push({
           note,
           index,
-          wanted: coords.top - origin,
-          height: this.cards.get(index)?.offsetHeight || GUESS_HEIGHT,
+          wanted: exact.get(index) ?? lineTop(note.from) + (this.offsets.get(index) ?? offset ?? 0),
+          height: height || this.heights.get(index) || fallback,
         })
       }
     }
-    return { layout, textWidth, left, items, active: view.state.field(activeNoteField) }
+    return {
+      layout,
+      textWidth,
+      left,
+      items,
+      active: view.state.field(activeNoteField),
+      scrollTop: scroller.scrollTop,
+      clientHeight: scroller.clientHeight,
+    }
   }
 
   private write(measure: Measure, view: EditorView): void {
@@ -163,25 +207,31 @@ class MarginPlugin implements PluginValue {
       }
     }
     if (measure.layout !== 'margin') {
+      this.container.style.height = '0'
       this.prune(new Set())
       return
     }
 
     const cardLeft = measure.left + measure.textWidth + GAP
     const seen = new Set<number>()
+    const from = measure.scrollTop - SCREENS_AROUND * measure.clientHeight
+    const to = measure.scrollTop + (1 + SCREENS_AROUND) * measure.clientHeight
     let bottom = -Infinity
     for (const item of [...measure.items].sort((a, b) => a.wanted - b.wanted)) {
+      const top = Math.max(item.wanted, bottom + CARD_GAP)
+      bottom = top + item.height
+      const active = measure.active === item.note.from
+      if (!active && (bottom < from || top > to)) continue
       const card = this.card(view, item.note, item.index)
       seen.add(item.index)
-      const top = Math.max(item.wanted, bottom + CARD_GAP)
       card.style.top = `${top}px`
       card.style.left = `${cardLeft}px`
       card.style.width = `${CARD_WIDTH}px`
-      const active = measure.active === item.note.from
       card.classList.toggle('active', active)
       this.edit(view, card, item.index, active)
-      bottom = top + item.height
     }
+    // The column is as tall as all the cards, drawn or not, so the sheet scrolls as far as they go.
+    this.container.style.height = `${Math.max(0, bottom)}px`
     this.prune(seen)
     // Cards just made or changed have a new height, so settle once more.
     if (this.needsHeights) {
