@@ -103,7 +103,7 @@ class ProjectStore {
   ])
 
   /**
-   * Sheets in the continuous view, in list order. A folder shows its sheets without the scratchpads
+   * Sheets in the continuous view, in list order. A folder shows its sheets without the scrapsheets
    * (sheets kept out of the export, which are no part of the text); sheets the writer chose are shown.
    */
   flowPaths = $derived(

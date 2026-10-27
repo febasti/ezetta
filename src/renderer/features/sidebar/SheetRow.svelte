@@ -17,7 +17,7 @@
   let { node }: Props = $props()
 
   const selected = $derived(project.selection.includes(node.path))
-  /** A sheet that is excluded from the export itself is a scratchpad in its place: no status. */
+  /** A sheet that is excluded from the export itself is a scrapsheet in its place: no status. */
   const scratch = $derived(node.kind === 'sheet' && !node.export)
   const isOpen = $derived(node.kind === 'sheet' && editor.path === node.path)
   const marked = $derived(dropTarget.path === node.path ? dropTarget.position : null)
@@ -69,11 +69,9 @@
         ? []
         : [
             {
-              label: allExcluded
-                ? i18n.t('menu.includeExport')
-                : onlySheets
-                  ? i18n.t('menu.markScratchpad')
-                  : i18n.t('menu.excludeExport'),
+              label: onlySheets
+                ? i18n.t(allExcluded ? 'menu.markWritingSheet' : 'menu.markScrapsheet')
+                : i18n.t(allExcluded ? 'menu.includeExport' : 'menu.excludeExport'),
               onselect: () => void project.setExport(targets, allExcluded),
             },
           ]),
@@ -175,9 +173,9 @@
   {/if}
   <div class="meta">
     {#if node.kind === 'sheet' && scratch}
-      <span class="status scratchpad">
+      <span class="status scrapsheet">
         <Icon name="note" size={13} />
-        {i18n.t('sidebar.scratchpad')}
+        {i18n.t('sidebar.scrapsheet')}
       </span>
     {:else if node.kind === 'sheet'}
       <span class="status">
@@ -237,12 +235,12 @@
     border-color: var(--color-accent);
     box-shadow: inset 0 0 0 1px var(--color-accent);
   }
-  /* A scratchpad: a sheet that is not in the export, drawn as a note on the side, dashed, without a status. */
+  /* A scrapsheet: a sheet that is not in the export, drawn as a note on the side, dashed, without a status. */
   .row.scratch {
     border-style: dashed;
     background: transparent;
   }
-  .status.scratchpad {
+  .status.scrapsheet {
     display: inline-flex;
     align-items: center;
     gap: var(--sp-4);

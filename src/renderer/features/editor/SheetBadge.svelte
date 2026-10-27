@@ -50,9 +50,9 @@
     <Chip tone="accent">{i18n.t('sidebar.sheetCount', { count: project.flowPaths.length })}</Chip>
   {/if}
   {#if sheetNode && !sheetNode.export}
-    <!-- A scratchpad has no status. -->
-    <Chip tone="neutral" title={i18n.t('header.scratchpadHint')}>
-      <Icon name="note" size={13} />{i18n.t('header.scratchpad')}
+    <!-- A scrapsheet has no status. -->
+    <Chip tone="neutral" title={i18n.t('header.scrapsheetHint')}>
+      <Icon name="note" size={13} />{i18n.t('header.scrapsheet')}
     </Chip>
   {:else if sheetNode}
     <Chip

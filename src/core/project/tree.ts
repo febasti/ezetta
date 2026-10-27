@@ -297,7 +297,7 @@ export interface ExportGroupShape extends GroupShape {
  * The sheets that belong to a group in the structure: those of the group and of the groups below it,
  * except the groups that are excluded from the export. Those stand outside the structure (see
  * `outsideGroups`) and are listed when one of them is chosen: in an excluded group, nothing is left
- * out. A sheet that is excluded itself stays: it is a scratchpad in its place.
+ * out. A sheet that is excluded itself stays: it is a scrapsheet in its place.
  */
 export function structureSheets<G extends ExportGroupShape>(group: G): FlatRow<LeafOf<G>>[] {
   const out: FlatRow<LeafOf<G>>[] = []

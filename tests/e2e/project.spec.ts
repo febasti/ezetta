@@ -279,7 +279,7 @@ test('selecting a group shows its sheets as one continuous read-only document', 
   }
 })
 
-test('a group in the continuous view leaves out its scratchpads, a chosen one is shown', async () => {
+test('a group in the continuous view leaves out its scrapsheets, a chosen one is shown', async () => {
   const toml = join(sandbox.projectDir, 'project.toml')
   await writeFile(
     toml,
@@ -291,7 +291,7 @@ test('a group in the continuous view leaves out its scratchpads, a chosen one is
     await expect(flowText(page)).toContainText('Das Design der Studie')
     await expect(page.locator('.cm-sheet-heading')).toHaveCount(3)
     await expect(flowText(page)).not.toContainText('Die Auswertung')
-    // Chosen by hand, the scratchpad is shown.
+    // Chosen by hand, the scrapsheet is shown.
     await row(page, 'methoden/design.typ').click()
     await row(page, 'methoden/auswertung.typ').click({ modifiers: [MOD] })
     await expect(page.locator('.cm-sheet-heading')).toHaveCount(2)
@@ -482,7 +482,7 @@ test('the welcome screen shows at every start, and the last project reopens only
   }
 })
 
-test('a sheet that is left out of the export is a scratchpad in its place, without a status', async () => {
+test('a sheet that is left out of the export is a scrapsheet in its place, without a status', async () => {
   const { app, page } = await launch(sandbox)
   try {
     await group(page, 'methoden').click()
@@ -490,22 +490,23 @@ test('a sheet that is left out of the export is a scratchpad in its place, witho
     await expect(sheet.locator('.dot')).toHaveCount(1)
     await sheet.click({ button: 'right' })
     await page.getByRole('menuitem', { name: 'Als Notizblatt markieren' }).click()
-    // Still in the list of its folder, marked as a scratchpad, with no status and no status in the menu.
+    // Still in the list of its folder, marked as a scrapsheet, with no status and no status in the menu.
     await expect(sheet).toHaveClass(/scratch/)
     await expect(sheet).toContainText('Notizblatt')
     await expect(sheet.locator('.dot')).toHaveCount(0)
     await sheet.click({ button: 'right' })
     await expect(page.getByRole('menuitem', { name: /Status/ })).toHaveCount(0)
-    await expect(page.getByRole('menuitem', { name: 'In den Export aufnehmen' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Als Schreibblatt markieren' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Als Notizblatt markieren' })).toHaveCount(0)
     await page.keyboard.press('Escape')
     // The badge in the text says so, too, instead of a status.
     await sheet.click()
     const badge = page.getByRole('group', { name: 'Status und Wörter' })
     await expect(badge).toContainText('Notizblatt')
     await expect(badge.getByText('Entwurf')).toHaveCount(0)
-    // And back into the export.
+    // And back into the export, as a writing sheet.
     await sheet.click({ button: 'right' })
-    await page.getByRole('menuitem', { name: 'In den Export aufnehmen' }).click()
+    await page.getByRole('menuitem', { name: 'Als Schreibblatt markieren' }).click()
     await expect(sheet.locator('.dot')).toHaveCount(1)
   } finally {
     await app.close()
