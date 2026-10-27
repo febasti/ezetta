@@ -15,6 +15,7 @@ import type {
 } from '@shared/project'
 import { i18n } from '../../i18n/i18n.svelte'
 import { call } from '../../lib/api'
+import type { DropSlot } from '../../lib/dropSlot'
 import { confirmDialog, promptDialog } from '../../lib/ui.svelte'
 import { bibliography } from '../bibliography/bibliography.svelte'
 import { editor } from '../editor/editorSession.svelte'
@@ -383,6 +384,19 @@ class ProjectStore {
       this.apply(result.snapshot)
       offset += 1
     }
+  }
+
+  /** Moves paths to a place in the list of sheets: before or after a row, or to the group's end. */
+  async dropAt(paths: readonly string[], slot: DropSlot): Promise<void> {
+    if ('end' in slot) return this.move(paths, this.selectedGroup)
+    if (paths.some((p) => isSameOrBelow(slot.path, p))) return
+    const parent = dirname(slot.path)
+    const siblings = this.siblingsWithout(parent, paths)
+    await this.move(
+      paths,
+      parent,
+      siblings.indexOf(slot.path) + (slot.position === 'after' ? 1 : 0),
+    )
   }
 
   /** Children of a folder as they stay after `moving` paths are taken out: the base for indexes. */

@@ -206,6 +206,102 @@ test('moves a sheet into another group by drag and drop, and reorders sheets', a
   }
 })
 
+/**
+ * Holds a drag at a place until the list has caught up: the browser sends the first dragover a
+ * moment after the pointer arrives, so the pointer is nudged by a pixel until `ready` holds.
+ */
+async function holdAt(page: Page, x: number, y: number, ready: () => Promise<void>): Promise<void> {
+  let nudge = 0
+  await expect(async () => {
+    await page.mouse.move(x, y + (nudge++ % 2))
+    await ready()
+  }).toPass({ timeout: 8000 })
+}
+
+/** Picks a row up and moves it a little, so the drag has begun. */
+async function pickUp(page: Page, path: string): Promise<void> {
+  const box = (await row(page, path).boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 12, { steps: 3 })
+}
+
+const landing = (page: Page) => page.locator('[role=option].before, [role=option].after')
+
+test('while sheets are dragged, a line shows where they would land, in the gaps and at the end', async () => {
+  const { app, page } = await launch(sandbox)
+  try {
+    await group(page, 'methoden').click()
+    await pickUp(page, 'methoden/design.typ')
+    const dokumente = (await row(page, 'methoden/daten/dokumente.typ').boundingBox())!
+    const interviews = (await row(page, 'methoden/daten/interviews.typ').boundingBox())!
+    const centre = dokumente.x + dokumente.width / 2
+
+    // The sheet being dragged is paler, and a row's upper half marks the place before it.
+    await holdAt(page, centre, dokumente.y + 6, () =>
+      expect(row(page, 'methoden/daten/dokumente.typ')).toHaveClass(/before/, { timeout: 300 }),
+    )
+    await expect(row(page, 'methoden/design.typ')).toHaveClass(/dragged/)
+    await expect(landing(page)).toHaveCount(1)
+
+    // The gap between two rows belongs to the nearer one: there is a line there, too.
+    const gap = (interviews.y + interviews.height + dokumente.y) / 2
+    await holdAt(page, centre, gap + 2, () =>
+      expect(row(page, 'methoden/daten/dokumente.typ')).toHaveClass(/before/, { timeout: 300 }),
+    )
+    await holdAt(page, centre, gap - 2, () =>
+      expect(row(page, 'methoden/daten/interviews.typ')).toHaveClass(/after/, { timeout: 300 }),
+    )
+    await expect(landing(page)).toHaveCount(1)
+
+    // Under the last row the sheet would go to the end of the group, and a line says so.
+    const last = (await row(page, 'methoden/auswertung.typ').boundingBox())!
+    await holdAt(page, centre, last.y + last.height + 40, () =>
+      expect(page.locator('.drop-end')).toHaveCount(1, { timeout: 300 }),
+    )
+    await expect(landing(page)).toHaveCount(0)
+    await page.mouse.up()
+    await expect(page.locator('.drop-end')).toHaveCount(0)
+    await expect(row(page, 'methoden/design.typ')).not.toHaveClass(/dragged/)
+    // It went to the end of the group.
+    await expect
+      .poll(async () =>
+        (await read('project.toml'))
+          .match(/^"?methoden"? = \[([^\]]*)\]/m)?.[1]
+          ?.replaceAll(/\s+/g, ' ')
+          .trim(),
+      )
+      .toBe('"daten", "auswertung.typ", "design.typ"')
+  } finally {
+    await app.close()
+  }
+})
+
+test('dropping in the gap between two rows puts the sheet where the line was', async () => {
+  const { app, page } = await launch(sandbox)
+  try {
+    await group(page, 'methoden').click()
+    await pickUp(page, 'methoden/design.typ')
+    const interviews = (await row(page, 'methoden/daten/interviews.typ').boundingBox())!
+    const dokumente = (await row(page, 'methoden/daten/dokumente.typ').boundingBox())!
+    const gap = (interviews.y + interviews.height + dokumente.y) / 2
+    await holdAt(page, dokumente.x + dokumente.width / 2, gap - 2, () =>
+      expect(row(page, 'methoden/daten/interviews.typ')).toHaveClass(/after/, { timeout: 300 }),
+    )
+    await page.mouse.up()
+    await expect
+      .poll(async () =>
+        (await read('project.toml'))
+          .match(/^"?methoden\/daten"? = \[([^\]]*)\]/m)?.[1]
+          ?.replaceAll(/\s+/g, ' ')
+          .trim(),
+      )
+      .toBe('"interviews.typ", "design.typ", "dokumente.typ"')
+  } finally {
+    await app.close()
+  }
+})
+
 test('a parent group lists its own sheets and those of all subgroups, with headings', async () => {
   const { app, page } = await launch(sandbox)
   try {

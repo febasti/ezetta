@@ -14,7 +14,10 @@ export function dropPosition(
 
 /** The paths currently being dragged. `dataTransfer` data is unreadable during dragover, so the
  * drag lives here. */
-export const drag = $state<{ paths: string[] }>({ paths: [] })
+export const drag = $state<{ paths: string[]; dimmed: boolean }>({ paths: [], dimmed: false })
+
+/** `dropTarget.path` while a drag would land at the end of the list of sheets. */
+export const DROP_END = '\u0000end'
 
 /** The row a drag currently hovers, for the drop indicator. */
 export const dropTarget = $state<{ path: string | null; position: DropPosition }>({
@@ -24,5 +27,6 @@ export const dropTarget = $state<{ path: string | null; position: DropPosition }
 
 export function clearDrag(): void {
   drag.paths = []
+  drag.dimmed = false
   dropTarget.path = null
 }

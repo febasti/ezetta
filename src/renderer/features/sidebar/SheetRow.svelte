@@ -2,12 +2,12 @@
   import type { MissingNodeDto, SheetNodeDto } from '@shared/project'
   import { editor } from '../editor/editorSession.svelte'
   import { i18n } from '../../i18n/i18n.svelte'
-  import { clearDrag, drag, dropPosition, dropTarget } from '../../lib/dnd.svelte'
+  import { clearDrag, drag, dropTarget } from '../../lib/dnd.svelte'
   import { formatNumber } from '../../lib/format'
   import { openContextMenu } from '../../lib/menu.svelte'
   import type { MenuItem } from '../../lib/menu.svelte'
   import { rowNavigation } from '../../lib/rowNav'
-  import { dirname, isMaterial } from '@core/project/paths'
+  import { isMaterial } from '@core/project/paths'
   import Icon from '../../ui/Icon.svelte'
   import { project } from './project.svelte'
 
@@ -21,6 +21,8 @@
   const scratch = $derived(node.kind === 'sheet' && !node.export)
   const isOpen = $derived(node.kind === 'sheet' && editor.path === node.path)
   const marked = $derived(dropTarget.path === node.path ? dropTarget.position : null)
+  /** Being dragged: drawn paler while the drag lasts. */
+  const dragged = $derived(drag.dimmed && drag.paths.includes(node.path))
   /** The first lines of the sheet, as the row draws them: a heading is one bold line, a paragraph
    * gets what is left of three lines. */
   const shown = $derived.by(() => {
@@ -91,35 +93,13 @@
   }
 
   const draggedPaths = (): string[] => (selected ? [...project.selection] : [node.path])
-  const canDrop = (): boolean =>
-    drag.paths.length > 0 &&
-    !drag.paths.some((p) => p === node.path || node.path.startsWith(`${p}/`))
-
-  function onDragOver(event: DragEvent): void {
-    if (!canDrop()) return
-    event.preventDefault()
-    dropTarget.path = node.path
-    dropTarget.position = dropPosition(event, event.currentTarget as HTMLElement, false)
-  }
-
-  async function onDrop(event: DragEvent): Promise<void> {
-    event.preventDefault()
-    event.stopPropagation()
-    const paths = [...drag.paths]
-    const position = dropPosition(event, event.currentTarget as HTMLElement, false)
-    clearDrag()
-    if (!paths.length || paths.some((p) => p === node.path || node.path.startsWith(`${p}/`))) return
-    if (position === 'inside') return project.move(paths, node.path)
-    const parent = dirname(node.path)
-    const siblings = project.siblingsWithout(parent, paths)
-    await project.move(paths, parent, siblings.indexOf(node.path) + (position === 'after' ? 1 : 0))
-  }
 </script>
 
 <div
   class="row"
   class:selected
   class:open={isOpen}
+  class:dragged
   class:missing={node.kind === 'missing'}
   class:scratch
   class:before={marked === 'before'}
@@ -149,11 +129,10 @@
       node.kind === 'sheet' ? project.sheetLabel(node.path) : node.name,
     )
     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+    // Paler only once the browser has taken the picture that follows the pointer.
+    setTimeout(() => (drag.dimmed = drag.paths.length > 0), 0)
   }}
   ondragend={clearDrag}
-  ondragover={onDragOver}
-  ondragleave={() => dropTarget.path === node.path && (dropTarget.path = null)}
-  ondrop={onDrop}
 >
   {#if node.kind === 'missing'}
     <span class="sheet-heading missing-name">{node.name}</span>
@@ -257,21 +236,27 @@
   .row.missing.inside {
     border-style: solid;
   }
+  .row.dragged {
+    opacity: 0.45;
+  }
+  /* Where a dragged sheet would land: a line the width of the row, in the middle of the gap between
+     two rows (the gap under the last row is `.drop-end` in the list). */
   .row.before::before,
   .row.after::after {
     content: '';
     position: absolute;
-    right: var(--sp-8);
-    left: var(--sp-8);
-    height: 2px;
-    border-radius: 1px;
+    right: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 2px;
     background: var(--color-accent);
+    pointer-events: none;
   }
   .row.before::before {
-    top: -6px;
+    top: calc(-1 * var(--sp-4) - 1.5px);
   }
   .row.after::after {
-    bottom: -6px;
+    bottom: calc(-1 * var(--sp-4) - 1.5px);
   }
   .lines {
     display: flex;

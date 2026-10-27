@@ -2,7 +2,9 @@
   import type { GroupNodeDto } from '@shared/project'
   import { MATERIAL } from '@core/project/paths'
   import { i18n } from '../../i18n/i18n.svelte'
-  import { clearDrag, drag, dropTarget } from '../../lib/dnd.svelte'
+  import { clearDrag, drag, DROP_END, dropTarget } from '../../lib/dnd.svelte'
+  import { slotAt } from '../../lib/dropSlot'
+  import type { DropSlot } from '../../lib/dropSlot'
   import { openDropdown } from '../../lib/menu.svelte'
   import type { MenuItem } from '../../lib/menu.svelte'
   import { ui, setOutlineVisible } from '../../lib/ui.svelte'
@@ -72,17 +74,48 @@
     return items
   }
 
+  let rowsElement = $state<HTMLElement>()
+
+  /**
+   * Where a drag at the pointer would land, from the pointer's height among the rows: the rows have
+   * gaps and headings between them, and there is room under the last one, so every height lands
+   * somewhere and the line that shows it is always there.
+   */
+  function slotOf(event: DragEvent): DropSlot | null {
+    const rows = [...(rowsElement?.querySelectorAll<HTMLElement>('[data-row]') ?? [])].map(
+      (row) => {
+        const { top, bottom } = row.getBoundingClientRect()
+        return { path: row.dataset['path']!, top, bottom }
+      },
+    )
+    return slotAt(event.clientY, rows, (path) =>
+      drag.paths.some((p) => path === p || path.startsWith(`${p}/`)),
+    )
+  }
+
   function onDragOver(event: DragEvent): void {
     if (drag.paths.length === 0) return
     event.preventDefault()
-    dropTarget.path = null
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+    const slot = slotOf(event)
+    if (slot === null) dropTarget.path = null
+    else if ('end' in slot) dropTarget.path = DROP_END
+    else {
+      dropTarget.path = slot.path
+      dropTarget.position = slot.position
+    }
+  }
+
+  function onDragLeave(event: DragEvent): void {
+    if (!rowsElement?.contains(event.relatedTarget as Node | null)) dropTarget.path = null
   }
 
   async function onDrop(event: DragEvent): Promise<void> {
     event.preventDefault()
     const paths = [...drag.paths]
+    const slot = slotOf(event)
     clearDrag()
-    if (paths.length) await project.move(paths, project.selectedGroup)
+    if (paths.length && slot) await project.dropAt(paths, slot)
   }
 </script>
 
@@ -122,7 +155,9 @@
     aria-multiselectable="true"
     aria-label={i18n.t('sidebar.sheets')}
     data-rows
+    bind:this={rowsElement}
     ondragover={onDragOver}
+    ondragleave={onDragLeave}
     ondrop={onDrop}
   >
     {#if sections.length}
@@ -152,6 +187,8 @@
     {:else}
       <EmptyState icon="file" title={i18n.t('sidebar.empty')} text={i18n.t('sidebar.emptyHint')} />
     {/if}
+    <!-- Under the last row: a drop there puts the sheet at the end of the group. -->
+    {#if dropTarget.path === DROP_END}<div class="drop-end" aria-hidden="true"></div>{/if}
   </div>
 </section>
 
@@ -210,7 +247,22 @@
   .rows {
     flex: 1;
     overflow-y: auto;
-    padding: var(--sp-4) var(--sp-8) var(--sp-16);
+    padding: var(--sp-8) var(--sp-8) var(--sp-16);
+  }
+  /* The line of the drop under the last row, in the gap that row leaves; it takes no room. */
+  .drop-end {
+    position: relative;
+    height: 0;
+  }
+  .drop-end::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--sp-4) - 1.5px);
+    right: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--color-accent);
   }
   /* A subgroup's name above its sheets: quiet, in the caption role, with the folder's symbol. */
   .heading {
