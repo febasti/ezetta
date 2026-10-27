@@ -279,6 +279,28 @@ test('selecting a group shows its sheets as one continuous read-only document', 
   }
 })
 
+test('a group in the continuous view leaves out its scratchpads, a chosen one is shown', async () => {
+  const toml = join(sandbox.projectDir, 'project.toml')
+  await writeFile(
+    toml,
+    `${await readFile(toml, 'utf8')}\n[items."methoden/auswertung.typ"]\nexport = false\n`,
+  )
+  const { app, page } = await launch(sandbox)
+  try {
+    await group(page, 'methoden').click()
+    await expect(flowText(page)).toContainText('Das Design der Studie')
+    await expect(page.locator('.cm-sheet-heading')).toHaveCount(3)
+    await expect(flowText(page)).not.toContainText('Die Auswertung')
+    // Chosen by hand, the scratchpad is shown.
+    await row(page, 'methoden/design.typ').click()
+    await row(page, 'methoden/auswertung.typ').click({ modifiers: [MOD] })
+    await expect(page.locator('.cm-sheet-heading')).toHaveCount(2)
+    await expect(flowText(page)).toContainText('Die Auswertung')
+  } finally {
+    await app.close()
+  }
+})
+
 test('clicking into the continuous view opens that sheet with the cursor at the spot', async () => {
   const { app, page } = await launch(sandbox)
   try {

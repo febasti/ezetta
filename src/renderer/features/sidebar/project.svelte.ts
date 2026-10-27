@@ -102,10 +102,14 @@ class ProjectStore {
     ...(this.markedFolders as GroupNodeDto[]),
   ])
 
-  /** Sheets in the continuous view, in list order. */
+  /**
+   * Sheets in the continuous view, in list order. A folder shows its sheets without the scratchpads
+   * (sheets kept out of the export, which are no part of the text); sheets the writer chose are shown.
+   */
   flowPaths = $derived(
     this.flatRows.flatMap((r) =>
-      r.node.kind === 'sheet' && (this.flowKind === 'group' || this.selection.includes(r.node.path))
+      r.node.kind === 'sheet' &&
+      (this.flowKind === 'group' ? r.node.export : this.selection.includes(r.node.path))
         ? [r.node.path]
         : [],
     ),
