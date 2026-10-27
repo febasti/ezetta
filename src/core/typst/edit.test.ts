@@ -446,25 +446,37 @@ describe('insertComment', () => {
     expect(comment('Text | mehr')).toBe('Text /* | */ mehr'.replace('/* | */', '/* | */'))
   })
 
-  it('highlights the selection and puts the comment right after it', () => {
-    expect(comment('Die «Probe» war')).toBe('Die ::Probe:: /* | */ war')
+  it('turns the selection into the comment, with the caret after it', () => {
+    expect(comment('Die «Probe» war')).toBe('Die /* Probe */| war')
   })
 
   it('adds the comment after an existing highlight', () => {
     expect(comment('Die ::Pro|be:: war')).toBe('Die ::Probe:: /* | */ war')
   })
 
+  it('adds the comment after the highlight when the selection lies in it', () => {
+    expect(comment('Die ::«Probe»:: war')).toBe('Die ::Probe:: /* | */ war')
+  })
+
   it('reuses a comment that already follows the highlight', () => {
     expect(comment('Die ::Pro|be:: /* alt */ war')).toBe('Die ::Probe:: /* |alt */ war')
-    expect(comment('Die «Probe» /* alt */ war')).toBe('Die ::Probe:: /* |alt */ war')
+  })
+
+  it('keeps the markup of the selection in the comment', () => {
+    expect(comment('Die «*starke* Probe» war')).toBe('Die /* *starke* Probe */| war')
+  })
+
+  it('leaves a selection alone that holds comment marks', () => {
+    expect(comment('«a /* x */ b»')).toBe('«a /* x */ b»')
+    expect(comment('«a */ b»')).toBe('«a */ b»')
   })
 
   it('does nothing inside a comment', () => {
     expect(comment('a /* x| */ b')).toBe('a /* x| */ b')
   })
 
-  it('wraps each paragraph of a multi-paragraph selection', () => {
-    expect(comment('«Eins\n\nZwei»')).toBe('::Eins::\n\n::Zwei:: /* | */')
+  it('makes a comment of each paragraph of a multi-paragraph selection', () => {
+    expect(comment('«Eins\n\nZwei»')).toBe('/* Eins */\n\n/* Zwei */|')
   })
 })
 

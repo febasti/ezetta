@@ -145,7 +145,23 @@ test('emphasis and strong by keyboard toggle on a word and on a selection', asyn
   }
 })
 
-test('the toolbar highlights the selection, and adds a comment that belongs to it', async () => {
+test('the toolbar turns the selection into a comment', async () => {
+  const { app, page, content } = await open()
+  try {
+    await content.getByText('Ein Wort und noch ein Satz.').dblclick({ position: { x: 4, y: 8 } })
+    await page.getByRole('button', { name: 'Kommentar' }).click()
+    await expect.poll(read).toContain('/* Ein */ Wort und noch ein Satz.')
+    expect(await read()).not.toContain('::Ein::')
+    // The caret is right after it, so the comment shows as written; moving on shows the pill.
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await expect(page.locator('.cm-comment-pill').last()).toContainText('Ein')
+  } finally {
+    await app.close()
+  }
+})
+
+test('the toolbar adds a comment after the highlight that holds the caret', async () => {
   const { app, page, content } = await open()
   try {
     await content.getByText('Ein Wort und noch ein Satz.').dblclick({ position: { x: 4, y: 8 } })

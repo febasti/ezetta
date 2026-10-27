@@ -766,17 +766,33 @@ export function removeLink(input: EditInput): EditResult {
 // --- comment -----------------------------------------------------------------------------------------------------
 
 /**
- * Adds a comment. On a selection it first highlights it (unless it already is) and puts
- * the comment right after, so it belongs to the highlight. With a caret it inserts an empty
- * comment. If a comment is already there, the caret just moves into it.
+ * Adds a comment. A selection turns into the comment (a block comment holding its text, one for
+ * each paragraph of it), with the caret after it. In a highlight, with a caret or a selection, the
+ * comment goes right after the highlight so it belongs to it, and a comment that is already there
+ * is reused: the caret moves into it. With a caret elsewhere it inserts an empty comment.
  */
 export function insertComment(input: EditInput): EditResult {
   const { doc } = input
   if (enclosing(input, ['BlockComment', 'LineComment'])) return noChange(input)
 
   const highlight = enclosing(input, ['Highlight'])
-  const selecting = input.from !== input.to
-  if (!highlight && !selecting) {
+  if (!highlight && input.from !== input.to) {
+    const chunks = paragraphChunks(doc, input.from, input.to)
+    // A comment in the text would end the new one early, or leave it open.
+    if (chunks.length === 0 || chunks.some((c) => /\/\*|\*\//.test(doc.slice(c.from, c.to))))
+      return noChange(input)
+    const changes = chunks.map((c) => ({
+      from: c.from,
+      to: c.to,
+      insert: `/* ${doc.slice(c.from, c.to)} */`,
+    }))
+    const caret =
+      chunks[chunks.length - 1]!.to +
+      changes.reduce((n, c) => n + c.insert.length - (c.to - c.from), 0)
+    return { changes, anchor: caret, head: caret }
+  }
+
+  if (!highlight) {
     return {
       changes: [{ from: input.from, to: input.from, insert: '/*  */' }],
       anchor: input.from + 3,
@@ -784,36 +800,19 @@ export function insertComment(input: EditInput): EditResult {
     }
   }
 
-  // `end` is where the highlighted text ends in the original text.
-  let wrapChanges: TextChange[] = []
-  let end: number
-  if (highlight) {
-    end = highlight.to
-  } else {
-    const chunks = paragraphChunks(doc, input.from, input.to)
-    if (chunks.length === 0) return noChange(input)
-    wrapChanges = wrapChunks(input, 'highlight', chunks)
-    end = chunks[chunks.length - 1]!.to
-  }
-  const closing = highlight ? 0 : DELIMITER.highlight!.length
-
   // A comment that already follows the highlight is reused: the caret moves into it.
-  let next = end + closing
-  if (!highlight) next = end
+  const end = highlight.to
+  let next = end
   while (next < doc.length && (doc[next] === ' ' || doc[next] === '\t')) next += 1
   if (doc.startsWith('/*', next) || doc.startsWith('//', next)) {
-    const caret = mapThrough(wrapChanges, next + 2 + (doc[next + 2] === ' ' ? 1 : 0), 1)
-    return { changes: wrapChanges, anchor: caret, head: caret }
+    const caret = next + 2 + (doc[next + 2] === ' ' ? 1 : 0)
+    return { changes: [], anchor: caret, head: caret }
   }
-
-  const changes: TextChange[] = [...wrapChanges]
-  if (highlight) changes.push({ from: end, to: end, insert: ' /*  */' })
-  else {
-    const last = changes[changes.length - 1]!
-    changes[changes.length - 1] = { ...last, insert: `${last.insert} /*  */` }
+  return {
+    changes: [{ from: end, to: end, insert: ' /*  */' }],
+    anchor: end + 4,
+    head: end + 4,
   }
-  const caret = mapThrough(changes, end, -1) + closing + 4
-  return { changes, anchor: caret, head: caret }
 }
 
 /** Width given to a new figure, and height to a new inline image. */
