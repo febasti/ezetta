@@ -252,6 +252,13 @@
     border-style: dashed;
     background: transparent;
   }
+  /* The ring of a chosen or an inside row is a solid line: next to a dashed edge both would show. */
+  .row.scratch.selected,
+  .row.scratch.inside,
+  .row.missing.selected,
+  .row.missing.inside {
+    border-style: solid;
+  }
   .row.before::before,
   .row.after::after {
     content: '';
