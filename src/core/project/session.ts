@@ -899,6 +899,8 @@ export class ProjectSession {
   }
 
   private moveCaches(from: string, to: string): void {
+    // A reorder inside a folder keeps the path: the caches stay where they are.
+    if (from === to) return
     for (const key of [...this.stats.keys()]) {
       if (!isSameOrBelow(key, from)) continue
       const next = key === from ? to : join(to, key.slice(from.length + 1))

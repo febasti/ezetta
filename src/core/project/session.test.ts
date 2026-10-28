@@ -254,6 +254,22 @@ describe('structure operations', () => {
     expect(fs.writes).toBe(writes + 1) // the manifest only
   })
 
+  it('keeps what the list shows of a sheet that is only reordered', async () => {
+    const before = findNode(session.snapshot().tree, 'methoden/design.typ') as SheetNode
+    expect(before.preview.length).toBeGreaterThan(0)
+    expectOk(await session.move('methoden/design.typ', 'methoden', 2))
+    const after = findNode(session.snapshot().tree, 'methoden/design.typ') as SheetNode
+    expect(after.preview).toEqual(before.preview)
+    expect(after.words).toBe(before.words)
+  })
+
+  it('keeps what the list shows of a sheet that moves to another group', async () => {
+    const before = findNode(session.snapshot().tree, 'methoden/design.typ') as SheetNode
+    expectOk(await session.move('methoden/design.typ', 'einleitung', 0))
+    const after = findNode(session.snapshot().tree, 'einleitung/design.typ') as SheetNode
+    expect(after.preview).toEqual(before.preview)
+  })
+
   it('refuses to move a group into itself or onto a name clash', async () => {
     expect(await session.move('methoden', 'methoden/daten')).toMatchObject({
       ok: false,
