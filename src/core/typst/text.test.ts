@@ -1,6 +1,33 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeSheet, countWords } from './text'
 
+describe('text that ends inside content that is not closed', () => {
+  // These once never ended: an unclosed `#name[` at the end of an unclosed `#name[`.
+  const unfinished = [
+    '#a[#b[',
+    'Text #footnote[Notiz #emph[',
+    '#footnote[#quote[',
+    '#quote[#quote(block: true)[',
+    '#link("u")[#sub[#smallcaps[',
+    '#a[x #b[y #c[',
+    '#a[#b[\n',
+    '#a(#b[',
+  ]
+
+  it('counts the words and ends', () => {
+    for (const text of unfinished) expect(typeof countWords(text), text).toBe('number')
+    expect(countWords('Text #footnote[Notiz #emph[')).toBe(1)
+    expect(countWords('Eins #emph[zwei #strong[')).toBe(2)
+  })
+
+  it('analyzes the sheet and ends', () => {
+    for (const text of unfinished) expect(analyzeSheet(text), text).toBeTruthy()
+    const stats = analyzeSheet('Text #footnote[Notiz #emph[')
+    expect(stats.words).toBe(1)
+    expect(stats.footnoteWords).toBe(1)
+  })
+})
+
 describe('countWords', () => {
   it('counts plain prose, including umlauts and numbers', () => {
     expect(countWords('Die Größe wächst um 12 Prozent.')).toBe(6)

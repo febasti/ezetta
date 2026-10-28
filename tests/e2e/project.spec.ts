@@ -21,6 +21,22 @@ async function openSheet(page: Page, groupPath: string, sheetPath: string): Prom
   await expect(page.locator('.cm-content')).toBeVisible()
 }
 
+test('opens a project whose sheet ends inside notes that are not closed', async () => {
+  // The word count once looped forever on text like this, and the project never opened.
+  await writeFile(
+    join(sandbox.projectDir, 'content/methoden/design.typ'),
+    'Ein Satz #footnote[Notiz #emph[',
+  )
+  const { app, page } = await launch(sandbox)
+  try {
+    await expect(group(page, 'methoden')).toBeVisible()
+    await openSheet(page, 'methoden', 'methoden/design.typ')
+    await expect(page.locator('.cm-content')).toContainText('Ein Satz')
+  } finally {
+    await app.close()
+  }
+})
+
 test('opens the last project with groups, sheets, status, counts, and export marks', async () => {
   const { app, page } = await launch(sandbox)
   try {

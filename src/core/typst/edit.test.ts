@@ -439,6 +439,36 @@ describe('urlAt', () => {
   })
 })
 
+describe('toggleInline in a call that is not closed', () => {
+  // The caret in the name of `#emph[`, `#sub[` or `#smallcaps[`, with no content to take off: these once threw.
+  const kinds = [
+    'emphasis',
+    'strong',
+    'highlight',
+    'subscript',
+    'superscript',
+    'smallcaps',
+  ] as const
+  const docs = ['#su|b[', '.#em|ph[', '#smallca|ps[[', '#sup|er[x', 'a #em|ph[b #sub[c']
+
+  it('does not throw and gives valid changes', () => {
+    for (const source of docs)
+      for (const kind of kinds) {
+        const input = parse(source)
+        const result = toggleInline(input, kind)
+        for (const change of result.changes) {
+          expect(change.from, `${source} ${kind}`).toBeGreaterThanOrEqual(0)
+          expect(change.to, `${source} ${kind}`).toBeLessThanOrEqual(input.doc.length)
+        }
+      }
+  })
+
+  it('still takes a closed call off', () => {
+    expect(run('#emph[Pro|be]', (i) => toggleInline(i, 'emphasis'))).toBe('Pro|be')
+    expect(run('#sub[Pro|be]', (i) => toggleInline(i, 'subscript'))).toBe('Pro|be')
+  })
+})
+
 describe('insertComment', () => {
   const comment = (s: string): string => run(s, insertComment)
 

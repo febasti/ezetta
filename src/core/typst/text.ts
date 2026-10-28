@@ -185,9 +185,11 @@ function scanExpression(
   const name = src.slice(i, j)
   if (CODE_LINE_KEYWORDS.has(name)) return skipCodeLine(src, j, to)
   i = j
-  if (src[i] === '(') i = skipCode(src, i, to)
+  if (i < to && src[i] === '(') i = skipCode(src, i, to)
   if (name === 'cite') addWord(counter, sink)
-  while (src[i] === '[') {
+  // A bracket at `to` or after it is not part of the text scanned here. The scan always moves on:
+  // content that is not closed ends at `to`, where `skipContent` would stay.
+  while (i < to && src[i] === '[') {
     const end = skipContent(src, i, to)
     scanMarkup(
       src,
@@ -196,7 +198,7 @@ function scanExpression(
       name === 'footnote' ? 'footnote' : sink,
       counter,
     )
-    i = end
+    i = Math.max(end, i + 1)
   }
   return i
 }

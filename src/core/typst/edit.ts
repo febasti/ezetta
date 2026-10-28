@@ -139,13 +139,19 @@ function funcName(doc: string, expression: SyntaxNode): string {
   return name ? doc.slice(name.from, name.to) : ''
 }
 
-function enclosingFunction(input: EditInput, names: readonly string[]): SyntaxNode | null {
+/** The innermost call of one of the functions around the selection; `withContent` leaves out one that has no brackets (yet). */
+function enclosingFunction(
+  input: EditInput,
+  names: readonly string[],
+  withContent = false,
+): SyntaxNode | null {
   for (const node of ancestors(input.tree, input.from, 1)) {
     if (
       node.name === 'Expression' &&
       node.from <= input.from &&
       node.to >= input.to &&
-      names.includes(funcName(input.doc, node))
+      names.includes(funcName(input.doc, node)) &&
+      (!withContent || node.getChild('Content') !== null)
     ) {
       return node
     }
@@ -499,7 +505,7 @@ function findInline(input: EditInput, kind: InlineKind): SyntaxNode | null {
   const node = nodeName ? enclosing(input, [nodeName]) : null
   if (node) return node
   const fn = FUNCTION[kind]
-  return fn ? enclosingFunction(input, [fn]) : null
+  return fn ? enclosingFunction(input, [fn], true) : null
 }
 
 function unwrapInline(input: EditInput, node: SyntaxNode): EditResult {
@@ -550,7 +556,7 @@ const EXCLUSIVE_FUNCTIONS = EXCLUSIVE.map((kind) => FUNCTION[kind]!)
 function toggleExclusive(input: EditInput, kind: InlineKind): EditResult {
   const { doc } = input
   const group = EXCLUSIVE_GROUPS.find((g) => g.includes(kind))!.map((k) => FUNCTION[k]!)
-  const around = enclosingFunction(input, group)
+  const around = enclosingFunction(input, group, true)
   if (around) {
     if (funcName(doc, around) === FUNCTION[kind]) return unwrapInline(input, around)
     const name = around.getChild('FuncName')!
