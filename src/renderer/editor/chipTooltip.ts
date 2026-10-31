@@ -7,6 +7,10 @@
  * The editor may draw a chip again while the pointer rests on it (after an autosave, a new number):
  * the new element gets no `mouseenter`, and the old one no `mouseleave`. So the tooltip goes by the
  * element under the pointer when it shows, and by where the pointer is when it hides.
+ *
+ * A scroll removes a tooltip that shows but does not stop one that is waiting: its scroll event
+ * can come a frame after the pointer reached the chip (a chip scrolled into view under it), and
+ * when the wait ends the chip under the pointer, if any, decides.
  */
 
 const DELAY_MS = 350
@@ -27,13 +31,18 @@ function chipAt(x: number, y: number): HTMLElement | null {
   return found && builders.has(found) ? found : null
 }
 
-function hide(): void {
-  window.clearTimeout(timer)
-  timer = undefined
+/** Removes the tooltip that shows, if any. */
+function remove(): void {
   tip?.remove()
   tip = null
   owner?.removeAttribute('aria-describedby')
   owner = null
+}
+
+function hide(): void {
+  window.clearTimeout(timer)
+  timer = undefined
+  remove()
 }
 
 function listen(): void {
@@ -41,7 +50,7 @@ function listen(): void {
   listening = true
   for (const type of ['mousedown', 'keydown', 'wheel'] as const)
     window.addEventListener(type, hide, { capture: true, passive: true })
-  window.addEventListener('scroll', hide, { capture: true, passive: true })
+  window.addEventListener('scroll', remove, { capture: true, passive: true })
   window.addEventListener('blur', hide)
   window.addEventListener(
     'mousemove',
@@ -94,8 +103,9 @@ export function attachChipTooltip(chip: HTMLElement, build: () => HTMLElement | 
   chip.addEventListener('mouseenter', () => {
     window.clearTimeout(timer)
     timer = window.setTimeout(() => {
-      // The chip under the pointer now: this one, or the one drawn in its place.
-      const target = chip.isConnected ? chip : chipAt(pointer.x, pointer.y)
+      // The chip under the pointer now: this one, the one drawn in its place, or none when the
+      // text scrolled it away.
+      const target = chipAt(pointer.x, pointer.y)
       const builder = target && builders.get(target)
       if (target && builder) show(target, builder)
       else hide()

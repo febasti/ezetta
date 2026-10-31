@@ -344,6 +344,22 @@ test('hovering a reference shows the heading it points at, or the caption of a f
   }
 })
 
+test('a chip that has to be scrolled into view still shows its tooltip', async () => {
+  const { app, page } = await open()
+  try {
+    await caretAtEnd(page)
+    await page.keyboard.type(' Siehe @tbl-werte später.')
+    // A short window, at the top of the sheet: the chip is below its edge, and hovering scrolls
+    // it into view, whose scroll event comes after the pointer has arrived.
+    await page.setViewportSize({ width: 1280, height: 600 })
+    await page.locator('.cm-scroller').evaluate((element) => (element.scrollTop = 0))
+    await chips(page).last().hover()
+    await expect(page.locator('.cm-chip-tooltip')).toContainText('Tabelle 1')
+  } finally {
+    await app.close()
+  }
+})
+
 test('a chip drawn again while the pointer rests on it still shows its tooltip, and it goes when the pointer leaves', async () => {
   const { app, page } = await open()
   try {
