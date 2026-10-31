@@ -27,7 +27,7 @@ export type { MarkupLabels }
  * - Subscript, superscript, and small caps hide their wrapper like the marks of an inline quote.
  * - Highlights and list markers hide their syntax and show the styled result. A link and a block
  *   quote hide their wrapper for good (atomic, never revealed by touch).
- * - Comments become small pills.
+ * - Block comments become small pills. A `//` comment is shown as written, on a grey line.
  * - Wherever the selection touches hidden syntax of those, the raw source is shown again. "Show
  *   source" turns all hiding off.
  * - An inline quote shows the quotation marks of the project's language in place of its syntax. The
@@ -113,6 +113,27 @@ export const markupTheme = EditorView.theme({
   '.cm-line.cm-heading-4, .cm-line.cm-heading-5, .cm-line.cm-heading-6': { fontStyle: 'italic' },
   '.cm-highlight': { backgroundColor: 'var(--color-mark)', borderRadius: 'var(--r-sm)' },
   '.cm-comment': { color: 'var(--color-label-tertiary)', fontStyle: 'italic' },
+  // The ground of a `//` line is drawn by a box behind it, so it can reach past the line without
+  // changing its height: half the paragraph gap above and below (the line's own gap above it is the
+  // whole gap), and 20px beyond the text on both sides. Lines of comments one after another meet.
+  '.cm-line.cm-comment-line': { position: 'relative' },
+  '.cm-comment-line-text': { color: 'var(--color-label-secondary)' },
+  // A line with no gap above it (the first) has the box reach up the same distance from its text.
+  '.cm-line.cm-comment-line:not(.cm-spaced)::before': {
+    top: 'calc(var(--paragraph-gap-writing) / -2)',
+  },
+  '.cm-line.cm-comment-line::before': {
+    content: '""',
+    position: 'absolute',
+    zIndex: '-1',
+    top: 'calc(var(--paragraph-gap-writing) / 2)',
+    bottom: 'calc(var(--paragraph-gap-writing) / -2)',
+    left: 'calc(var(--sp-16) * -1 - var(--sp-4))',
+    right: 'calc(var(--sp-16) * -1 - var(--sp-4))',
+    backgroundColor: 'var(--color-comment-line)',
+    borderRadius: 'var(--r-sm)',
+    pointerEvents: 'none',
+  },
   '.cm-comment-pill': {
     display: 'inline-flex',
     alignItems: 'center',

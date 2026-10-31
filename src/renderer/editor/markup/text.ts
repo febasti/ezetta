@@ -136,9 +136,17 @@ export class TextMarkup {
       )
   }
 
-  /** A comment is a small pill until the caret touches it. */
+  /**
+   * A `/* … *\/` comment is a small pill until the caret touches it. A `//` comment is never hidden:
+   * it stays as written, and its whole line has a grey ground.
+   */
   comment(node: SyntaxNode): void {
     const { b } = this
+    if (node.name === 'LineComment') {
+      b.addLine('cm-comment-line', node.from, node.from)
+      b.add(mark('cm-comment-line-text'), node.from, node.to)
+      return
+    }
     if (b.showSource || b.touches(node.from, node.to)) {
       b.add(mark('cm-comment'), node.from, node.to)
       return
