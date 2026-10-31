@@ -78,9 +78,9 @@ jobs:
         run: |
           npm run build
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npx playwright test --project app
-      # The tests whose pointer rests on a chip, alone: another test's window opening or closing
-      # under the screen's cursor would end the rest (POINTER in tests/e2e/helpers.ts).
-      - name: End-to-end tests with a resting pointer
+      # The tests whose pointer rests on a chip or drags, alone: another test's window opening or
+      # closing under the screen's cursor would end the rest (POINTER in tests/e2e/helpers.ts).
+      - name: End-to-end tests with a resting or dragging pointer
         if: ${{ !cancelled() }}
         timeout-minutes: 10
         env:
@@ -112,9 +112,9 @@ jobs:
       - name: End-to-end tests
         timeout-minutes: 30
         run: npm run build && npx playwright test --project app
-      # The tests whose pointer rests on a chip, alone: another test's window opening or closing
-      # under the screen's cursor would end the rest (POINTER in tests/e2e/helpers.ts).
-      - name: End-to-end tests with a resting pointer
+      # The tests whose pointer rests on a chip or drags, alone: another test's window opening or
+      # closing under the screen's cursor would end the rest (POINTER in tests/e2e/helpers.ts).
+      - name: End-to-end tests with a resting or dragging pointer
         if: ${{ !cancelled() }}
         timeout-minutes: 10
         run: npx playwright test --project pointer --output test-results/pointer

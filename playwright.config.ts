@@ -11,7 +11,7 @@ export default defineConfig({
   reporter: [['list']],
   projects: [
     { name: 'app', grepInvert: /@pointer/ },
-    // The tests whose pointer rests on an element (`POINTER` in helpers.ts), one at a time. On
+    // The tests whose pointer rests on an element or drags it (`POINTER` in helpers.ts), one at a time. On
     // Windows and Linux, where the test windows are shown, CI runs this project after the other,
     // so no window of another test opens or closes under the screen's cursor meanwhile.
     { name: 'pointer', grep: /@pointer/, workers: 1 },

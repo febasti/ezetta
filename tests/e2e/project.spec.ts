@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { createSandbox, launch, MOD, TO_END } from './helpers'
+import { createSandbox, launch, MOD, TO_END, POINTER } from './helpers'
 import type { Sandbox } from './helpers'
 
 let sandbox: Sandbox
@@ -191,36 +191,40 @@ test('keeps typing in a sheet going to its file when its group is renamed', asyn
   await app.close()
 })
 
-test('moves a sheet into another group by drag and drop, and reorders sheets', async () => {
-  const { app, page } = await launch(sandbox)
-  try {
-    await group(page, 'methoden').click()
-    await row(page, 'methoden/auswertung.typ').dragTo(group(page, 'einleitung'))
-    await expect(row(page, 'methoden/auswertung.typ')).toHaveCount(0)
-    expect(await read('content/einleitung/auswertung.typ')).toContain('Auswertung')
-    await expect(group(page, 'einleitung')).toContainText('2')
+test(
+  'moves a sheet into another group by drag and drop, and reorders sheets',
+  POINTER,
+  async () => {
+    const { app, page } = await launch(sandbox)
+    try {
+      await group(page, 'methoden').click()
+      await row(page, 'methoden/auswertung.typ').dragTo(group(page, 'einleitung'))
+      await expect(row(page, 'methoden/auswertung.typ')).toHaveCount(0)
+      expect(await read('content/einleitung/auswertung.typ')).toContain('Auswertung')
+      await expect(group(page, 'einleitung')).toContainText('2')
 
-    // Reorder inside a folder: drop "design" below "interviews"'s section start, i.e. move it to
-    // the end of its own folder by dropping it on the lower half of the last row of "daten".
-    const interviews = row(page, 'methoden/daten/interviews.typ')
-    const box = (await interviews.boundingBox())!
-    await row(page, 'methoden/design.typ').dragTo(interviews, {
-      targetPosition: { x: box.width / 2, y: 2 },
-    })
-    // Dropping on a row of another folder moves the sheet into that folder, before that row.
-    await expect
-      .poll(async () =>
-        (await read('project.toml'))
-          .match(/^"?methoden\/daten"? = \[([^\]]*)\]/m)?.[1]
-          ?.replaceAll(/\s+/g, ' ')
-          .trim(),
-      )
-      .toBe('"design.typ", "interviews.typ", "dokumente.typ"')
-    expect(await read('content/methoden/daten/design.typ')).toContain('Design')
-  } finally {
-    await app.close()
-  }
-})
+      // Reorder inside a folder: drop "design" below "interviews"'s section start, i.e. move it to
+      // the end of its own folder by dropping it on the lower half of the last row of "daten".
+      const interviews = row(page, 'methoden/daten/interviews.typ')
+      const box = (await interviews.boundingBox())!
+      await row(page, 'methoden/design.typ').dragTo(interviews, {
+        targetPosition: { x: box.width / 2, y: 2 },
+      })
+      // Dropping on a row of another folder moves the sheet into that folder, before that row.
+      await expect
+        .poll(async () =>
+          (await read('project.toml'))
+            .match(/^"?methoden\/daten"? = \[([^\]]*)\]/m)?.[1]
+            ?.replaceAll(/\s+/g, ' ')
+            .trim(),
+        )
+        .toBe('"design.typ", "interviews.typ", "dokumente.typ"')
+      expect(await read('content/methoden/daten/design.typ')).toContain('Design')
+    } finally {
+      await app.close()
+    }
+  },
+)
 
 /**
  * Holds a drag at a place until the list has caught up: the browser sends the first dragover a
@@ -657,7 +661,7 @@ language = "de"
 "" = ["einleitung", "methoden"]
 `
 
-test('the material is made on demand, and its folders stand side by side', async () => {
+test('the material is made on demand, and its folders stand side by side', POINTER, async () => {
   await rm(sandbox.base, { recursive: true, force: true })
   sandbox = await createSandbox({ 'project.toml': PLAIN_MANIFEST })
   const { app, page } = await launch(sandbox)
@@ -682,10 +686,10 @@ test('the material is made on demand, and its folders stand side by side', async
     await expect(rows).toHaveCount(2)
     await expect(rows.nth(0)).toHaveAttribute('aria-level', '1')
     await expect(rows.nth(1)).toHaveAttribute('aria-level', '1')
-    expect(await rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-path')))).toEqual([
-      ':material/Recherche',
-      ':material/Interviews',
-    ])
+    // The second folder is "Neue Gruppe" until the new name is on disk.
+    await expect
+      .poll(() => rows.evaluateAll((els) => els.map((e) => e.getAttribute('data-path'))))
+      .toEqual([':material/Recherche', ':material/Interviews'])
     // The "+" of the groups still makes an ordinary group.
     await page.getByRole('button', { name: 'Neue Gruppe', exact: true }).click()
     await name.fill('Kapitel')
@@ -712,31 +716,35 @@ test('the material is made on demand, and its folders stand side by side', async
   }
 })
 
-test('while a folder is dragged, a place appears to put it in the material, which begins with it', async () => {
-  await rm(sandbox.base, { recursive: true, force: true })
-  sandbox = await createSandbox({ 'project.toml': PLAIN_MANIFEST })
-  const { app, page } = await launch(sandbox)
-  try {
-    await expect(page.locator('.drop-zone')).toHaveCount(0)
-    // The place is not there to be aimed at before the drag begins: pick the folder up by hand.
-    const from = (await group(page, 'methoden').boundingBox())!
-    await page.mouse.move(from.x + 40, from.y + from.height / 2)
-    await page.mouse.down()
-    await page.mouse.move(from.x + 60, from.y + from.height / 2 + 12, { steps: 4 })
-    const zone = page.locator('.drop-zone')
-    await expect(zone).toBeVisible()
-    const to = (await zone.boundingBox())!
-    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 })
-    await page.mouse.up()
-    const material = page.getByRole('group', { name: 'Material' })
-    await expect(material.locator('[data-path=":material/methoden"]')).toBeVisible()
-    await expect(group(page, 'methoden')).toHaveCount(0)
-    // Once there is material the place is gone: the heading takes over.
-    await expect(page.locator('.drop-zone')).toHaveCount(0)
-    await expect
-      .poll(() => readFile(join(sandbox.projectDir, 'material/methoden/design.typ'), 'utf8'))
-      .toContain('Design')
-  } finally {
-    await app.close()
-  }
-})
+test(
+  'while a folder is dragged, a place appears to put it in the material, which begins with it',
+  POINTER,
+  async () => {
+    await rm(sandbox.base, { recursive: true, force: true })
+    sandbox = await createSandbox({ 'project.toml': PLAIN_MANIFEST })
+    const { app, page } = await launch(sandbox)
+    try {
+      await expect(page.locator('.drop-zone')).toHaveCount(0)
+      // The place is not there to be aimed at before the drag begins: pick the folder up by hand.
+      const from = (await group(page, 'methoden').boundingBox())!
+      await page.mouse.move(from.x + 40, from.y + from.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(from.x + 60, from.y + from.height / 2 + 12, { steps: 4 })
+      const zone = page.locator('.drop-zone')
+      await expect(zone).toBeVisible()
+      const to = (await zone.boundingBox())!
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 })
+      await page.mouse.up()
+      const material = page.getByRole('group', { name: 'Material' })
+      await expect(material.locator('[data-path=":material/methoden"]')).toBeVisible()
+      await expect(group(page, 'methoden')).toHaveCount(0)
+      // Once there is material the place is gone: the heading takes over.
+      await expect(page.locator('.drop-zone')).toHaveCount(0)
+      await expect
+        .poll(() => readFile(join(sandbox.projectDir, 'material/methoden/design.typ'), 'utf8'))
+        .toContain('Design')
+    } finally {
+      await app.close()
+    }
+  },
+)
