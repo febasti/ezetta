@@ -1,0 +1,11 @@
+# LF everywhere, also in a checkout on Windows: the fixtures, golden files and Prettier expect it.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.pdf binary
+*.zip binary
+*.ttf binary
+*.otf binary
+*.woff2 binary
+*.ezetta-template binary

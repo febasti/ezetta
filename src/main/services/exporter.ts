@@ -188,7 +188,11 @@ const THUMBNAIL_CACHE = 64
 /** Whether the compiler can be started: `typst --version` answers. */
 export function compilerAvailable(binary: string): Promise<boolean> {
   return new Promise((resolve) => {
-    const child = spawn(binary, ['--version'], { shell: false, stdio: 'ignore' })
+    const child = spawn(binary, ['--version'], {
+      shell: false,
+      stdio: 'ignore',
+      windowsHide: true,
+    })
     child.once('error', () => resolve(false))
     child.once('exit', (code) => resolve(code === 0))
   })
@@ -213,7 +217,13 @@ export function spawnCompiler(binary: string): Compiler {
           MAIN_FILE,
           options.preview ? PREVIEW_PAGE_PATTERN : OUTPUT_FILE,
         ],
-        { cwd, shell: false, stdio: ['ignore', 'pipe', 'pipe'], signal: options.signal },
+        {
+          cwd,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          signal: options.signal,
+          windowsHide: true,
+        },
       )
       let output = ''
       const take = (chunk: Buffer): void => {
@@ -535,7 +545,7 @@ export function listFontFamilies(binary: string, fontsDir: string | null): Promi
     const child = spawn(
       binary,
       ['fonts', '--ignore-system-fonts', ...(fontsDir ? ['--font-path', fontsDir] : [])],
-      { shell: false, stdio: ['ignore', 'pipe', 'ignore'] },
+      { shell: false, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true },
     )
     let output = ''
     child.stdout.on('data', (chunk: Buffer) => {

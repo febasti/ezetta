@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, rm, stat } from 'node:fs/promises'
+import { mkdir, readFile, rm, stat } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
 import { basename, join, relative, resolve, sep } from 'node:path'
 import { MAX_ASSET_BYTES } from '@core/project/assets'
@@ -7,7 +7,7 @@ import type { OpError, Outcome, ProjectSnapshot } from '@core/project/session'
 import { IpcFailure } from '@shared/ipc'
 import type { ProjectChangedDto } from '@shared/project'
 import { isInside } from '../security/paths'
-import { createRootedFs } from './rootedFs'
+import { createRootedFs, renameRetrying } from './rootedFs'
 import type { SettingsStore } from './settings'
 import { ProjectBackup } from './backup'
 import { ZipError, commonTopFolder, extractZip, listZip } from './unzip'
@@ -509,7 +509,7 @@ export class ProjectHost {
       let target = join(parent, top)
       for (let n = 2; await stat(target).catch(() => null); n += 1)
         target = join(parent, `${top} (${n})`)
-      await rename(unpacked, target)
+      await renameRetrying(unpacked, target)
       return await this.openPath(target)
     } catch (cause) {
       if (cause instanceof IpcFailure) throw cause

@@ -1,8 +1,10 @@
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { mathDocument, parseMathSvg, previewProblem } from '@core/typst/math'
 import { mathDiagnostic } from '@core/typst/mathError'
+import { executable } from './executable'
 
 /** Drawing formulas with the Typst compiler (a child process, `spawn`, fixed arguments). */
 
@@ -53,10 +55,13 @@ export function findTypst(options: {
   resourcesPath?: string
   override?: string
   exists?: (path: string) => boolean
+  platform?: NodeJS.Platform
 }): string {
   const exists = options.exists ?? existsSync
   const candidates = [
-    options.resourcesPath ? `${options.resourcesPath}/typst/typst` : '',
+    options.resourcesPath
+      ? join(options.resourcesPath, 'typst', executable('typst', options.platform))
+      : '',
     options.override ?? '',
     '/opt/homebrew/bin/typst',
     '/usr/local/bin/typst',
@@ -69,7 +74,12 @@ export function findTypst(options: {
 export function spawnTypst(binary: string): TypstRunner {
   return (input) =>
     new Promise((resolve, reject) => {
-      const child = spawn(binary, ARGS, { cwd: tmpdir(), shell: false, stdio: 'pipe' })
+      const child = spawn(binary, ARGS, {
+        cwd: tmpdir(),
+        shell: false,
+        stdio: 'pipe',
+        windowsHide: true,
+      })
       let stdout = ''
       let stderr = ''
       let settled = false

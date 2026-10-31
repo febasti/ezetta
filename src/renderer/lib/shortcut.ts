@@ -56,10 +56,16 @@ export const isModifierKey = (event: Pick<KeyInput, 'key'>): boolean => MODIFIER
  * a key that is not a single character (arrows, function keys). With Shift or Option held the typed
  * character is not the key ("Option P" types "π", "Shift 7" types "/" on some layouts), so the
  * physical key decides; otherwise the typed character does, as the writer's layout has it.
+ * On Windows, AltGr arrives as Ctrl and Alt together: a key that Ctrl and Alt turn into another
+ * character (@, {, ², € on a German keyboard) is typed text, not a shortcut, as CodeMirror has it.
  */
 export function shortcutOf(event: KeyInput, mac: boolean = isMac()): Shortcut | null {
   if (isModifierKey(event)) return null
   if (!(mac ? event.metaKey : event.ctrlKey)) return null
+  if (!mac && event.altKey && !event.shiftKey && event.key.length === 1) {
+    const base = baseKey(event.code)
+    if (base !== null && event.key.toLowerCase() !== base) return null
+  }
   let key = event.key.toLowerCase()
   if (event.shiftKey || event.altKey) key = baseKey(event.code) ?? key
   if (key.length !== 1) return null

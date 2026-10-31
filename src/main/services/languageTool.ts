@@ -8,6 +8,7 @@ import type { AnnotationPart } from '@core/proof/extract'
 import type { CheckerMatch } from '@core/proof/issues'
 import { checkerMatchSchema } from '@shared/proof'
 import type { ProofState } from '@shared/proof'
+import { executable } from './executable'
 import { idleStop } from './idleStop'
 
 /**
@@ -55,6 +56,7 @@ export function findInstallation(options: {
   java?: string
   exists?: (path: string) => boolean
   list?: (dir: string) => string[]
+  platform?: NodeJS.Platform
 }): Installation | null {
   const exists = options.exists ?? existsSync
   const list = options.list ?? ((dir: string) => safeList(dir))
@@ -69,7 +71,9 @@ export function findInstallation(options: {
   ].filter(Boolean)
   const home = homes.find((dir) => exists(join(dir, 'languagetool-server.jar')))
   if (!home) return null
-  const bundled = options.resourcesPath ? join(options.resourcesPath, 'java', 'bin', 'java') : ''
+  const bundled = options.resourcesPath
+    ? join(options.resourcesPath, 'java', 'bin', executable('java', options.platform))
+    : ''
   const java = [bundled, options.java ?? ''].find((path) => path && exists(path)) ?? 'java'
   return { java, home }
 }
@@ -324,7 +328,7 @@ export function launchServer(installation: Installation, port: number): ServerPr
       '--port',
       String(port),
     ],
-    { cwd: installation.home, stdio: 'ignore', shell: false },
+    { cwd: installation.home, stdio: 'ignore', shell: false, windowsHide: true },
   )
   const exited = new Promise<number | null>((resolve) => {
     child.once('exit', (code) => resolve(code))

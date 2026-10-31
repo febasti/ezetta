@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import zlib from 'node:zlib'
 import { dirname, join } from 'node:path'
@@ -17,6 +17,7 @@ import {
   sheetTitle,
 } from '@core/history/versions'
 import type { VersionKind } from '@core/history/versions'
+import { renameRetrying } from './rootedFs'
 
 export interface VersionEntry {
   /** The commit id. */
@@ -145,7 +146,7 @@ export class ProjectHistory {
     await mkdir(dirname(file), { recursive: true })
     const temp = `${file}.${process.pid}.tmp`
     await writeFile(temp, packed)
-    await rename(temp, file)
+    await renameRetrying(temp, file)
   }
 
   /** The paths of the project's files that belong in the versions, by walking the folder. */

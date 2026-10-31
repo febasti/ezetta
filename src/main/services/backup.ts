@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { readdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { backupFileName, backupsToDelete, parseBackupName } from '@core/history/backup'
 import type { BackupFile } from '@core/history/backup'
@@ -7,6 +7,7 @@ import { isInside } from '../security/paths'
 import type { BackupConfig } from './settings'
 import { isCompressedAlready, writeZip } from './zip'
 import type { ZipEntry } from './zip'
+import { renameRetrying } from './rootedFs'
 
 export type BackupOutcome =
   | { status: 'done'; file: string }
@@ -138,7 +139,7 @@ export class ProjectBackup {
       const temp = join(config.folder, `.${name}.tmp`)
       try {
         await writeZip(temp, await this.entries(), options.signal)
-        await rename(temp, target)
+        await renameRetrying(temp, target)
       } catch (cause) {
         await unlink(temp).catch(() => undefined)
         throw cause

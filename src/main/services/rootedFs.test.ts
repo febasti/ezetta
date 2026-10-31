@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createRootedFs, writeFileAtomic } from './rootedFs'
+import { createRootedFs, renameRetrying, writeFileAtomic } from './rootedFs'
 
 let base: string
 let root: string
@@ -122,5 +122,43 @@ describe('createRootedFs', () => {
     await expect(fs.readExternalText(join(outside, 'missing.bib'))).rejects.toThrow()
     await mkdir(join(outside, 'folder.bib'))
     await expect(fs.readExternalText(join(outside, 'folder.bib'))).rejects.toThrow()
+  })
+})
+
+describe('renameRetrying', () => {
+  const busy = (code: string) => Object.assign(new Error(code), { code })
+  const failing = (times: number, code = 'EPERM') => {
+    let calls = 0
+    const rename = vi.fn(async () => {
+      calls += 1
+      if (calls <= times) throw busy(code)
+    })
+    return rename
+  }
+  const wait = async () => undefined
+
+  it('tries a busy file again on Windows', async () => {
+    const rename = failing(3, 'EBUSY')
+    await renameRetrying('a', 'b', { platform: 'win32', rename, wait })
+    expect(rename).toHaveBeenCalledTimes(4)
+  })
+  it('gives up after a while and passes the error on', async () => {
+    const rename = failing(100)
+    await expect(renameRetrying('a', 'b', { platform: 'win32', rename, wait })).rejects.toThrow(
+      'EPERM',
+    )
+    expect(rename.mock.calls.length).toBeLessThan(12)
+  })
+  it('does not retry other errors, nor on other systems', async () => {
+    const missing = failing(1, 'ENOENT')
+    await expect(
+      renameRetrying('a', 'b', { platform: 'win32', rename: missing, wait }),
+    ).rejects.toThrow('ENOENT')
+    const mac = failing(1)
+    await expect(
+      renameRetrying('a', 'b', { platform: 'darwin', rename: mac, wait }),
+    ).rejects.toThrow('EPERM')
+    expect(missing).toHaveBeenCalledTimes(1)
+    expect(mac).toHaveBeenCalledTimes(1)
   })
 })
