@@ -26,14 +26,15 @@ async function waitFor(check: () => boolean, ms = 4000): Promise<void> {
   while (!check() && Date.now() < end) await new Promise((r) => setTimeout(r, 50))
   expect(check()).toBe(true)
 }
-async function start(): Promise<void> {
-  watcher = watchProject(root, (paths) => batches.push(paths), { debounceMs: 100 })
+async function start(platform: NodeJS.Platform): Promise<void> {
+  watcher = watchProject(root, (paths) => batches.push(paths), { debounceMs: 100, platform })
   await new Promise((r) => setTimeout(r, 400)) // let the watcher finish its initial scan
 }
 
-describe('watchProject', () => {
+// Chokidar everywhere but Windows; there the system's own recursive watch (which macOS has too).
+describe.each(['darwin', 'win32'] as const)('watchProject as on %s', (platform) => {
   it('reports created, changed, and renamed files as project-relative paths', async () => {
-    await start()
+    await start(platform)
     await writeFile(join(root, 'content', 'g', 'a.typ'), 'x')
     await waitFor(() => seen().includes('content/g/a.typ'))
     await rename(join(root, 'content', 'g', 'a.typ'), join(root, 'content', 'g', 'b.typ'))
@@ -42,7 +43,7 @@ describe('watchProject', () => {
   })
 
   it('ignores hidden files, temporary write files, and _build', async () => {
-    await start()
+    await start(platform)
     await writeFile(join(root, 'content', 'g', '.a.typ.123.tmp'), 'x')
     await mkdir(join(root, '_build'))
     await writeFile(join(root, '_build', 'main.typ'), 'x')
@@ -56,7 +57,7 @@ describe('watchProject', () => {
     try {
       const bib = join(outside, 'library.bib')
       await writeFile(bib, '@book{a}')
-      await start()
+      await start(platform)
       watcher!.setExternal([bib])
       await new Promise((r) => setTimeout(r, 400))
       await writeFile(bib, '@book{a}\n@book{b}')
@@ -72,5 +73,12 @@ describe('watchProject', () => {
     } finally {
       await rm(outside, { recursive: true, force: true })
     }
+  })
+
+  it('lets a watched folder be renamed, and reports it', async () => {
+    await writeFile(join(root, 'content', 'g', 'a.typ'), 'x')
+    await start(platform)
+    await rename(join(root, 'content', 'g'), join(root, 'content', 'h'))
+    await waitFor(() => seen().some((path) => path.startsWith('content/h')))
   })
 })
