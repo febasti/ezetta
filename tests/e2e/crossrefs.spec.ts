@@ -9,6 +9,7 @@ import {
   pastMenuGuard,
   quietFor,
   AUTOSAVE_SETTLE_MS,
+  POINTER,
 } from './helpers'
 import type { Sandbox } from './helpers'
 
@@ -320,31 +321,35 @@ test('the picker is as wide as the citation editor, and its dropdown is fused wi
   }
 })
 
-test('hovering a reference shows the heading it points at, or the caption of a figure or table', async () => {
-  const { app, page } = await open()
-  try {
-    await caretAtEnd(page)
-    await page.keyboard.type(' Siehe @sec-stichprobe und @tbl-werte und @fig-fehlt später.')
-    const tip = page.locator('.cm-chip-tooltip')
-    await expect(chips(page)).toHaveCount(3)
-    await chips(page).nth(0).hover()
-    await expect(tip).toBeVisible()
-    await expect(tip).toContainText('Abschnitt 2.1')
-    await expect(tip).toContainText('Stichprobe')
-    await page.mouse.move(0, 0)
-    await expect(tip).toHaveCount(0)
-    await chips(page).nth(1).hover()
-    await expect(tip).toContainText('Tabelle 1')
-    await expect(tip).toContainText('Werte')
-    await page.mouse.move(0, 0)
-    await chips(page).nth(2).hover()
-    await expect(tip).toContainText('„fig-fehlt“ gibt es nicht')
-  } finally {
-    await app.close()
-  }
-})
+test(
+  'hovering a reference shows the heading it points at, or the caption of a figure or table',
+  POINTER,
+  async () => {
+    const { app, page } = await open()
+    try {
+      await caretAtEnd(page)
+      await page.keyboard.type(' Siehe @sec-stichprobe und @tbl-werte und @fig-fehlt später.')
+      const tip = page.locator('.cm-chip-tooltip')
+      await expect(chips(page)).toHaveCount(3)
+      await chips(page).nth(0).hover()
+      await expect(tip).toBeVisible()
+      await expect(tip).toContainText('Abschnitt 2.1')
+      await expect(tip).toContainText('Stichprobe')
+      await page.mouse.move(0, 0)
+      await expect(tip).toHaveCount(0)
+      await chips(page).nth(1).hover()
+      await expect(tip).toContainText('Tabelle 1')
+      await expect(tip).toContainText('Werte')
+      await page.mouse.move(0, 0)
+      await chips(page).nth(2).hover()
+      await expect(tip).toContainText('„fig-fehlt“ gibt es nicht')
+    } finally {
+      await app.close()
+    }
+  },
+)
 
-test('a chip that has to be scrolled into view still shows its tooltip', async () => {
+test('a chip that has to be scrolled into view still shows its tooltip', POINTER, async () => {
   const { app, page } = await open()
   try {
     await caretAtEnd(page)
@@ -360,37 +365,41 @@ test('a chip that has to be scrolled into view still shows its tooltip', async (
   }
 })
 
-test('a chip drawn again while the pointer rests on it still shows its tooltip, and it goes when the pointer leaves', async () => {
-  const { app, page } = await open()
-  try {
-    // A reference to another sheet's heading, saved: in the first paragraph, so the chip is in view
-    // with the heading that is changed below (the end of the sheet is under the window's edge).
-    await page.locator('.cm-content').click({ position: { x: 4, y: 4 } })
-    await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('ArrowDown')
-    await page.keyboard.press('End')
-    await page.keyboard.type(' Siehe @sec-einleitung dort.')
-    await expect.poll(() => read(DESIGN)).toContain('Siehe @sec-einleitung dort.')
-    const chip = chips(page).filter({ hasText: 'Abschnitt 1' }).last()
-    const tip = page.locator('.cm-chip-tooltip')
-    // A changed heading: when its autosave (about a second later) brings the project's targets back,
-    // the editor draws the chips again, as new elements. Resting on the chip from just before that,
-    // the tooltip must still come, for the chip that is there now.
-    await page.locator('.cm-content').click({ position: { x: 4, y: 4 } })
-    await page.keyboard.press('End')
-    const box = (await chip.boundingBox())!
-    const before = await chip.elementHandle()
-    await page.keyboard.type(' neu')
-    const typed = Date.now()
-    // The chip is drawn again about 1,020 ms after the last key (measured): the pointer arrives at
-    // 850 ms, so the new element appears during the 350 ms rest, where no mouseenter reaches it.
-    await quietFor(page, Math.max(0, 850 - (Date.now() - typed)))
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-    await expect(tip).toContainText('Einleitung')
-    expect(await before!.evaluate((el) => el.isConnected)).toBe(false)
-    await page.mouse.move(0, 0)
-    await expect(tip).toHaveCount(0)
-  } finally {
-    await app.close()
-  }
-})
+test(
+  'a chip drawn again while the pointer rests on it still shows its tooltip, and it goes when the pointer leaves',
+  POINTER,
+  async () => {
+    const { app, page } = await open()
+    try {
+      // A reference to another sheet's heading, saved: in the first paragraph, so the chip is in view
+      // with the heading that is changed below (the end of the sheet is under the window's edge).
+      await page.locator('.cm-content').click({ position: { x: 4, y: 4 } })
+      await page.keyboard.press('ArrowDown')
+      await page.keyboard.press('ArrowDown')
+      await page.keyboard.press('End')
+      await page.keyboard.type(' Siehe @sec-einleitung dort.')
+      await expect.poll(() => read(DESIGN)).toContain('Siehe @sec-einleitung dort.')
+      const chip = chips(page).filter({ hasText: 'Abschnitt 1' }).last()
+      const tip = page.locator('.cm-chip-tooltip')
+      // A changed heading: when its autosave (about a second later) brings the project's targets back,
+      // the editor draws the chips again, as new elements. Resting on the chip from just before that,
+      // the tooltip must still come, for the chip that is there now.
+      await page.locator('.cm-content').click({ position: { x: 4, y: 4 } })
+      await page.keyboard.press('End')
+      const box = (await chip.boundingBox())!
+      const before = await chip.elementHandle()
+      await page.keyboard.type(' neu')
+      const typed = Date.now()
+      // The chip is drawn again about 1,020 ms after the last key (measured): the pointer arrives at
+      // 850 ms, so the new element appears during the 350 ms rest, where no mouseenter reaches it.
+      await quietFor(page, Math.max(0, 850 - (Date.now() - typed)))
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+      await expect(tip).toContainText('Einleitung')
+      expect(await before!.evaluate((el) => el.isConnected)).toBe(false)
+      await page.mouse.move(0, 0)
+      await expect(tip).toHaveCount(0)
+    } finally {
+      await app.close()
+    }
+  },
+)
