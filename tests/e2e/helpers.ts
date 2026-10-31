@@ -96,11 +96,12 @@ export async function launch(
       ...process.env,
       // The tests click the app's own menus; a system menu is not part of the page.
       EZETTA_HTML_MENUS: '1',
-      // The windows never take the focus, so the tests can run while you work and one test's
-      // window does not end another's hover; on macOS they are not shown at all, so a pointer
-      // passing over the screen cannot reach the page (see `createMainWindow`).
-      // `EZETTA_E2E_FOREGROUND=1` shows them in front, to watch a test.
-      EZETTA_BACKGROUND: process.env['EZETTA_E2E_FOREGROUND'] === '1' ? '0' : '1',
+      // The windows are never shown, so the tests can run while you work: no focus is taken,
+      // and a pointer passing over the screen cannot reach the page and end a hover. `EZETTA_E2E_FOREGROUND=1`
+      // shows them in front, to watch a test. On Windows they are always shown: a window that was
+      // never shown draws no frames there, and a test that waits for one never ends.
+      EZETTA_BACKGROUND:
+        process.env['EZETTA_E2E_FOREGROUND'] === '1' || process.platform === 'win32' ? '0' : '1',
       ...options.env,
       ...(options.project === false ? {} : { EZETTA_PROJECT: sandbox.projectDir }),
     },
