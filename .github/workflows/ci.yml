@@ -82,3 +82,29 @@ jobs:
           name: e2e-linux-results
           path: test-results
           if-no-files-found: ignore
+
+  windows:
+    # Windows is being added (no release for it yet): the unit tests and the end-to-end tests run
+    # on a Windows runner, which has a desktop to draw the windows on.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # Electron's package downloads its binary the first time it is used, not at install. The
+      # tests start the app on several workers at once, which would race to download it.
+      - name: Electron's binary
+        run: node node_modules/electron/install.js
+      - name: End-to-end tests
+        timeout-minutes: 30
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-windows-results
+          path: test-results
+          if-no-files-found: ignore

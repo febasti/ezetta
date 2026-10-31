@@ -4,7 +4,7 @@ Thank you for helping. This guide covers setting up, the rules the code keeps to
 
 ## Setting up
 
-The app is made for macOS and Linux from the first release; Windows comes later.
+The app is made for macOS and Linux from the first release. Windows is being added: its unit and end-to-end tests run in CI, and the release workflow builds an installer for it.
 
 - **Node 22.12 or newer** (`nvm use` reads `.nvmrc`) and npm.
 - **Typst 0.15.1**, the version the app ships, for formula previews, the export and the golden tests: `brew install typst`, or point `EZETTA_TYPST` at another binary. Without it, formulas show as source.
@@ -66,6 +66,7 @@ The stack, the architecture and the design system are settled; a change to one o
 | `npm run package`                                     | The macOS app and a dmg in `dist/` (needs `npm run fetch:dev-data`, Typst 0.15.1 and a JDK 17+)                                      |
 | `npm run package:mac-x64`                             | The same for Intel Macs, on an Intel Mac (its Typst and JDK must be x64)                                                             |
 | `npm run package:linux`                               | The Linux AppImage in `dist/` (on a Mac: set `EZETTA_TYPST` to a Linux Typst binary and `EZETTA_LINUX_JDK` to an unpacked Linux JDK) |
+| `npm run package:win`                                 | The Windows installer (NSIS, x64) in `dist/`, on Windows (`EZETTA_JDK` or `JAVA_HOME` names the JDK)                                 |
 | `npm test`                                            | Unit tests                                                                                                                           |
 | `npm run test:e2e`                                    | Build, then drive the real app with Playwright                                                                                       |
 | `npm run check`                                       | Format check, lint, type checks, boundaries, design check and unit tests                                                             |
@@ -80,7 +81,7 @@ The stack, the architecture and the design system are settled; a change to one o
 
 ## Releases
 
-Pushing a tag such as `v0.9.0` (the version in `package.json`, on `main`) runs `.github/workflows/release.yml`. It builds the macOS dmg for Apple Silicon and for Intel and the Linux AppImage, each on a machine of its own, and attaches them with a `SHA256SUMS.txt` to a draft release. Nothing is published until the maintainer reads the draft and publishes it. Versions below 1.0 are marked as pre-releases.
+Pushing a tag such as `v0.9.0` (the version in `package.json`, on `main`) runs `.github/workflows/release.yml`. It builds the macOS dmg for Apple Silicon and for Intel, the Linux AppImage and the Windows installer, each on a machine of its own, and attaches them with a `SHA256SUMS.txt` to a draft release. Nothing is published until the maintainer reads the draft and publishes it. Versions below 1.0 are marked as pre-releases.
 
 The release uses the same inputs everywhere: Typst 0.15.1 (the workflow checks each download against its published SHA-256), Temurin 17, and the LanguageTool and thesaurus versions that `npm run fetch:dev-data` pins and checks. To move one of them, change its pin and run the tests.
 
