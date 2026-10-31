@@ -76,6 +76,9 @@ export function newSheetName(taken: (name: string) => boolean, random = Math.ran
 
 export type NameError = 'empty' | 'too_long' | 'forbidden_character' | 'reserved'
 
+/** Names Windows keeps for devices, with or without an extension ("con", "NUL.txt", "COM¹"). */
+const DEVICE_NAME = /^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(\.|$)/i
+
 /** Names of groups and sheets: human readable, valid on macOS, Windows, and Linux. */
 export function validateName(name: string): NameError | null {
   if (name.trim() === '') return 'empty'
@@ -83,6 +86,7 @@ export function validateName(name: string): NameError | null {
   if (/[\\/:*?"<>|]/.test(name) || [...name].some((c) => c.charCodeAt(0) < 32))
     return 'forbidden_character'
   if (name.startsWith('.') || name !== name.trim() || name.endsWith('.')) return 'reserved'
+  if (DEVICE_NAME.test(name)) return 'reserved'
   return null
 }
 

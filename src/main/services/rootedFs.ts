@@ -5,6 +5,40 @@ import type { DirEntry, FileSystem } from '@core/ports'
 import { isSafeRelativePath } from '@core/project/paths'
 import { isInside } from '../security/paths'
 
+/** Errors with which Windows reports a file that another program holds open for a moment: a virus
+ * scanner, the search indexer, a backup tool, or the folder watcher. */
+const BUSY = new Set(['EPERM', 'EBUSY', 'EACCES'])
+
+/**
+ * Renames `from` to `to`. On Windows a rename fails while another program has either file open
+ * without sharing it, which scanners do for a few milliseconds after every write, so a busy
+ * file is tried again for a moment (a little over a second in all) before the error is let through.
+ * Elsewhere these errors are real and come back at once.
+ */
+export async function renameRetrying(
+  from: string,
+  to: string,
+  options: {
+    platform?: NodeJS.Platform
+    rename?: (from: string, to: string) => Promise<void>
+    wait?: (ms: number) => Promise<void>
+  } = {},
+): Promise<void> {
+  const move = options.rename ?? rename
+  const wait = options.wait ?? ((ms) => new Promise<void>((done) => setTimeout(done, ms)))
+  const retry = (options.platform ?? process.platform) === 'win32'
+  for (let delay = 10; ; delay *= 2) {
+    try {
+      await move(from, to)
+      return
+    } catch (cause) {
+      const code = (cause as NodeJS.ErrnoException).code ?? ''
+      if (!retry || !BUSY.has(code) || delay > 1000) throw cause
+      await wait(delay)
+    }
+  }
+}
+
 /** Writes `content` to `absPath` via a temporary file in the same directory, flushes it to disk,
  * then renames it over the target. A crash leaves the old file or the new one, never a
  * half-written file. The temporary file is hidden, so scanners and the watcher ignore it. */
@@ -23,7 +57,7 @@ export async function writeFileAtomic(
     } finally {
       await handle.close()
     }
-    await rename(temp, absPath)
+    await renameRetrying(temp, absPath)
   } catch (cause) {
     await unlink(temp).catch(() => undefined)
     throw cause
@@ -114,7 +148,7 @@ export function createRootedFs(
         if (a.ino !== b.ino || a.dev !== b.dev) throw new Error(`EEXIST: ${to}`)
       }
       await mkdir(dirname(target), { recursive: true })
-      await rename(source, target)
+      await renameRetrying(source, target)
     },
     async trash(path) {
       await trashItem(await confined(path))

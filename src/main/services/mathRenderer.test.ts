@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createMathRenderer, findTypst, firstError, spawnTypst } from './mathRenderer'
 import type { TypstRunner } from './mathRenderer'
@@ -88,14 +89,21 @@ describe('findTypst', () => {
       findTypst({
         resourcesPath: '/r',
         override: '/o/typst',
-        exists: has('/r/typst/typst', '/o/typst'),
+        platform: 'darwin',
+        exists: has(join('/r', 'typst', 'typst'), '/o/typst'),
       }),
-    ).toBe('/r/typst/typst')
+    ).toBe(join('/r', 'typst', 'typst'))
     expect(
       findTypst({ override: '/o/typst', exists: has('/o/typst', '/opt/homebrew/bin/typst') }),
     ).toBe('/o/typst')
     expect(findTypst({ exists: has('/usr/local/bin/typst') })).toBe('/usr/local/bin/typst')
     expect(findTypst({ exists: () => false })).toBe('typst')
+  })
+  it('looks for typst.exe in the package on Windows', () => {
+    const packaged = join('/r', 'typst', 'typst.exe')
+    expect(
+      findTypst({ resourcesPath: '/r', platform: 'win32', exists: (p) => p === packaged }),
+    ).toBe(packaged)
   })
 })
 

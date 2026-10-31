@@ -48,6 +48,19 @@ describe('shortcutOf', () => {
     )
   })
 
+  it('leaves what AltGr types to the text on Windows and Linux', () => {
+    // A German keyboard: AltGr Q is "@", AltGr 0 is "}", AltGr 2 is "²", AltGr M is "µ".
+    const altGr = (typed: string, code: string) =>
+      shortcutOf(key({ key: typed, code, ctrlKey: true, altKey: true }), false)
+    expect(altGr('@', 'KeyQ')).toBeNull()
+    expect(altGr('}', 'Digit0')).toBeNull()
+    expect(altGr('²', 'Digit2')).toBeNull()
+    expect(altGr('µ', 'KeyM')).toBeNull()
+    // Ctrl Alt on a key that types nothing else stays a shortcut.
+    expect(altGr('2', 'Digit2')).toEqual({ key: '2', alt: true })
+    expect(altGr('f', 'KeyF')).toEqual({ key: 'f', alt: true })
+  })
+
   it('is no shortcut without Cmd, on a modifier alone, or on a named key', () => {
     expect(shortcutOf(key({ key: 'b', code: 'KeyB' }), true)).toBeNull()
     expect(shortcutOf(key({ key: 'Meta', code: 'MetaLeft', metaKey: true }), true)).toBeNull()

@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { attachedServer, createLanguageTool, findInstallation } from './languageTool'
 import type { LanguageToolDeps, ServerProcess } from './languageTool'
@@ -63,29 +64,49 @@ describe('findInstallation', () => {
       findInstallation({
         resourcesPath: '/r',
         home: '/h',
-        exists: exists('/r/languagetool/languagetool-server.jar', '/h/languagetool-server.jar'),
+        exists: exists(
+          join('/r', 'languagetool', 'languagetool-server.jar'),
+          join('/h', 'languagetool-server.jar'),
+        ),
       }),
-    ).toEqual({ java: 'java', home: '/r/languagetool' })
-    expect(findInstallation({ home: '/h', exists: exists('/h/languagetool-server.jar') })).toEqual({
-      java: 'java',
-      home: '/h',
-    })
+    ).toEqual({ java: 'java', home: join('/r', 'languagetool') })
+    expect(
+      findInstallation({ home: '/h', exists: exists(join('/h', 'languagetool-server.jar')) }),
+    ).toEqual({ java: 'java', home: '/h' })
+    const dev = join('/app', '.dev', 'languagetool', 'LanguageTool-6.6')
     expect(
       findInstallation({
         appPath: '/app',
         list: () => ['LanguageTool-6.6'],
-        exists: exists('/app/.dev/languagetool/LanguageTool-6.6/languagetool-server.jar'),
+        exists: exists(join(dev, 'languagetool-server.jar')),
       }),
-    ).toEqual({ java: 'java', home: '/app/.dev/languagetool/LanguageTool-6.6' })
+    ).toEqual({ java: 'java', home: dev })
   })
   it('uses the packaged Java when there is one, and says nothing found otherwise', () => {
     expect(
       findInstallation({
         resourcesPath: '/r',
-        exists: exists('/r/languagetool/languagetool-server.jar', '/r/java/bin/java'),
+        platform: 'darwin',
+        exists: exists(
+          join('/r', 'languagetool', 'languagetool-server.jar'),
+          join('/r', 'java', 'bin', 'java'),
+        ),
       })?.java,
-    ).toBe('/r/java/bin/java')
+    ).toBe(join('/r', 'java', 'bin', 'java'))
     expect(findInstallation({ exists: () => false, list: () => [] })).toBeNull()
+  })
+  it('looks for java.exe in the package on Windows', () => {
+    const present = [
+      join('/r', 'languagetool', 'languagetool-server.jar'),
+      join('/r', 'java', 'bin', 'java.exe'),
+    ]
+    expect(
+      findInstallation({
+        resourcesPath: '/r',
+        platform: 'win32',
+        exists: (path) => present.includes(path),
+      })?.java,
+    ).toBe(present[1])
   })
 })
 

@@ -3,6 +3,7 @@ import { existsSync, statSync } from 'node:fs'
 import { delimiter, dirname, join } from 'node:path'
 import { z } from 'zod'
 import type { Inflected, MorphPort, Reading } from '@core/thesaurus/lookup'
+import { executable } from './executable'
 import { idleStop } from './idleStop'
 import { jvmFlags } from './languageTool'
 import type { Installation } from './languageTool'
@@ -165,6 +166,7 @@ export function launchMorph(found: { installation: Installation; classes: string
     cwd: installation.home,
     stdio: ['pipe', 'pipe', 'ignore'],
     shell: false,
+    windowsHide: true,
   })
   const listeners: ((line: string) => void)[] = []
   let buffer = ''
@@ -208,7 +210,7 @@ export function prepareMorph(options: {
   const javac =
     options.installation.java === 'java'
       ? 'javac'
-      : join(dirname(options.installation.java), 'javac')
+      : join(dirname(options.installation.java), executable('javac'))
   const classpath = [options.installation.home, join(options.installation.home, 'libs', '*')].join(
     delimiter,
   )
@@ -216,7 +218,7 @@ export function prepareMorph(options: {
     execFile(
       javac,
       ['-d', options.out, '-cp', classpath, options.source],
-      { timeout: 60_000 },
+      { timeout: 60_000, windowsHide: true },
       (error) => resolve(error === null),
     )
   })

@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { copyFile, mkdir, readdir, readFile, rename, rm, stat, unlink } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readFile, rm, stat, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
   MAX_FONT_BYTES,
@@ -19,7 +19,7 @@ import type { TemplateOption } from '@core/export/template'
 import { IpcFailure } from '@shared/ipc'
 import { FONTS_DIR, loadTemplates } from './exporter'
 import type { Template } from './exporter'
-import { writeFileAtomic } from './rootedFs'
+import { renameRetrying, writeFileAtomic } from './rootedFs'
 import { ZipError, extractZip } from './unzip'
 import { writeZip } from './zip'
 import type { ZipEntry } from './zip'
@@ -288,7 +288,7 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
       const temp = `${target}.${randomBytes(4).toString('hex')}.tmp`
       try {
         await writeZip(temp, entries)
-        await rename(temp, target)
+        await renameRetrying(temp, target)
       } catch (cause) {
         await unlink(temp).catch(() => undefined)
         throw new IpcFailure('io', String(cause))
