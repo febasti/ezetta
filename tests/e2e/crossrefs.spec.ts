@@ -347,8 +347,12 @@ test('hovering a reference shows the heading it points at, or the caption of a f
 test('a chip drawn again while the pointer rests on it still shows its tooltip, and it goes when the pointer leaves', async () => {
   const { app, page } = await open()
   try {
-    // A reference to another sheet's heading, saved.
-    await caretAtEnd(page)
+    // A reference to another sheet's heading, saved: in the first paragraph, so the chip is in view
+    // with the heading that is changed below (the end of the sheet is under the window's edge).
+    await page.locator('.cm-content').click({ position: { x: 4, y: 4 } })
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('End')
     await page.keyboard.type(' Siehe @sec-einleitung dort.')
     await expect.poll(() => read(DESIGN)).toContain('Siehe @sec-einleitung dort.')
     const chip = chips(page).filter({ hasText: 'Abschnitt 1' }).last()
