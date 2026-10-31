@@ -100,6 +100,8 @@ test('choosing an image fills the frame and keeps the id and the caption', async
     await page.getByRole('menuitem', { name: 'Bild mit Beschriftung' }).click()
     await expect(figures(page)).toHaveCount(3)
     await page.keyboard.type('Später')
+    // The new figure's label is in the file once the sheet is saved.
+    await expect.poll(read).toMatch(/<fig-[a-z0-9]{6}>/)
     const id = /<(fig-[a-z0-9]{6})>/.exec(await read())![1]!
 
     await figures(page).nth(2).getByRole('button', { name: 'Bild auswählen …' }).click()
