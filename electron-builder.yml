@@ -1,5 +1,6 @@
 # Packaging. `npm run package` builds the code, gathers the resources (scripts/package-resources.mjs), and makes the macOS app
 # and a dmg in dist/. `npm run package:linux` makes the Linux AppImage (see scripts/package-resources.mjs).
+# `npm run package:win` makes the Windows installer, on Windows (the release workflow's runner).
 appId: org.ezetta.app
 productName: Ezetta
 copyright: Copyright © 2026 Felix Schorn
@@ -48,6 +49,18 @@ linux:
       arch: [x64]
   category: Office
   artifactName: ${productName}-${version}-${arch}.${ext}
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # No certificate yet: not signed, so SmartScreen warns on the first start (see the README).
+nsis:
+  # Installs for the writer alone, into their AppData, without administrator rights; a Start-menu
+  # entry, a desktop shortcut and an uninstaller. Uninstalling keeps the settings and templates.
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
+  artifactName: ${productName}-Setup-${version}-${arch}.${ext}
 dmg:
   # electron-builder's schema has no ULMO (LZMA); this is the image before scripts/dmg-ulmo.mjs
   # recompresses it.

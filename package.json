@@ -39,6 +39,7 @@
     "package": "electron-vite build && node scripts/package-resources.mjs && electron-builder --mac --arm64 --publish never",
     "package:mac-x64": "electron-vite build && node scripts/package-resources.mjs && electron-builder --mac --x64 --publish never",
     "package:linux": "electron-vite build && node scripts/package-resources.mjs && electron-builder --linux --x64 --publish never",
+    "package:win": "electron-vite build && node scripts/package-resources.mjs && electron-builder --win --x64 --publish never",
     "check:design": "node scripts/check-design.mjs",
     "notices": "node scripts/notices.mjs",
     "check:notices": "node scripts/notices.mjs --check",

@@ -2,7 +2,7 @@
 // and recompresses each dmg with LZMA (ULMO), which electron-builder's own `dmg.format` does not
 // offer: about 10 % smaller than its bzip2 image (286 MB to 257 MB). ULMO opens on macOS 10.15 and
 // newer. The dmg's block map describes the old image, so it is removed; there are no automatic
-// updates in the first release that would read it. Nothing happens for a Linux build.
+// updates in the first release that would read it. Nothing happens for a Linux or Windows build.
 import { execFileSync } from 'node:child_process'
 import { renameSync, rmSync } from 'node:fs'
 
