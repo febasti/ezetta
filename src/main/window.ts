@@ -75,10 +75,13 @@ const WINDOW_BACKGROUND: Record<AppTheme, string> = {
 
 /**
  * Test runs open many windows; `EZETTA_BACKGROUND=1` (development builds only, set by the
- * end-to-end helpers) never shows them. The tests drive the page through the debugger, so a window
- * on screen would only get in the way: it takes the focus, and a pointer passing over it
- * reaches the page (macOS delivers it even to a window that ignores mouse events) and ends a hover
- * in the middle of a test. The page keeps running (see the switches in `index.ts`).
+ * end-to-end helpers) keeps them out of the way. The tests drive the page through the debugger,
+ * so a window that takes the focus would only get in the way: the window it takes it from loses a
+ * hover's tooltip in the middle of a test. On macOS the windows are never shown, since a pointer
+ * passing over one reaches the page (macOS delivers it even to a window that ignores mouse
+ * events). On Windows and Linux they are shown without the focus: Windows draws no frames for a
+ * window that was never shown, and a test that waits for one never ends. The page keeps running
+ * (see the switches in `index.ts`).
  */
 export function createMainWindow(
   devUrl: string | undefined,
@@ -156,6 +159,7 @@ export function createMainWindow(
   window.on('leave-full-screen', () => hooks.onFullScreen?.(false))
 
   if (!options.background) window.once('ready-to-show', () => window.show())
+  else if (process.platform !== 'darwin') window.once('ready-to-show', () => window.showInactive())
   void window.loadURL(devUrl ?? APP_INDEX_URL)
   return window
 }

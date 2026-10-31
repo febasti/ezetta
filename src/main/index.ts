@@ -122,7 +122,7 @@ const file = (title: string, name: string, extensions: string[]): Electron.OpenD
   filters: [{ name, extensions }],
 })
 
-/** Development only: windows of test runs are never shown (see `createMainWindow`). */
+/** Development only: windows of test runs never take the focus (see `createMainWindow`). */
 const background = devEnv('EZETTA_BACKGROUND') === '1'
 // On macOS the app itself would otherwise come to the front when it starts.
 if (background && process.platform === 'darwin') app.setActivationPolicy('accessory')
