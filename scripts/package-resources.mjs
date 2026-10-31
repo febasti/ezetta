@@ -2,9 +2,10 @@
 // in git), for electron-builder to copy into the app's Resources folder:
 //
 //   typst/typst     the Typst compiler (the one in EZETTA_TYPST, else on the PATH; 0.15.1, the
-//                   version the golden tests pin)
+//                   version the golden tests pin); `typst.exe` on Windows
 //   languagetool/   LanguageTool from `.dev/languagetool`, with the data of German and English only
-//   java/           a Java runtime trimmed with jlink, from the JDK that `java_home` finds (17+)
+//   java/           a Java runtime trimmed with jlink, from the JDK in EZETTA_JDK, else the one
+//                   `java_home` finds on macOS (17+), else JAVA_HOME
 //   morph/          the synonyms' morphology helper, compiled against that LanguageTool
 //   thesaurus/      the thesaurus files from `.dev/thesaurus`
 //
@@ -16,6 +17,9 @@
 // EZETTA_LINUX_JDK to an unpacked Linux JDK of the same version as the one on this machine:
 // the runtime is then trimmed from that JDK's modules, and the check at the end is left out, since
 // the result cannot run here.
+//
+// On Windows the script runs as it is (the release workflow builds the installer on a Windows
+// runner): the programs are named with `.exe`, and the paths of a classpath are joined with `;`.
 import { execFileSync, spawn } from 'node:child_process'
 import {
   chmodSync,
@@ -26,9 +30,10 @@ import {
   readdirSync,
   realpathSync,
   rmSync,
+  statSync,
 } from 'node:fs'
 import { createServer } from 'node:net'
-import { basename, join, relative, resolve, sep } from 'node:path'
+import { basename, delimiter, join, relative, resolve, sep } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
 const out = join(root, 'dist-resources')
@@ -79,21 +84,27 @@ const JAVA_MODULES = [
 ]
 
 const linuxJdk = process.env.EZETTA_LINUX_JDK
+const windows = process.platform === 'win32'
+/** A program's file name here: Windows names it with `.exe`. */
+const exe = (name) => (windows ? `${name}.exe` : name)
 const step = (text) => console.log(`· ${text}`)
 const run = (cmd, args, options = {}) =>
   execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], ...options })
 
 function typst() {
   const given = process.env.EZETTA_TYPST
-  const binary = given || run('/usr/bin/which', ['typst']).trim()
+  const binary =
+    given ||
+    (windows ? run('where', ['typst']).split(/\r?\n/)[0] : run('/usr/bin/which', ['typst'])).trim()
   // A Linux binary cannot be run on a Mac: the maintainer who gives one vouches for its version.
   const version = linuxJdk ? `${TYPST_VERSION}, not run` : run(binary, ['--version']).trim()
   if (!version.includes(TYPST_VERSION))
     throw new Error(`Typst ${TYPST_VERSION} is needed, ${binary} is "${version}"`)
   mkdirSync(join(out, 'typst'), { recursive: true })
   // Homebrew's is a link into its cellar: the file itself is copied.
-  copyFileSync(realpathSync(binary), join(out, 'typst', 'typst'))
-  chmodSync(join(out, 'typst', 'typst'), 0o755)
+  const target = join(out, 'typst', exe('typst'))
+  copyFileSync(realpathSync(binary), target)
+  chmodSync(target, 0o755)
   step(`Typst: ${version} from ${binary}`)
 }
 
@@ -139,8 +150,13 @@ function languageTool() {
 }
 
 function java() {
-  const home = process.env.EZETTA_JDK || run('/usr/libexec/java_home', ['-v', '17+']).trim()
-  const jlink = join(home, 'bin', 'jlink')
+  const home =
+    process.env.EZETTA_JDK ||
+    (process.platform === 'darwin'
+      ? run('/usr/libexec/java_home', ['-v', '17+']).trim()
+      : process.env.JAVA_HOME)
+  if (!home) throw new Error('No JDK: set EZETTA_JDK or JAVA_HOME to a JDK 17 or newer')
+  const jlink = join(home, 'bin', exe('jlink'))
   if (!existsSync(jlink)) throw new Error(`No jlink in ${home}: a JDK 17 or newer is needed`)
   if (linuxJdk && !existsSync(join(linuxJdk, 'jmods')))
     throw new Error(`No jmods in ${linuxJdk}: an unpacked Linux JDK is needed`)
@@ -158,13 +174,13 @@ function java() {
   const morph = join(out, 'morph')
   mkdirSync(morph)
   const lt = join(out, 'languagetool')
-  run(join(home, 'bin', 'javac'), [
+  run(join(home, 'bin', exe('javac')), [
     '--release',
     '17',
     '-d',
     morph,
     '-cp',
-    [lt, join(lt, 'libs', '*')].join(':'),
+    [lt, join(lt, 'libs', '*')].join(delimiter),
     join(root, 'tools', 'morph', 'Morph.java'),
   ])
   step(`Java: runtime from ${home}, and the morphology helper`)
@@ -193,7 +209,7 @@ const freePort = () =>
 async function smokeTest() {
   const port = await freePort()
   const server = spawn(
-    join(out, 'java', 'bin', 'java'),
+    join(out, 'java', 'bin', exe('java')),
     [
       '-Xmx768m',
       '-cp',
@@ -202,7 +218,7 @@ async function smokeTest() {
       '--port',
       String(port),
     ],
-    { cwd: join(out, 'languagetool'), stdio: 'ignore' },
+    { cwd: join(out, 'languagetool'), stdio: 'ignore', windowsHide: true },
   )
   try {
     const url = `http://127.0.0.1:${port}/v2`
@@ -234,8 +250,8 @@ async function smokeTest() {
   }
   // The morphology helper finds a base form with the same Java and LanguageTool.
   const answer = run(
-    join(out, 'java', 'bin', 'java'),
-    ['-cp', ['morph', 'languagetool', join('languagetool', 'libs', '*')].join(':'), 'Morph'],
+    join(out, 'java', 'bin', exe('java')),
+    ['-cp', ['morph', 'languagetool', join('languagetool', 'libs', '*')].join(delimiter), 'Morph'],
     {
       cwd: out,
       input:
@@ -256,4 +272,9 @@ java()
 thesaurus()
 if (linuxJdk) step('Not checked: the Linux runtime cannot run on this machine')
 else await smokeTest()
-console.log(`Resources are in ${relative(root, out)}/ (${run('du', ['-sh', out]).split('\t')[0]}).`)
+/** The size of a folder in megabytes (`du` is not on every system). */
+const megabytes = (dir) =>
+  readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .reduce((sum, entry) => sum + statSync(join(entry.parentPath, entry.name)).size, 0) / 1e6
+console.log(`Resources are in ${relative(root, out)}/ (${Math.round(megabytes(out))} MB).`)

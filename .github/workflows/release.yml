@@ -1,9 +1,9 @@
 name: Release
 
-# Pushing a tag such as v0.9.0 builds the macOS (Apple Silicon and Intel) and Linux packages and
-# attaches them, with their checksums, to a draft release. The release stays a draft until the
-# maintainer reads it and publishes it. Nothing is signed beyond macOS's ad hoc signature, and
-# nothing is notarized (see electron-builder.yml).
+# Pushing a tag such as v0.9.0 builds the macOS (Apple Silicon and Intel), Linux and Windows
+# packages and attaches them, with their checksums, to a draft release. The release stays a draft
+# until the maintainer reads it and publishes it. Nothing is signed beyond macOS's ad hoc
+# signature, and nothing is notarized (see electron-builder.yml).
 on:
   push:
     tags: ['v*']
@@ -65,6 +65,17 @@ jobs:
             typst-target: x86_64-unknown-linux-musl
             typst-sha256: a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c
             files: dist/Ezetta-*.AppImage
+          - name: Windows (x64)
+            runner: windows-latest
+            script: package:win
+            java-arch: x64
+            typst-target: x86_64-pc-windows-msvc
+            typst-sha256: 19ce3551153c2fe7ee9fa2f95208310c8f4d3209fedb699e0333faf8913f6736
+            files: dist/Ezetta-Setup-*-x64.exe
+    # Git's bash on Windows, so the steps read the same on every runner.
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -79,18 +90,27 @@ jobs:
           architecture: ${{ matrix.java-arch }}
       - name: Typst ${{ env.TYPST_VERSION }}, checked against its published checksum
         run: |
-          url="https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-${{ matrix.typst-target }}.tar.xz"
-          curl -fsSL -o typst.tar.xz "$url"
-          echo "${{ matrix.typst-sha256 }}  typst.tar.xz" | shasum -a 256 -c -
+          # Windows gets a zip with typst.exe, the others a tar.xz with typst.
+          ext=tar.xz bin=typst
+          case "${{ matrix.typst-target }}" in *windows*) ext=zip bin=typst.exe ;; esac
+          url="https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/typst-${{ matrix.typst-target }}.$ext"
+          curl -fsSL -o "typst.$ext" "$url"
+          if command -v sha256sum >/dev/null; then sum=sha256sum; else sum='shasum -a 256'; fi
+          echo "${{ matrix.typst-sha256 }}  typst.$ext" | $sum -c -
           mkdir typst-bin
-          tar -xJf typst.tar.xz -C typst-bin --strip-components=1
-          echo "EZETTA_TYPST=$PWD/typst-bin/typst" >> "$GITHUB_ENV"
+          if [ "$ext" = zip ]; then unzip -q -j typst.zip '*/typst.exe' -d typst-bin
+          else tar -xJf typst.tar.xz -C typst-bin --strip-components=1; fi
+          # Node on Windows needs a Windows path (D:/a/...), not the shell's /d/a/...
+          dir="$PWD"
+          if command -v cygpath >/dev/null; then dir="$(cygpath -m "$PWD")"; fi
+          echo "EZETTA_TYPST=$dir/typst-bin/$bin" >> "$GITHUB_ENV"
       - uses: actions/cache@v4
         with:
           path: .dev
           key: dev-data-${{ runner.os }}-${{ hashFiles('scripts/fetch-dev-data.sh') }}
       - run: npm ci
-      - run: npm run fetch:dev-data
+      # Called directly: npm would run it through cmd.exe on Windows.
+      - run: sh scripts/fetch-dev-data.sh
       - name: Package
         env:
           EZETTA_JDK: ${{ env.JAVA_HOME }}
@@ -129,6 +149,8 @@ jobs:
           **macOS.** Open the dmg and drag Ezetta to Applications. The app is not notarized, so the first time, open System Settings, Privacy & Security, and choose Open Anyway (details in the README).
 
           **Linux.** Make the AppImage executable (`chmod +x Ezetta-*.AppImage`) and run it.
+
+          **Windows.** Run `Ezetta-Setup-*-x64.exe`; it installs for your user account, without administrator rights. The installer is not signed, so Windows SmartScreen warns the first time: choose More info, then Run anyway.
 
           Formulas, spelling and grammar, synonyms and the export work out of the box. Verify a download with `SHA256SUMS.txt`.
           EOF
