@@ -10,9 +10,10 @@ import type { ElectronApplication, Page } from '@playwright/test'
 
 /** The modifier of the app's shortcuts: Cmd on macOS, Ctrl elsewhere. */
 /**
- * For a test whose pointer rests on an element (a chip's tooltip waits for that). On Windows and
- * Linux the test windows are shown, and a window of another test opening or closing under the
- * screen's real cursor sends the window a real "pointer left", which ends the rest. These tests
+ * For a test whose pointer rests on an element (a chip's tooltip waits for that) or holds it down
+ * (a drag). On Windows and Linux the test windows are shown, and a window of another test opening
+ * or closing under the screen's real cursor sends the window a real "pointer left", which ends the
+ * rest or the drag. These tests
  * are a project of their own, run one at a time, and on those systems CI runs them after the
  * others (`playwright.config.ts`, `.github/workflows/ci.yml`).
  */
