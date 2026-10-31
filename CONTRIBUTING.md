@@ -53,7 +53,7 @@ The stack, the architecture and the design system are settled; a change to one o
 ## Tests
 
 - **Unit tests** (Vitest) sit next to the code as `*.test.ts`. Logic in `core` comes with them.
-- **End-to-end tests** (`tests/e2e`) share their helpers in `tests/e2e/helpers.ts` (`launchAt`, `openSheet`, `quietFor`, …). Wait for what happens, never for a fixed time. The tests of a file run on several workers, and the windows are not shown.
+- **End-to-end tests** (`tests/e2e`) share their helpers in `tests/e2e/helpers.ts` (`launchAt`, `openSheet`, `quietFor`, …). Wait for what happens, never for a fixed time. The tests of a file run on several workers, and the windows are not shown (on macOS; on Windows and Linux they are shown, since they would not draw otherwise). A test whose pointer rests on an element, such as a chip's tooltip, is marked `POINTER`: it runs one at a time, and CI runs these after the others on Windows and Linux, where another test's window could end the rest.
 - **Golden tests** (`src/main/services/golden.test.ts`, `tests/golden`) pin the look of each bundled template's PDF; they need `EZETTA_TYPST`.
 - **Performance** is measured on a generated 95,000-word project (`tests/perf`); the numbers and budgets are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 

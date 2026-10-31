@@ -9,4 +9,11 @@ export default defineConfig({
   // workers; the long files then no longer decide when the run ends.
   fullyParallel: true,
   reporter: [['list']],
+  projects: [
+    { name: 'app', grepInvert: /@pointer/ },
+    // The tests whose pointer rests on an element (`POINTER` in helpers.ts), one at a time. On
+    // Windows and Linux, where the test windows are shown, CI runs this project after the other,
+    // so no window of another test opens or closes under the screen's cursor meanwhile.
+    { name: 'pointer', grep: /@pointer/, workers: 1 },
+  ],
 })

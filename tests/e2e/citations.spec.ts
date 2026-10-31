@@ -11,6 +11,7 @@ import {
   quietFor,
   AUTOSAVE_SETTLE_MS,
   openSheet,
+  POINTER,
 } from './helpers'
 import type { Sandbox } from './helpers'
 
@@ -754,53 +755,61 @@ test('a citation is on a pale ground, one to check is yellow, one not in the lib
 
 const tip = (page: Page) => page.locator('.cm-chip-tooltip')
 
-test('hovering a chip shows the whole work: title, authors, year, and where it appeared', async () => {
-  const { app, page } = await open()
-  try {
-    // Nothing shows until the pointer rests on the chip.
-    await expect(tip(page)).toHaveCount(0)
-    await chips(page).first().hover()
-    await expect(tip(page)).toBeVisible()
-    await expect(tip(page)).toContainText('Eine Studie')
-    await expect(tip(page)).toContainText('Smith, John')
-    await expect(tip(page)).toContainText('2020')
-    await expect(tip(page)).toContainText('Zeitschrift')
-    // A group tells every work, with its full author list.
-    await page.mouse.move(0, 0)
-    await expect(tip(page)).toHaveCount(0)
-    await chips(page).nth(1).hover()
-    await expect(tip(page)).toContainText('Ein Buch')
-    await expect(tip(page)).toContainText('Jones, Mary; Müller, Jörg')
-    // It follows the pointer away, and a click (which opens the editor) ends it.
-    await chips(page).first().hover()
-    await expect(tip(page)).toBeVisible()
-    await chips(page).first().click()
-    await expect(tip(page)).toHaveCount(0)
-    await expect(dialog(page)).toBeVisible()
-  } finally {
-    await app.close()
-  }
-})
+test(
+  'hovering a chip shows the whole work: title, authors, year, and where it appeared',
+  POINTER,
+  async () => {
+    const { app, page } = await open()
+    try {
+      // Nothing shows until the pointer rests on the chip.
+      await expect(tip(page)).toHaveCount(0)
+      await chips(page).first().hover()
+      await expect(tip(page)).toBeVisible()
+      await expect(tip(page)).toContainText('Eine Studie')
+      await expect(tip(page)).toContainText('Smith, John')
+      await expect(tip(page)).toContainText('2020')
+      await expect(tip(page)).toContainText('Zeitschrift')
+      // A group tells every work, with its full author list.
+      await page.mouse.move(0, 0)
+      await expect(tip(page)).toHaveCount(0)
+      await chips(page).nth(1).hover()
+      await expect(tip(page)).toContainText('Ein Buch')
+      await expect(tip(page)).toContainText('Jones, Mary; Müller, Jörg')
+      // It follows the pointer away, and a click (which opens the editor) ends it.
+      await chips(page).first().hover()
+      await expect(tip(page)).toBeVisible()
+      await chips(page).first().click()
+      await expect(tip(page)).toHaveCount(0)
+      await expect(dialog(page)).toBeVisible()
+    } finally {
+      await app.close()
+    }
+  },
+)
 
-test('the tooltip of a chip says what is wrong with it: a missing work, a mark to check, a citation that prints nothing', async () => {
-  const { app, page } = await openWith(
-    'Fehlt @unknown1, geprüft @smith2020/*#check: Jahr prüfen*/ und #cite(<jones2019>, form: none).\n',
-  )
-  try {
-    await chips(page).nth(0).hover()
-    await expect(tip(page)).toContainText('„unknown1“ steht nicht in der Bibliographie')
-    await page.mouse.move(0, 0)
-    await chips(page).nth(1).hover()
-    await expect(tip(page)).toContainText('Eine Studie')
-    await expect(tip(page)).toContainText('Zu prüfen: Jahr prüfen')
-    await page.mouse.move(0, 0)
-    await chips(page).nth(2).hover()
-    await expect(tip(page)).toContainText('Ein Buch')
-    await expect(tip(page)).toContainText('nur in der Bibliographie')
-  } finally {
-    await app.close()
-  }
-})
+test(
+  'the tooltip of a chip says what is wrong with it: a missing work, a mark to check, a citation that prints nothing',
+  POINTER,
+  async () => {
+    const { app, page } = await openWith(
+      'Fehlt @unknown1, geprüft @smith2020/*#check: Jahr prüfen*/ und #cite(<jones2019>, form: none).\n',
+    )
+    try {
+      await chips(page).nth(0).hover()
+      await expect(tip(page)).toContainText('„unknown1“ steht nicht in der Bibliographie')
+      await page.mouse.move(0, 0)
+      await chips(page).nth(1).hover()
+      await expect(tip(page)).toContainText('Eine Studie')
+      await expect(tip(page)).toContainText('Zu prüfen: Jahr prüfen')
+      await page.mouse.move(0, 0)
+      await chips(page).nth(2).hover()
+      await expect(tip(page)).toContainText('Ein Buch')
+      await expect(tip(page)).toContainText('nur in der Bibliographie')
+    } finally {
+      await app.close()
+    }
+  },
+)
 
 test('every citation, and a place without one, is set at the size of the text around it, the pills all as tall', async () => {
   const { app, page } = await openWith(
