@@ -69,10 +69,12 @@ jobs:
           sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
       - name: A virtual display, larger than the app's least window size
         run: sudo apt-get update && sudo apt-get install -y xvfb
-      # The test windows are shown without the focus on Linux (see createMainWindow), so they draw
-      # at full speed on the virtual display and do not take the focus from each other.
+      # The tests keep their windows hidden by default. On a virtual display that makes drawing
+      # slow (the heaviest tests took minutes), so here the windows are shown; nobody sees them.
       - name: End-to-end tests
         timeout-minutes: 30
+        env:
+          EZETTA_E2E_FOREGROUND: '1'
         run: xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()
