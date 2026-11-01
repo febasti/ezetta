@@ -2,7 +2,7 @@
 
 A desktop app for writing long academic texts, such as a doctoral thesis. The text stays plain [Typst](https://typst.app) in ordinary files, while the editor shows it the way a writer thinks of it: citations as chips, footnotes in the margin, tables and formulas drawn in place. The PDF comes from Typst, with templates the writer can adjust.
 
-Ezetta is in active development, and its first release (0.9) is a pre-release: expect rough edges, and keep a copy of anything that matters. It is made for macOS and Linux. The interface is in German and English.
+Ezetta is in active development, and its first release (0.9) is a pre-release: expect rough edges, and keep a copy of anything that matters. It is made for macOS, Linux and Windows. The interface is in German and English.
 
 ## What it does
 
@@ -24,8 +24,9 @@ The packages are on the [releases page](https://github.com/febasti/ezetta/releas
 | macOS, Apple Silicon | `Ezetta-<version>-arm64.dmg`       |
 | macOS, Intel         | `Ezetta-<version>-x64.dmg`         |
 | Linux, 64 bit        | `Ezetta-<version>-x86_64.AppImage` |
+| Windows, 64 bit      | `Ezetta-Setup-<version>-x64.exe`   |
 
-`SHA256SUMS.txt` on the same page lists the checksum of each file (`shasum -a 256 <file>` on macOS, `sha256sum <file>` on Linux).
+`SHA256SUMS.txt` on the same page lists the checksum of each file (`shasum -a 256 <file>` on macOS, `sha256sum <file>` on Linux, `Get-FileHash <file>` in PowerShell on Windows).
 
 ### macOS: the first start
 
@@ -54,6 +55,12 @@ chmod +x Ezetta-*.AppImage
 ```
 
 AppImages need FUSE 2 (the package `libfuse2`, or `fuse2` on Arch). Without it, `./Ezetta-*.AppImage --appimage-extract-and-run` starts the app anyway.
+
+### Windows
+
+The Windows version is new since 0.9.3.
+
+Run the installer. It installs Ezetta for your user account and needs no administrator rights. The installer is not signed, so Windows SmartScreen warns the first time: choose **More info**, then **Run anyway**. Ezetta is removed again under Settings, Apps; its settings and templates stay.
 
 ## Building from source
 
