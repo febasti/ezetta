@@ -7,7 +7,7 @@
   import Meter from '../../ui/kit/Meter.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import { project } from '../sidebar/project.svelte'
-  import { stats, WORDS_PER_MINUTE } from './stats.svelte'
+  import { stats, WORDS_PER_MINUTE, WORDS_PER_PAGE } from './stats.svelte'
 
   const num = (n: number): string => formatNumber(n, i18n.locale)
   const minutes = (words: number): string => {
@@ -17,6 +17,10 @@
       ? i18n.t('stats.minutes', { count: num(total) })
       : i18n.t('stats.hours', { hours: num(Math.floor(total / 60)), minutes: num(total % 60) })
   }
+  const pages = (words: number): string =>
+    words < WORDS_PER_PAGE / 2
+      ? i18n.t('stats.underPage')
+      : i18n.t('stats.pages', { count: num(Math.round(words / WORDS_PER_PAGE)) })
   const share = (value: number, of: number): number => (of > 0 ? Math.min(1, value / of) : 0)
 
   const sheet = $derived(stats.sheet)
@@ -45,6 +49,10 @@
             label={i18n.t('stats.reading')}
             value={minutes(sheet.counts.words + sheet.counts.footnoteWords)}
           />
+          <KeyValue
+            label={i18n.t('stats.pagesLabel')}
+            value={pages(sheet.counts.words + sheet.counts.footnoteWords)}
+          />
           <KeyValue label={i18n.t('stats.footnoteWords')} value={num(sheet.counts.footnoteWords)} />
           <KeyValue label={i18n.t('stats.footnotes')} value={num(sheet.counts.footnotes)} />
           <KeyValue label={i18n.t('stats.figures')} value={num(sheet.counts.figures)} />
@@ -66,7 +74,8 @@
       <Section title={i18n.t('stats.group')}>
         <p class="big">{i18n.t('stats.words', { count: num(group.words) })}</p>
         <p class="note">
-          {i18n.t('sidebar.sheetCount', { count: group.sheetCount })} · {minutes(group.words)}
+          {i18n.t('sidebar.sheetCount', { count: group.sheetCount })} · {minutes(group.words)} ·
+          {pages(group.words)}
         </p>
       </Section>
     {/if}
@@ -111,6 +120,10 @@
         <KeyValue
           label={i18n.t('stats.reading')}
           value={minutes(whole.counts.words + whole.counts.footnoteWords)}
+        />
+        <KeyValue
+          label={i18n.t('stats.pagesLabel')}
+          value={pages(whole.counts.words + whole.counts.footnoteWords)}
         />
         <KeyValue label={i18n.t('stats.footnotes')} value={num(whole.counts.footnotes)} />
         <KeyValue label={i18n.t('stats.figures')} value={num(whole.counts.figures)} />

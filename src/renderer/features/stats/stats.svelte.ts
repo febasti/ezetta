@@ -6,6 +6,9 @@ import { project } from '../sidebar/project.svelte'
 /** A reader takes about this many words a minute through academic prose. */
 export const WORDS_PER_MINUTE = 200
 
+/** A printed page of academic prose holds about this many words. */
+export const WORDS_PER_PAGE = 300
+
 export interface Counts {
   words: number
   footnoteWords: number
