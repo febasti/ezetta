@@ -8,18 +8,6 @@ description = { de = "Manuskriptseiten für Lektorat und Gutachten: Schreibmasch
 engine = 2
 
 [[options]]
-id = "author"
-type = "text"
-default = ""
-label = { de = "Autorin oder Autor", en = "Author" }
-
-[[options]]
-id = "subtitle"
-type = "text"
-default = ""
-label = { de = "Untertitel", en = "Subtitle" }
-
-[[options]]
 id = "line_spacing"
 type = "enum"
 default = "wide"

@@ -9,6 +9,7 @@
   import FlowView from './FlowView.svelte'
   import NotesPanel from './NotesPanel.svelte'
   import SearchBar from './SearchBar.svelte'
+  import TiteleiForm from '../titelei/TiteleiForm.svelte'
   import SheetBadge from './SheetBadge.svelte'
   import { editor } from './editorSession.svelte'
 
@@ -45,7 +46,9 @@
     <SearchBar />
   {/if}
 
-  {#if project.mode === 'flow'}
+  {#if project.mode === 'titelei'}
+    <TiteleiForm />
+  {:else if project.mode === 'flow'}
     <FlowView />
   {:else if editor.path}
     {#key editor.mountKey}

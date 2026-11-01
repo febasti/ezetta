@@ -275,3 +275,75 @@ describe('proofing settings', () => {
     ).toBe('default')
   })
 })
+
+describe('the title page fields', () => {
+  const titelei = `
+[project]
+version = 1
+title = "Arbeit"
+
+[titelei]
+subtitle = "Studien"
+date = "2026-10-31"
+version = "1.0"
+mood = "unknown key"
+
+[[titelei.authors]]
+name = "Felix Schorn"
+affiliation = "Universität Hamburg"
+
+[[titelei.authors]]
+name = "Anna Beck"
+`
+
+  it('reads subtitle, authors, date and version, and keeps unknown keys', () => {
+    const { manifest, warnings } = parseOk(titelei)
+    expect(warnings).toEqual([])
+    expect(manifest.titelei).toEqual({
+      subtitle: 'Studien',
+      date: '2026-10-31',
+      version: '1.0',
+      authors: [
+        { name: 'Felix Schorn', affiliation: 'Universität Hamburg' },
+        { name: 'Anna Beck', affiliation: '' },
+      ],
+    })
+    expect(serializeManifest(manifest)).toContain('mood = "unknown key"')
+  })
+
+  it('round-trips and writes nothing for an empty page', () => {
+    const { manifest } = parseOk(titelei)
+    expect(parseOk(serializeManifest(manifest)).manifest.titelei).toEqual(manifest.titelei)
+    expect(serializeManifest(defaultManifest('Leer'))).not.toContain('[titelei]')
+  })
+
+  it('ignores a date that is not a day, with a warning', () => {
+    const { manifest, warnings } = parseOk(`${titelei}\n`.replace('2026-10-31', 'gestern'))
+    expect(manifest.titelei.date).toBe('')
+    expect(warnings).toContain('titelei.date is invalid and was ignored')
+  })
+
+  it('takes author and subtitle from an export profile of an older project, once', () => {
+    const old = `
+[project]
+version = 1
+title = "Alt"
+
+[[export]]
+name = "Abgabe"
+template = "monographie"
+
+  [export.options]
+  author = "A. Autor"
+  subtitle = "Eine Untersuchung"
+  contents = true
+`
+    const { manifest } = parseOk(old)
+    expect(manifest.titelei.authors).toEqual([{ name: 'A. Autor', affiliation: '' }])
+    expect(manifest.titelei.subtitle).toBe('Eine Untersuchung')
+    expect(manifest.exports[0]?.options).toEqual({ contents: true })
+    // Cleared later, it stays cleared: the profile no longer has the option.
+    const saved = parseOk(serializeManifest({ ...manifest, titelei: defaultManifest('x').titelei }))
+    expect(saved.manifest.titelei.authors).toEqual([])
+  })
+})

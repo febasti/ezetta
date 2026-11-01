@@ -404,20 +404,62 @@
       v(style.title_page_subtitle.above)
       part(style.title_page_subtitle, meta.at("subtitle"))
     }
-    if author != "" {
+    let authors = meta.at("authors", default: ())
+    if authors.len() == 1 and authors.first().affiliation == "" {
+      v(style.title_page_author.above)
+      part(style.title_page_author, author)
+    } else if authors.len() > 0 {
+      // Several authors, or an affiliation: a line each, the affiliation below the name.
+      v(style.title_page_author.above)
+      part(style.title_page_author, for (i, a) in authors.enumerate() {
+        if i > 0 { linebreak() }
+        a.name
+        if a.affiliation != "" {
+          linebreak()
+          text(size: 0.85em, a.affiliation)
+        }
+      })
+    } else if author != "" {
       v(style.title_page_author.above)
       part(style.title_page_author, author)
     }
     v(style.title_page_date.above)
-    part(style.title_page_date, datetime.today().display("[day].[month].[year]"))
+    part(style.title_page_date, meta.at("date_text", default: datetime.today().display("[day].[month].[year]")))
+    if meta.at("version", default: "") != "" {
+      part(style.title_page_date, [Version #meta.version])
+    }
     // The next page counts from the page before it, so a header on the first text page shows 1.
     counter(page).update(0)
     pagebreak()
   }
-  let front = contents or meta.at("list_of_figures", default: false) or meta.at("list_of_tables", default: false)
+  // The Titelei's texts (dedication, abstract, preface, acknowledgements) come after the title page,
+  // before the contents, and are counted with the front matter.
+  let parts = meta.at("parts", default: (:))
+  let part-titles = if meta.lang == "de" {
+    (abstract: "Abstract", preface: "Vorwort", acknowledgements: "Danksagung")
+  } else {
+    (abstract: "Abstract", preface: "Preface", acknowledgements: "Acknowledgements")
+  }
+  let lists = meta.at("list_of_figures", default: false) or meta.at("list_of_tables", default: false)
+  let front = parts.len() > 0 or contents or lists
   if front {
     set page(numbering: page-numbering.front, header: none, footer: footer-bar)
     counter(page).update(1)
+    let started = false
+    for slot in ("dedication", "abstract", "preface", "acknowledgements") {
+      if slot in parts {
+        if started { pagebreak() }
+        started = true
+        if slot == "dedication" {
+          set par(justify: false)
+          align(center + horizon, emph(parts.dedication))
+        } else {
+          heading(level: 1, numbering: none, outlined: false, part-titles.at(slot))
+          parts.at(slot)
+        }
+      }
+    }
+    if started and (contents or lists) { pagebreak() }
     if contents {
       let toc = style.contents
       let args = (indent: toc.indent)

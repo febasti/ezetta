@@ -3,6 +3,7 @@ import { analyzeSheet } from '../typst/text'
 import { BUILD_DIR, buildExport } from '../export/build'
 import type { BuildInput, BuildOutput } from '../export/build'
 import { defaultProfile } from '../export/profile'
+import { resolveOptions } from '../export/template'
 import type { ExportProfile } from '../export/profile'
 import { citationOverview } from '../typst/citations'
 import type { QuoteStyle } from '../typst/quoteStyle'
@@ -12,7 +13,8 @@ import { scanTargets } from '../typst/targets'
 import { parseTypst } from '../typst/parser'
 import { assetFileName, ASSETS_DIR, imageTypeOf, MAX_ASSET_BYTES } from './assets'
 import { defaultManifest, parseManifest, serializeManifest } from './manifest'
-import type { ItemSettings, Manifest } from './manifest'
+import { DATE_PATTERN } from './manifest'
+import type { Author, ItemSettings, Manifest, TiteleiFields } from './manifest'
 import { addEntry, moveEntry, patchItem, removeEntry, withOrder } from './operations'
 import {
   basename,
@@ -30,10 +32,16 @@ import {
   newSheetName,
   projectFile,
   SHEET_EXT,
+  isTitelei,
+  slotOf,
+  slotPath,
+  TITELEI_DIR,
+  TITELEI_SLOTS,
   treePathOf,
   validateName,
 } from './paths'
-import type { DiskDir, GroupNode, SheetStats, Warning } from './tree'
+import type { TiteleiSlot } from './paths'
+import type { DiskDir, GroupNode, SheetNode, SheetStats, Warning } from './tree'
 import { exportOrder, findNode, NO_STATS, outsideGroups, reconcile } from './tree'
 import { parseBibtex } from '../bib/bibtex'
 import type { BibLibrary } from '../bib/bibtex'
@@ -92,6 +100,7 @@ export interface ProjectSnapshot {
     disabledRules: string[]
     disabledCategories: string[]
   }
+  titelei: TiteleiSnapshot
   tree: GroupNode
   warnings: Warning[]
   totalWords: number
@@ -103,7 +112,20 @@ export type PreparedExport = BuildOutput & {
   unknownCitations: { sheet: string; line: number; key: string }[]
   /** Figures whose image is not chosen yet: they print as an empty frame. */
   emptyImages: { sheet: string; line: number }[]
+  /** The title page is printed, and no author is named for it. */
+  noAuthors: boolean
 }
+
+/** The Titelei: the title page fields, and the sheet of each slot (null while the slot is empty). */
+export interface TiteleiSnapshot extends TiteleiFields {
+  slots: Record<TiteleiSlot, SheetNode | null>
+}
+
+/** What `setTitelei` may change. */
+export type TiteleiPatch = Partial<TiteleiFields>
+
+const MAX_AUTHORS = 30
+const MAX_FIELD = 300
 
 export interface RefreshResult {
   snapshot: ProjectSnapshot
@@ -152,6 +174,8 @@ function listSheets(dir: DiskDir, folder = ''): string[] {
 
 export class ProjectSession {
   private disk: DiskDir = { dirs: new Map(), files: [] }
+  /** The slots of the Titelei that have a sheet on disk. */
+  private slotFiles = new Set<TiteleiSlot>()
   private stats = new Map<string, SheetStats>()
   private hashes = new Map<string, number>()
   /** The bibliography as last read: its path, a stamp of its text, and what it holds. */
@@ -247,11 +271,33 @@ export class ProjectSession {
         disabledRules: this.manifest.proofing.disabledRules,
         disabledCategories: this.manifest.proofing.disabledCategories,
       },
+      titelei: this.titeleiSnapshot(),
       tree: root,
       warnings: all,
       totalWords: root.words,
       totalSheets: root.sheetCount,
     }
+  }
+
+  private titeleiSnapshot(): TiteleiSnapshot {
+    const slots = {} as TiteleiSnapshot['slots']
+    for (const slot of TITELEI_SLOTS) {
+      const path = slotPath(slot)
+      const settings = this.manifest.items[path] ?? {}
+      slots[slot] = this.slotFiles.has(slot)
+        ? {
+            kind: 'sheet',
+            path,
+            name: slot,
+            status: settings.status ?? 'draft',
+            goal: settings.goal ?? null,
+            export: true,
+            inExport: true,
+            ...(this.stats.get(path) ?? NO_STATS),
+          }
+        : null
+    }
+    return { ...this.manifest.titelei, slots }
   }
 
   private reconciled(): ReturnType<typeof reconcile> {
@@ -355,6 +401,58 @@ export class ProjectSession {
     })
   }
 
+  /** Creates the empty sheet of a slot of the Titelei. A slot holds one sheet. */
+  async createSlotSheet(slot: TiteleiSlot): Promise<Outcome<{ path: string }>> {
+    return this.mutate(async () => {
+      if (!TITELEI_SLOTS.includes(slot)) return fail('invalid_path', slot)
+      if (this.slotFiles.has(slot)) return fail('exists', slotPath(slot))
+      const path = slotPath(slot)
+      await this.fs.mkdir(TITELEI_DIR)
+      await this.fs.writeFileAtomic(projectFile(path), '')
+      this.remember(path, '')
+      this.slotFiles.add(slot)
+      return ok({ path })
+    })
+  }
+
+  /** Changes the title page fields. Text is one line of up to 300 characters; a date is a day or empty. */
+  async setTitelei(patch: TiteleiPatch): Promise<Outcome<null>> {
+    return this.mutate(async () => {
+      const line = (value: string): string | null => {
+        const text = value.replace(/[\r\n]+/g, ' ').trim()
+        return text.length > MAX_FIELD || [...text].some((c) => c.charCodeAt(0) < 32) ? null : text
+      }
+      const next: TiteleiFields = { ...this.manifest.titelei }
+      if (patch.subtitle !== undefined) {
+        const value = line(patch.subtitle)
+        if (value === null) return fail('invalid_name', 'subtitle')
+        next.subtitle = value
+      }
+      if (patch.version !== undefined) {
+        const value = line(patch.version)
+        if (value === null) return fail('invalid_name', 'version')
+        next.version = value
+      }
+      if (patch.date !== undefined) {
+        if (patch.date !== '' && !DATE_PATTERN.test(patch.date)) return fail('invalid_name', 'date')
+        next.date = patch.date
+      }
+      if (patch.authors !== undefined) {
+        if (patch.authors.length > MAX_AUTHORS) return fail('invalid_name', 'authors')
+        const authors: Author[] = []
+        for (const author of patch.authors) {
+          const name = line(author.name)
+          const affiliation = line(author.affiliation)
+          if (name === null || affiliation === null) return fail('invalid_name', 'authors')
+          authors.push({ name, affiliation })
+        }
+        next.authors = authors
+      }
+      this.manifest = { ...this.manifest, titelei: next }
+      return ok(null)
+    })
+  }
+
   async createGroup(parent: string, name: string): Promise<Outcome<{ path: string }>> {
     return this.mutate(async () => {
       const bad = await this.checkNewName(parent, name)
@@ -411,6 +509,14 @@ export class ProjectSession {
   /** Moves to the system trash. The manifest entry and its settings go with it. */
   async remove(path: string): Promise<Outcome<null>> {
     return this.mutate(async () => {
+      const slot = slotOf(path)
+      if (slot !== null && this.slotFiles.has(slot)) {
+        await this.fs.trash(projectFile(path))
+        this.manifest = removeEntry(this.manifest, path)
+        this.dropCaches(path)
+        this.slotFiles.delete(slot)
+        return ok(null)
+      }
       if (!this.nodeOnDisk(path) || path === MATERIAL) return fail('not_found', path)
       await this.fs.trash(projectFile(path))
       this.manifest = removeEntry(this.withEffectiveOrder(), path)
@@ -426,6 +532,7 @@ export class ProjectSession {
     return this.mutate(async () => {
       if (!isSafeRelativePath(path) || path === '' || path === MATERIAL)
         return fail('invalid_path', path)
+      if (isTitelei(path) && slotOf(path) === null) return fail('invalid_path', path)
       this.manifest = patchItem(this.withEffectiveOrder(), path, patch)
       return ok(null)
     })
@@ -604,8 +711,22 @@ export class ProjectSession {
           }
           sheets.push({ path: sheet.path, text })
         }
+        // The Titelei's sheets are part of the export too, for what is checked in it.
+        const parts: { slot: TiteleiSlot; text: string }[] = []
+        for (const slot of TITELEI_SLOTS) {
+          if (!this.slotFiles.has(slot)) continue
+          try {
+            parts.push({ slot, text: await this.fs.readFile(projectFile(slotPath(slot))) })
+          } catch {
+            // gone since the last scan: the slot counts as empty
+          }
+        }
+        const checked = [
+          ...sheets,
+          ...parts.map((part) => ({ path: slotPath(part.slot), text: part.text })),
+        ]
         // Every citation of the export, in the text, in notes and in captions.
-        const cited = sheets.map((sheet) => ({
+        const cited = checked.map((sheet) => ({
           sheet,
           spans: citationOverview(sheet.text).spans,
         }))
@@ -637,6 +758,7 @@ export class ProjectSession {
           prelude,
           bibliography,
           works: known,
+          titelei: { ...this.manifest.titelei, parts },
           blockQuoteMarks: this.manifest.quotes.blockMarks,
           quoteStyle: this.manifest.quotes.style,
         })
@@ -646,7 +768,7 @@ export class ProjectSession {
         // placeholder (export/preprocess.ts), and the export says where they are. A key that is a
         // label of the export is a cross-reference, not a citation.
         const labels = new Set(
-          sheets.flatMap((sheet) =>
+          checked.flatMap((sheet) =>
             scanTargets(parseTypst(sheet.text), sheet.text).flatMap((t) =>
               t.label ? [t.label] : [],
             ),
@@ -663,14 +785,16 @@ export class ProjectSession {
               })
         // Figures without an image print as an empty frame: list them, so none is exported by accident.
         const emptyImages: PreparedExport['emptyImages'] = []
-        for (const sheet of sheets)
+        for (const sheet of checked)
           for (const figure of scanFigures(parseTypst(sheet.text), sheet.text))
             if (figure.empty)
               emptyImages.push({
                 sheet: sheet.path,
                 line: sheet.text.slice(0, figure.from).split('\n').length,
               })
-        return ok({ ...output, unknownCitations, emptyImages })
+        const titlePage = resolveOptions(template.info, profile.options)['title_page'] !== false
+        const noAuthors = titlePage && !this.manifest.titelei.authors.some((a) => a.name !== '')
+        return ok({ ...output, unknownCitations, emptyImages, noAuthors })
       } catch (cause) {
         return fail('io', String(cause))
       }
@@ -700,7 +824,7 @@ export class ProjectSession {
     )
       await this.reloadBibliography(bibliographyPath)
     this.disk = await this.scanDisk()
-    const sheets = listSheets(this.disk)
+    const sheets = [...listSheets(this.disk), ...[...this.slotFiles].map(slotPath)]
     const present = new Set(sheets)
     for (const known of [...this.stats.keys()]) if (!present.has(known)) this.dropCaches(known)
     const externallyChanged: string[] = []
@@ -836,6 +960,10 @@ export class ProjectSession {
   /** What is on disk: the document in `content/`, and the material, which stands in the tree as a folder of its own. */
   private async scanDisk(): Promise<DiskDir> {
     const disk = await scanDir(this.fs, CONTENT_DIR)
+    const titelei = await scanDir(this.fs, TITELEI_DIR)
+    this.slotFiles = new Set(
+      TITELEI_SLOTS.filter((slot) => titelei.files.includes(`${slot}${SHEET_EXT}`)),
+    )
     // Without a folder for it there is no material: the tree has none until the first folder is made.
     if (await this.fs.exists(MATERIAL_DIR))
       disk.dirs.set(MATERIAL, await scanDir(this.fs, MATERIAL_DIR))
@@ -918,6 +1046,11 @@ export class ProjectSession {
   }
 
   private checkSheetPath(path: string): Outcome<never> | null {
+    if (isTitelei(path)) {
+      const slot = slotOf(path)
+      if (slot === null) return fail('invalid_path', path)
+      return this.slotFiles.has(slot) ? null : fail('not_found', path)
+    }
     if (!isSafeRelativePath(path) || path === '' || !isSheetFile(basename(path)))
       return fail('invalid_path', path)
     if (this.nodeOnDisk(path) !== 'sheet') return fail('not_found', path)

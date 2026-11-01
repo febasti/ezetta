@@ -67,6 +67,8 @@ export const warningsSchema = z
     ),
     /** Figures whose image is not chosen yet (they print as an empty frame). */
     emptyImages: z.array(z.object({ sheet: z.string(), line: z.number() }).strict()),
+    /** The title page is printed and the project names no author for it. */
+    noAuthors: z.boolean(),
   })
   .strict()
 

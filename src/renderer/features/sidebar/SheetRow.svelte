@@ -7,7 +7,7 @@
   import { openContextMenu } from '../../lib/menu.svelte'
   import type { MenuItem } from '../../lib/menu.svelte'
   import { rowNavigation } from '../../lib/rowNav'
-  import { isMaterial } from '@core/project/paths'
+  import { isMaterial, slotOf } from '@core/project/paths'
   import Icon from '../../ui/Icon.svelte'
   import { project } from './project.svelte'
 
@@ -17,6 +17,8 @@
   let { node }: Props = $props()
 
   const selected = $derived(project.selection.includes(node.path))
+  /** The slot of the Titelei this sheet fills, or null for a sheet of the document. Such a sheet stays where it is: it is not dragged, and has no say in the export. */
+  const slot = $derived(slotOf(node.path))
   /** A sheet that is excluded from the export itself is a scrapsheet in its place: no status. */
   const scratch = $derived(node.kind === 'sheet' && !node.export)
   const isOpen = $derived(node.kind === 'sheet' && editor.path === node.path)
@@ -67,7 +69,7 @@
         ? [{ label: i18n.t('menu.setGoal'), onselect: () => void project.setGoal(node.path) }]
         : []),
       { separator: true },
-      ...(targets.some(isMaterial)
+      ...(targets.some(isMaterial) || targets.some((p) => slotOf(p) !== null)
         ? []
         : [
             {
@@ -110,7 +112,7 @@
   tabindex="0"
   data-row
   data-path={node.path}
-  draggable={node.kind !== 'missing'}
+  draggable={node.kind !== 'missing' && slot === null}
   onclick={activate}
   oncontextmenu={(e) => {
     if (!selected) project.select(node.path)
@@ -138,6 +140,7 @@
     <span class="sheet-heading missing-name">{node.name}</span>
     <span class="sheet-text">{i18n.t('sidebar.missingHint')}</span>
   {:else}
+    {#if slot !== null}<span class="role">{i18n.t(`titelei.slot.${slot}`)}</span>{/if}
     <span class="lines">
       {#each shown as entry, index (index)}
         {#if entry.level > 0}
@@ -257,6 +260,10 @@
   }
   .row.after::after {
     bottom: calc(-1 * var(--sp-4) - 1.5px);
+  }
+  .role {
+    color: var(--color-label-tertiary);
+    font: var(--type-caption);
   }
   .lines {
     display: flex;

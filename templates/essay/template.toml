@@ -8,18 +8,6 @@ description = { de = "Kleines Format (A5) mit zentrierten Überschriften, Zierli
 engine = 2
 
 [[options]]
-id = "author"
-type = "text"
-default = ""
-label = { de = "Autorin oder Autor", en = "Author" }
-
-[[options]]
-id = "subtitle"
-type = "text"
-default = ""
-label = { de = "Untertitel", en = "Subtitle" }
-
-[[options]]
 id = "line_spacing"
 type = "enum"
 default = "normal"

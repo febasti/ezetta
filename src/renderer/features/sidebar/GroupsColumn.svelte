@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { MATERIAL } from '@core/project/paths'
+  import { MATERIAL, TITELEI } from '@core/project/paths'
   import { i18n } from '../../i18n/i18n.svelte'
   import IconButton from '../../ui/kit/IconButton.svelte'
   import { clearDrag, drag, dropTarget } from '../../lib/dnd.svelte'
   import { openContextMenu, openDropdown } from '../../lib/menu.svelte'
   import { setOutlineVisible } from '../../lib/ui.svelte'
   import Icon from '../../ui/Icon.svelte'
+  import ListRow from '../../ui/kit/ListRow.svelte'
   import GroupRow from './GroupRow.svelte'
   import { project } from './project.svelte'
   import { projectMenuItems } from './projectMenu'
@@ -57,6 +58,27 @@
     />
   </header>
   <div class="rows" role="tree" aria-label={i18n.t('sidebar.groups')} data-rows>
+    <!-- The Titelei: the title page fields and the texts before the document, a place of its own above the groups. Its icon and name stand where the root's folder and name do. -->
+    <ListRow
+      title={i18n.t('titelei.title')}
+      strong
+      selected={project.selectedGroup === TITELEI}
+      style="padding-left: var(--sp-4)"
+      role="treeitem"
+      aria-selected={project.selectedGroup === TITELEI}
+      aria-level={1}
+      tabindex={0}
+      data-row
+      onclick={() => project.selectGroup(TITELEI)}
+      onkeydown={(e) => {
+        if (e.key === 'Enter') project.selectGroup(TITELEI)
+      }}
+    >
+      {#snippet leading()}
+        <span class="spacer" aria-hidden="true"></span>
+        <Icon name="book" size={16} />
+      {/snippet}
+    </ListRow>
     {#if project.tree}
       <GroupRow node={project.tree} depth={0} />
     {/if}
@@ -154,6 +176,11 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
     line-clamp: 3;
+  }
+  /* The width of a group row's disclosure triangle, so the icon lines up with the folders'. */
+  .spacer {
+    flex: none;
+    width: var(--sp-12);
   }
   .outside {
     margin-top: var(--sp-16);

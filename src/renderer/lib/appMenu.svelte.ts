@@ -62,6 +62,7 @@ function layout(): { label: MessageKey | 'app'; role?: 'window' | 'help'; entrie
         { command: 'newSheet' },
         { command: 'newGroup' },
         'separator',
+        { command: 'titelei' },
         { command: 'history' },
         'separator',
         { command: 'export' },

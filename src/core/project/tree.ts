@@ -8,6 +8,7 @@ import {
   nameKey,
   rebase,
   sheetTitle,
+  TITELEI,
 } from './paths'
 
 /** What is on disk below content/. Folder names and `.typ` file names only. */
@@ -163,7 +164,7 @@ export function reconcile(
     for (const key of [...Object.keys(manifest.items), ...Object.keys(manifest.order)]) {
       if (key === '' || !key.startsWith(prefix)) continue
       const first = key.slice(prefix.length).split('/')[0] ?? ''
-      if (folder === '' && first === MATERIAL) continue
+      if (folder === '' && (first === MATERIAL || first === TITELEI)) continue
       if (first !== '' && !known.has(nameKey(first))) orphans.add(first)
     }
     for (const name of [...orphans].sort(compareNames)) {

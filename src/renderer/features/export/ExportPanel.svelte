@@ -117,6 +117,14 @@
             {#if warnings.checks > 0}
               <li>{i18n.t('export.warn.checks', { count: warnings.checks })}</li>
             {/if}
+            {#if warnings.noAuthors}
+              <li>
+                <Link onclick={() => void exporting.goToTitelei()}>
+                  {i18n.t('export.warn.noAuthors')}
+                  · {i18n.t('titelei.title')}
+                </Link>
+              </li>
+            {/if}
             {#each warnings.unknownCitations as citation, index (index)}
               <li>
                 <Link onclick={() => void exporting.goTo(citation.sheet, citation.line)}>

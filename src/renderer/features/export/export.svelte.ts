@@ -2,6 +2,7 @@ import type { z } from 'zod'
 import { mergeSets } from '@core/export/custom'
 import type { Sets } from '@core/export/custom'
 import { resolveStyle } from '@core/export/style'
+import { TITELEI } from '@core/project/paths'
 import type { exportInfoSchema, exportResultSchema } from '@shared/export'
 import type { templateDetailSchema, templateEntrySchema } from '@shared/templates'
 import { call } from '../../lib/api'
@@ -71,7 +72,8 @@ class ExportStore {
           w.checks +
           w.references.length +
           w.unknownCitations.length +
-          w.emptyImages.length
+          w.emptyImages.length +
+          (w.noAuthors ? 1 : 0)
       : 0
   })
   /** What the template sets: its base's values with the writer's on top. */
@@ -353,6 +355,12 @@ class ExportStore {
   }
 
   /** Opens the sheet a message is about, at its line. */
+  /** Leaves the dialog for the Titelei, where the authors are entered. */
+  async goToTitelei(): Promise<void> {
+    await this.leave()
+    project.selectGroup(TITELEI)
+  }
+
   async goTo(sheet: string, line: number): Promise<void> {
     const read = await call(window.api.project.readSheet({ path: sheet }))
     let offset = 0

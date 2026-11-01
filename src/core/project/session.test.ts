@@ -708,7 +708,7 @@ describe('export', () => {
         name: 'Manuskript',
         marks: 'show',
         comments: 'footnote',
-        options: { author: 'A. Autor', title_page: false },
+        options: { line_spacing: 'wide', title_page: false },
       }),
     )
     expect(fs.files.get('project.toml')).toContain('[[export]]')
@@ -719,7 +719,7 @@ describe('export', () => {
       citationStyle: 'chicago-notes',
       marks: 'show',
       comments: 'footnote',
-      options: { author: 'A. Autor', title_page: false },
+      options: { line_spacing: 'wide', title_page: false },
     })
   })
 })
@@ -893,5 +893,119 @@ describe('the material', () => {
     const manifest = old.files.get('project.toml')!
     expect(manifest).not.toContain('export = false')
     expect(manifest).toContain(MATERIAL)
+  })
+})
+
+describe('the Titelei', () => {
+  it('starts with empty slots and the fields of the page', async () => {
+    const { titelei } = (await open(project())).snapshot()
+    expect(titelei).toMatchObject({ subtitle: '', authors: [], date: '', version: '' })
+    expect(titelei.slots).toEqual({
+      abstract: null,
+      dedication: null,
+      preface: null,
+      acknowledgements: null,
+    })
+  })
+
+  it('keeps the fields in project.toml, checked', async () => {
+    const fs = project()
+    const session = await open(fs)
+    expectOk(
+      await session.setTitelei({
+        subtitle: ' Studien ',
+        authors: [{ name: 'Felix Schorn', affiliation: 'Universität Hamburg' }],
+        date: '2026-10-31',
+        version: '1.0',
+      }),
+    )
+    expect(session.snapshot().titelei).toMatchObject({
+      subtitle: 'Studien',
+      date: '2026-10-31',
+      version: '1.0',
+    })
+    expect((await open(fs)).snapshot().titelei.authors).toEqual([
+      { name: 'Felix Schorn', affiliation: 'Universität Hamburg' },
+    ])
+    for (const bad of [{ date: 'gestern' }, { subtitle: 'x'.repeat(301) }, { version: 'a\u0001' }])
+      expect((await session.setTitelei(bad)).ok).toBe(false)
+    expect(
+      (await session.setTitelei({ authors: Array(31).fill({ name: 'A', affiliation: '' }) })).ok,
+    ).toBe(false)
+  })
+
+  it('makes the sheet of a slot once, outside the document', async () => {
+    const fs = project()
+    const session = await open(fs)
+    const warningsBefore = session.snapshot().warnings
+    const { path } = expectOk(await session.createSlotSheet('abstract'))
+    expect(path).toBe(':titelei/abstract.typ')
+    expect(fs.files.get('titelei/abstract.typ')).toBe('')
+    expect((await session.createSlotSheet('abstract')).ok).toBe(false)
+    const snap = session.snapshot()
+    expect(snap.titelei.slots.abstract).toMatchObject({ path, status: 'draft', words: 0 })
+    // Not a sheet of the document: no tree entry, no warning, no word.
+    expect(sheetPaths(snap.tree)).not.toContain(path)
+    expect(snap.totalSheets).toBe(6)
+    expect(snap.warnings).toEqual(warningsBefore)
+    // Written and read like any sheet, and counted for itself.
+    expectOk(await session.writeSheet(path, 'Kurz gesagt, es geht um drei Dinge.'))
+    expect(expectOk(await session.readSheet(path))).toContain('drei Dinge')
+    expect(session.snapshot().titelei.slots.abstract?.words).toBe(7)
+    expect(session.snapshot().totalWords).toBe(16)
+    // It is there again when the project is opened.
+    expect((await open(fs)).snapshot().titelei.slots.abstract?.words).toBe(7)
+  })
+
+  it('has no sheet outside its four slots', async () => {
+    const session = await open(project())
+    expect((await session.writeSheet(':titelei/other.typ', 'x')).ok).toBe(false)
+    expect((await session.readSheet(':titelei/abstract.typ')).ok).toBe(false)
+  })
+
+  it('keeps the status of a slot sheet, and empties the slot by moving the sheet to the trash', async () => {
+    const fs = project()
+    const session = await open(fs)
+    const { path } = expectOk(await session.createSlotSheet('preface'))
+    expectOk(await session.setItem(path, { status: 'final' }))
+    expect(session.snapshot().titelei.slots.preface?.status).toBe('final')
+    expect((await open(fs)).snapshot().titelei.slots.preface?.status).toBe('final')
+    expectOk(await session.remove(path))
+    expect(session.snapshot().titelei.slots.preface).toBeNull()
+    expect(fs.files.has('titelei/preface.typ')).toBe(false)
+    expect(fs.files.get('project.toml')).not.toContain('titelei/preface')
+    // The slot can be filled again.
+    expectOk(await session.createSlotSheet('preface'))
+    expect(session.snapshot().titelei.slots.preface?.status).toBe('draft')
+  })
+
+  it('finds a sheet put there by hand, and one that changed behind the app', async () => {
+    const fs = project()
+    fs.put('titelei/dedication.typ', 'Für Anna.')
+    const session = await open(fs)
+    expect(session.snapshot().titelei.slots.dedication?.words).toBe(2)
+    fs.put('titelei/dedication.typ', 'Für Anna und Ben.')
+    const { externallyChanged } = await session.refresh(['titelei/dedication.typ'])
+    expect(externallyChanged).toEqual([':titelei/dedication.typ'])
+    expect(session.snapshot().titelei.slots.dedication?.words).toBe(4)
+  })
+
+  it('goes into the export with the fields, and its citations count', async () => {
+    const fs = project()
+    fs.put(
+      'library.bib',
+      '@book{smith2020, author = {Smith, John}, title = {Ein Buch}, year = {2020}}',
+    )
+    const session = await open(fs)
+    expectOk(await session.setTitelei({ authors: [{ name: 'A. Autor', affiliation: '' }] }))
+    const { path } = expectOk(await session.createSlotSheet('abstract'))
+    expectOk(await session.writeSheet(path, 'Siehe @smith2020 und @fehlt.'))
+    const built = await exportFiles(session)
+    const main = built.files.find((f) => f.path === '_build/main.typ')?.content ?? ''
+    expect(main).toContain('authors: ((name: "A. Autor", affiliation: ""),)')
+    expect(main).toContain('parts: (abstract: include "content/titelei/abstract.typ")')
+    expect(main).not.toContain('content/:titelei')
+    expect(built.unknownCitations).toEqual([{ sheet: path, line: 1, key: 'fehlt' }])
+    expect(fs.files.get('_build/bibliography.bib')).toContain('smith2020')
   })
 })

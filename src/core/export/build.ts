@@ -1,4 +1,7 @@
 import { typstString } from '../typst/args'
+import { slotPath, TITELEI_SLOTS } from '../project/paths'
+import type { TiteleiSlot } from '../project/paths'
+import type { TiteleiFields } from '../project/manifest'
 import { parseTypst } from '../typst/parser'
 import { quoteStyleSetRule } from '../typst/quoteStyle'
 import type { QuoteStyle } from '../typst/quoteStyle'
@@ -28,6 +31,23 @@ export const OUTPUT_FILE = `${BUILD_DIR}/out.pdf`
 export const PREVIEW_DIR = `${BUILD_DIR}/preview`
 export const PREVIEW_PAGE_PATTERN = `${PREVIEW_DIR}/p-{p}.png`
 
+/** The title page fields and the sheets of the Titelei's slots, as the export gets them. */
+export interface TiteleiInput extends TiteleiFields {
+  /** The filled slots with their text, in any order (the template places them). */
+  parts: { slot: TiteleiSlot; text: string }[]
+}
+
+export const EMPTY_TITELEI: TiteleiInput = {
+  subtitle: '',
+  authors: [],
+  date: '',
+  version: '',
+  parts: [],
+}
+
+/** Where the preprocessed copy of a slot's sheet is written, relative to `_build/content/`. */
+export const partFile = (slot: TiteleiSlot): string => `titelei/${slot}.typ`
+
 export interface BuildInput {
   title: string
   /** The project language, for example "de". */
@@ -46,6 +66,8 @@ export interface BuildInput {
    */
   works?: ReadonlySet<string>
   blockQuoteMarks: boolean
+  /** The title page fields and the Titelei's sheets. Without it the title page has only the title. */
+  titelei?: TiteleiInput
   /** The kind of quotation marks; `auto` (the default) leaves them to the project language. */
   quoteStyle?: QuoteStyle
 }
@@ -83,13 +105,55 @@ const lang = (language: string): string => language.slice(0, 2).toLowerCase()
 const literal = (value: string | boolean): string =>
   typeof value === 'boolean' ? String(value) : typstString(value)
 
-/** The dictionary the template's `project(meta, …)` receives. */
-function metaLiteral(title: string, language: string, options: OptionValues): string {
+/** The names of the authors as one line for the running head and the file's properties: "A, B und C". */
+export function authorLine(names: readonly string[], language: string): string {
+  if (names.length <= 1) return names[0] ?? ''
+  const and = lang(language) === 'de' ? 'und' : 'and'
+  return `${names.slice(0, -1).join(', ')} ${and} ${names[names.length - 1]}`
+}
+
+/** `2026-10-31` as the title page prints a day: `31.10.2026`. */
+const dayText = (iso: string): string => iso.split('-').reverse().join('.')
+
+const oneLine = (text: string): string => text.replace(/[\r\n]+/g, ' ')
+
+/**
+ * The dictionary the template's `project(meta, …)` receives: the title, the language, the options,
+ * and the fields of the title page. `author` is the line of all names; `authors` the list with the
+ * affiliations; `date_text` is there only for a fixed day (else the template prints the day of the
+ * export); `parts` holds the Titelei's sheets as content.
+ */
+function metaLiteral(
+  title: string,
+  language: string,
+  options: OptionValues,
+  titelei: TiteleiInput,
+): string {
+  const authors = titelei.authors.filter((author) => author.name !== '')
+  const subtitle = titelei.subtitle
+  const own = ['title', 'lang', 'author', 'authors', 'subtitle', 'date_text', 'version', 'parts']
+  const parts = TITELEI_SLOTS.filter((slot) => titelei.parts.some((part) => part.slot === slot))
   const entries = [
-    `title: ${typstString(title.replace(/[\r\n]+/g, ' '))}`,
+    `title: ${typstString(oneLine(title))}`,
     `lang: ${typstString(lang(language))}`,
+    `author: ${typstString(
+      authorLine(
+        authors.map((a) => oneLine(a.name)),
+        language,
+      ),
+    )}`,
+    `authors: (${authors
+      .map(
+        (a) =>
+          `(name: ${typstString(oneLine(a.name))}, affiliation: ${typstString(oneLine(a.affiliation))})`,
+      )
+      .join(', ')}${authors.length === 1 ? ',' : ''})`,
+    `subtitle: ${typstString(oneLine(subtitle))}`,
+    `version: ${typstString(oneLine(titelei.version))}`,
+    ...(titelei.date !== '' ? [`date_text: ${typstString(dayText(titelei.date))}`] : []),
+    `parts: (${parts.map((slot) => `${slot}: include ${typstString(`content/${partFile(slot)}`)}`).join(', ')}${parts.length === 0 ? ':' : ''})`,
     ...Object.entries(options)
-      .filter(([key]) => /^[a-z][a-z0-9_]*$/.test(key) && key !== 'title' && key !== 'lang')
+      .filter(([key]) => /^[a-z][a-z0-9_]*$/.test(key) && !own.includes(key))
       .map(([key, value]) => `${key}: ${literal(value)}`),
   ]
   return `(${entries.join(', ')})`
@@ -173,13 +237,31 @@ export function buildExport(input: BuildInput): BuildOutput {
     includes.push(`#include ${typstString(`content/${sheet.path}`)}`)
   }
 
+  const titelei = input.titelei ?? EMPTY_TITELEI
+  for (const part of titelei.parts) {
+    const done = preprocessSheet(part.text, {
+      marks: profile.marks,
+      comments: profile.comments,
+      headingText,
+      ...(unknownWork ? { unknownWork } : {}),
+    })
+    files.push({ path: `${BUILD_DIR}/content/${partFile(part.slot)}`, content: done.text })
+    for (const problem of done.problems)
+      problems.push({
+        sheet: slotPath(part.slot),
+        line: problem.line,
+        message: { kind: 'reference', label: problem.label },
+      })
+    for (const key of Object.keys(counts) as (keyof BuildCounts)[]) counts[key] += done.counts[key]
+  }
+
   const options = resolveOptions(template.info, profile.options)
   const main = [
     '// Generated by the app on every export. Do not edit.',
     `// Project: ${input.title.replace(/[\r\n]+/g, ' ')}`,
     '#import "prelude.typ": *',
     '#import "template/lib.typ": project',
-    `#show: project.with(${metaLiteral(input.title, input.language, options)})`,
+    `#show: project.with(${metaLiteral(input.title, input.language, options, titelei)})`,
     ...[quoteStyleSetRule(input.quoteStyle ?? 'auto')].filter((rule) => rule !== null),
     ...(input.blockQuoteMarks ? ['#set quote(quotes: true)'] : []),
     '',

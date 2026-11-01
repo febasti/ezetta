@@ -106,6 +106,29 @@ const groupNode: z.ZodType<GroupNodeDto> = z.lazy(() =>
 )
 const treeNode: z.ZodType<TreeNodeDto> = z.lazy(() => z.union([sheetNode, missingNode, groupNode]))
 
+export const TITELEI_SLOTS = ['abstract', 'dedication', 'preface', 'acknowledgements'] as const
+export const titeleiSlotSchema = z.enum(TITELEI_SLOTS)
+export type TiteleiSlotDto = z.infer<typeof titeleiSlotSchema>
+
+export const authorSchema = z
+  .object({ name: z.string().max(300), affiliation: z.string().max(300) })
+  .strict()
+
+/** The title page fields and the sheet of each slot of the Titelei (null while a slot is empty). */
+export const titeleiSchema = z.object({
+  subtitle: z.string(),
+  authors: z.array(authorSchema),
+  date: z.string(),
+  version: z.string(),
+  slots: z.object({
+    abstract: sheetNode.nullable(),
+    dedication: sheetNode.nullable(),
+    preface: sheetNode.nullable(),
+    acknowledgements: sheetNode.nullable(),
+  }),
+})
+export type TiteleiDto = z.infer<typeof titeleiSchema>
+
 export const warningSchema = z.union([
   z.object({ kind: z.literal('missing'), path: z.string() }),
   z.object({ kind: z.literal('unlisted'), path: z.string() }),
@@ -141,6 +164,7 @@ export const snapshotSchema = z.object({
     disabledRules: z.array(z.string()),
     disabledCategories: z.array(z.string()),
   }),
+  titelei: titeleiSchema,
   tree: groupNode,
   warnings: z.array(warningSchema),
   totalWords: z.number(),

@@ -150,6 +150,14 @@ export function createHandlers({
         unwrap(await host.session().setItem(path, settingsPatch))
         return { snapshot: snapshotOrThrow() }
       },
+      createSlot: async ({ slot }) => {
+        const { path } = unwrap(await host.session().createSlotSheet(slot))
+        return { path, snapshot: snapshotOrThrow() }
+      },
+      setTitelei: async (patch) => {
+        unwrap(await host.session().setTitelei(patch))
+        return { snapshot: snapshotOrThrow() }
+      },
       setTitle: async ({ title }) => {
         unwrap(await host.session().setProjectTitle(title))
         const snapshot = snapshotOrThrow()

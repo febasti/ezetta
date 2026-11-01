@@ -209,7 +209,9 @@ test('the status and word count float in the corner of the text, with no title, 
     await expect(badge).toContainText('Überarbeitet')
     await expect(badge).toContainText('von 1.200 Wörtern')
     await expect(badge).not.toContainText('design')
-    await expect(page.locator('.header, .crumbs, .crumb, .title')).toHaveCount(0)
+    await expect(page.locator('main.pane').locator('.header, .crumbs, .crumb, .title')).toHaveCount(
+      0,
+    )
     // The text has the whole height: it starts under the top of the pane, and the badge is at the right.
     const pane = (await page.locator('main.pane').boundingBox())!
     const text = (await page.locator('.cm-scroller').boundingBox())!

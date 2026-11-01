@@ -62,7 +62,7 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
   try {
     await openDialog(page)
     // The options come from the template.
-    await dialog(page).getByLabel('Autorin oder Autor').fill('A. Autor')
+    await dialog(page).getByLabel('Zeilenabstand').selectOption('wide')
     await dialog(page).getByLabel('Zitierstil').selectOption('chicago-author-date')
     // What is still open in the sheets is said before the export.
     await expect(dialog(page)).toContainText('Offene Kommentare: 1')
@@ -73,7 +73,7 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
     const manifest = await readFile(join(sandbox.projectDir, 'project.toml'), 'utf8')
     expect(manifest).toContain('[[export]]')
-    expect(manifest).toContain('author = "A. Autor"')
+    expect(manifest).toContain('line_spacing = "wide"')
     expect(manifest).toContain('citation_style = "chicago-author-date"')
     // The sheets themselves are untouched.
     expect(await readFile(join(sandbox.projectDir, SHEET), 'utf8')).toContain('::Markierung::')
@@ -81,7 +81,7 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     // The dialog opens again with the same choices.
     await dialog(page).getByRole('button', { name: 'Schließen' }).click()
     await openDialog(page)
-    await expect(dialog(page).getByLabel('Autorin oder Autor')).toHaveValue('A. Autor')
+    await expect(dialog(page).getByLabel('Zeilenabstand')).toHaveValue('wide')
     await expect(dialog(page).getByLabel('Zitierstil')).toHaveValue('chicago-author-date')
   } finally {
     await app.close()

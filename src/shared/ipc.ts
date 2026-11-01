@@ -35,7 +35,13 @@ import {
   popupMenuRequestSchema,
   popupMenuResultSchema,
 } from './menu'
-import { projectChangedSchema, snapshotSchema, statusSchema } from './project'
+import {
+  authorSchema,
+  projectChangedSchema,
+  snapshotSchema,
+  statusSchema,
+  titeleiSlotSchema,
+} from './project'
 import {
   proofCheckRequestSchema,
   proofCheckResultSchema,
@@ -326,6 +332,25 @@ export const ipc = {
             .regex(/^[a-z]{1,16}$/)
             .nullable()
             .optional(),
+        })
+        .strict(),
+      withSnapshot,
+    ),
+    /** Makes the sheet of a slot of the Titelei (abstract, dedication, preface, acknowledgements). */
+    createSlot: defineInvoke(
+      'project:create-slot',
+      z.object({ slot: titeleiSlotSchema }).strict(),
+      withPathAndSnapshot,
+    ),
+    /** Changes the title page fields; what is not given stays. */
+    setTitelei: defineInvoke(
+      'project:set-titelei',
+      z
+        .object({
+          subtitle: z.string().max(300).optional(),
+          authors: z.array(authorSchema).max(30).optional(),
+          date: z.string().max(10).optional(),
+          version: z.string().max(300).optional(),
         })
         .strict(),
       withSnapshot,

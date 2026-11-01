@@ -1,5 +1,6 @@
 import { isSameOrBelow, rebase, dirname, basename } from '@core/project/paths'
-import { MATERIAL } from '@core/project/paths'
+import { MATERIAL, slotOf, TITELEI } from '@core/project/paths'
+import type { TiteleiSlot } from '@core/project/paths'
 import { findNode, flattenSheets, outsideGroups, structureSheets } from '@core/project/tree'
 import { offsetsAfter } from '@core/typst/footnotes'
 import type { QuoteStyle } from '@core/typst/quoteStyle'
@@ -11,6 +12,7 @@ import type {
   SheetNodeDto,
   SnapshotDto,
   StatusDto,
+  TiteleiDto,
   TreeNodeDto,
 } from '@shared/project'
 import { i18n } from '../../i18n/i18n.svelte'
@@ -45,8 +47,8 @@ class ProjectStore {
   renaming = $state<string | null>(null)
   recent = $state<{ path: string; title: string }[]>([])
   ready = $state(false)
-  /** What the editor area shows: one sheet for editing, or the continuous read-only view. */
-  mode = $state<'editor' | 'flow'>('editor')
+  /** What the editor area shows: one sheet for editing, the continuous read-only view, or the form of the Titelei. */
+  mode = $state<'editor' | 'flow' | 'titelei'>('editor')
   /** The continuous view shows the selected group, or the sheets selected with Cmd or Shift. */
   flowKind = $state<'group' | 'selection'>('group')
   /** Bumped when files changed on disk behind the app, so the continuous view reloads. */
@@ -120,8 +122,17 @@ class ProjectStore {
     return this.snapshot?.tree ?? null
   }
 
+  /** The title page fields and the sheets of the Titelei's slots. */
+  get titelei(): TiteleiDto | null {
+    return this.snapshot?.titelei ?? null
+  }
+
+  /** The sheet of a slot of the Titelei by its tree path (`:titelei/abstract.typ`), else the node of the tree. */
   node(path: string): TreeNodeDto | null {
-    return this.snapshot ? findNode(this.snapshot.tree, path) : null
+    if (!this.snapshot) return null
+    const slot = slotOf(path)
+    if (slot !== null) return this.snapshot.titelei.slots[slot]
+    return findNode(this.snapshot.tree, path)
   }
 
   /** Sets up subscriptions and loads what is already open (the project of the last session). */
@@ -162,7 +173,8 @@ class ProjectStore {
     if (!replace && this.snapshot && snapshot.revision < this.snapshot.revision) return
     this.snapshot = snapshot
     void bibliography.sync(snapshot.bibliographyStamp)
-    if (!asGroup(this.node(this.selectedGroup))) this.selectedGroup = ''
+    if (this.selectedGroup !== TITELEI && !asGroup(this.node(this.selectedGroup)))
+      this.selectedGroup = ''
     this.selection = this.selection.filter((p) => this.node(p) !== null)
     if (this.renaming !== null && this.node(this.renaming) === null) this.renaming = null
   }
@@ -224,7 +236,15 @@ class ProjectStore {
     this.selectedGroup = path
     this.selection = []
     this.anchor = null
-    void this.enterFlow('group')
+    if (path === TITELEI) void this.showTitelei()
+    else void this.enterFlow('group')
+  }
+
+  /** Shows the form of the title page fields in the editor area. Unsaved text is written first. */
+  async showTitelei(): Promise<void> {
+    this.selection = []
+    if (this.mode !== 'titelei') await editor.close()
+    this.mode = 'titelei'
   }
 
   /** Shows the continuous view. Unsaved text is written first and the editor is released, so the
@@ -281,7 +301,7 @@ class ProjectStore {
   }
 
   /** Makes an empty sheet (its file gets a generated name) and opens it, ready to type in. */
-  async createSheet(parent = this.selectedGroup): Promise<void> {
+  async createSheet(parent = this.groupForNew()): Promise<void> {
     const result = await call(window.api.project.createSheet({ parent }))
     if (!result) return
     this.apply(result.snapshot)
@@ -290,7 +310,33 @@ class ProjectStore {
     await this.openSheet(result.path)
   }
 
-  async createGroup(parent = this.selectedGroup): Promise<void> {
+  /** Where a new sheet or group goes: the selected group; in the Titelei, the top of the document. */
+  private groupForNew(): string {
+    return this.selectedGroup === TITELEI ? '' : this.selectedGroup
+  }
+
+  /** Makes the sheet of a slot of the Titelei and opens it, ready to type in. */
+  async createSlot(slot: TiteleiSlot): Promise<void> {
+    const result = await call(window.api.project.createSlot({ slot }))
+    if (!result) return
+    this.apply(result.snapshot)
+    this.selectedGroup = TITELEI
+    this.selection = [result.path]
+    await this.openSheet(result.path)
+  }
+
+  /** Changes title page fields; what is not given stays. */
+  async setTitelei(patch: {
+    subtitle?: string
+    authors?: { name: string; affiliation: string }[]
+    date?: string
+    version?: string
+  }): Promise<void> {
+    const result = await call(window.api.project.setTitelei(patch))
+    if (result) this.apply(result.snapshot)
+  }
+
+  async createGroup(parent = this.groupForNew()): Promise<void> {
     const name = uniqueName(i18n.t('sidebar.defaultGroupName'), this.siblingNames(parent))
     const result = await call(window.api.project.createGroup({ parent, name }))
     if (!result) return

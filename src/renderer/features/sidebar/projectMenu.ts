@@ -1,3 +1,4 @@
+import { TITELEI } from '@core/project/paths'
 import { i18n } from '../../i18n/i18n.svelte'
 import { commandShortcut } from '../../lib/commands'
 import type { MenuItem } from '../../lib/menu.svelte'
@@ -12,6 +13,7 @@ export function projectMenuItems(): MenuItem[] {
     { label: i18n.t('project.new'), onselect: () => void project.createProject() },
     { label: i18n.t('project.open'), onselect: () => void project.openProject() },
     { label: i18n.t('project.rename'), onselect: () => void project.promptRenameProject() },
+    { label: i18n.t('titelei.menu'), onselect: () => project.selectGroup(TITELEI) },
     { label: i18n.t('project.close'), onselect: () => void project.closeProject() },
     { separator: true },
     { label: i18n.t('project.export'), onselect: () => void exporting.show() },

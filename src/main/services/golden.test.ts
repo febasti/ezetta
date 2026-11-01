@@ -110,11 +110,37 @@ const VARIANTS: {
   sets?: Sets
   /** Sheets added to the fixture for this variant, by path under `content/`. */
   extraSheets?: Record<string, string>
+  /** The title page fields beyond author and subtitle, and the texts of the Titelei by slot. */
+  titelei?: {
+    authors?: { name: string; affiliation: string }[]
+    date?: string
+    version?: string
+    parts?: Record<string, string>
+  }
 }[] = [
   {
     name: 'monographie',
     template: 'monographie',
     options: { author: 'A. Autor', subtitle: 'Eine Untersuchung' },
+  },
+  {
+    name: 'monographie-titelei',
+    template: 'monographie',
+    options: { subtitle: 'Eine Untersuchung' },
+    titelei: {
+      authors: [
+        { name: 'A. Autor', affiliation: 'Universität Beispiel' },
+        { name: 'B. Beispiel', affiliation: '' },
+      ],
+      date: '2026-10-31',
+      version: '1.2',
+      parts: {
+        dedication: 'Für alle, die zuhören.',
+        abstract: 'Die Arbeit untersucht, wie sich der Blick des Erzählers verändert. @smith2020',
+        preface: 'Dieses Buch ist aus Vorlesungen entstanden.\n\nEs will etwas anderes sein.',
+        acknowledgements: 'Mein Dank gilt allen, die gelesen haben.',
+      },
+    },
   },
   {
     name: 'monographie-weit',
@@ -511,12 +537,27 @@ async function exportPages(variant: (typeof VARIANTS)[number]): Promise<string[]
   const fs = createRootedFs(root, () => Promise.resolve())
   const created = await ProjectSession.create(fs, 'Meine Arbeit', 'de')
   if (!created.ok) throw new Error('no project')
+  // The title page fields are the project's, not an option of the export.
+  const author = variant.options['author']
+  const titelei = await created.value.setTitelei({
+    authors:
+      variant.titelei?.authors ??
+      (typeof author === 'string' && author !== '' ? [{ name: author, affiliation: '' }] : []),
+    subtitle: typeof variant.options['subtitle'] === 'string' ? variant.options['subtitle'] : '',
+    date: variant.titelei?.date ?? '',
+    version: variant.titelei?.version ?? '',
+  })
+  if (!titelei.ok) throw new Error('no title page fields')
   await writeFile(join(root, 'library.bib'), BIB)
   await mkdir(join(root, 'assets'), { recursive: true })
   await writeFile(join(root, 'assets', 'bild.png'), PNG)
   for (const [path, text] of Object.entries({ ...SHEETS, ...variant.extraSheets })) {
     await mkdir(join(root, 'content', dirname(path)), { recursive: true })
     await writeFile(join(root, 'content', path), text)
+  }
+  for (const [slot, text] of Object.entries(variant.titelei?.parts ?? {})) {
+    await mkdir(join(root, 'titelei'), { recursive: true })
+    await writeFile(join(root, 'titelei', `${slot}.typ`), text)
   }
   const opened = await ProjectSession.open(fs)
   if (!opened.ok) throw new Error('not opened')

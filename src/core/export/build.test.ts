@@ -11,12 +11,6 @@ id = "monographie"
 name = { de = "Monographie", en = "Thesis" }
 
 [[options]]
-id = "author"
-type = "text"
-default = ""
-label = { de = "Autor", en = "Author" }
-
-[[options]]
 id = "paper"
 type = "enum"
 default = "a4"
@@ -53,7 +47,7 @@ function input(overrides: Partial<BuildInput> = {}): BuildInput {
       citationStyle: 'apa-7',
       marks: 'hide',
       comments: 'remove',
-      options: { author: 'A. Autor', paper: 'us-letter' },
+      options: { paper: 'us-letter' },
     },
     template: {
       info: INFO,
@@ -81,7 +75,7 @@ describe('buildExport', () => {
         '// Project: Meine "Arbeit"',
         '#import "prelude.typ": *',
         '#import "template/lib.typ": project',
-        '#show: project.with((title: "Meine \\"Arbeit\\"", lang: "de", author: "A. Autor", paper: "us-letter", title_page: true))',
+        '#show: project.with((title: "Meine \\"Arbeit\\"", lang: "de", author: "", authors: (), subtitle: "", version: "", parts: (:), paper: "us-letter", title_page: true))',
         '',
         '#include "content/einleitung/einleitung.typ"',
         '#parbreak()',
@@ -175,7 +169,7 @@ describe('buildExport', () => {
       }),
     )
     expect(file(output, '_build/main.typ')).toContain(
-      '(title: "Meine \\"Arbeit\\"", lang: "de", author: "", paper: "a4", title_page: true)',
+      '(title: "Meine \\"Arbeit\\"", lang: "de", author: "", authors: (), subtitle: "", version: "", parts: (:), paper: "a4", title_page: true)',
     )
   })
 
@@ -201,12 +195,72 @@ describe('buildExport', () => {
     const output = buildExport(
       input({
         title: 'A\n#panic("x")',
-        profile: { ...input().profile, options: { author: 'B"\n#panic()' } },
+        titelei: {
+          subtitle: 'S"\n#panic()',
+          authors: [{ name: 'B"\n#panic()', affiliation: 'C"\n#panic()' }],
+          date: '',
+          version: '',
+          parts: [],
+        },
       }),
     )
     const main = file(output, '_build/main.typ')
     expect(main.split('\n').filter((l) => l.startsWith('#panic'))).toEqual([])
     expect(main).toContain('author: "B\\" #panic()"')
+    expect(main).toContain('affiliation: "C\\" #panic()"')
+    expect(main).toContain('subtitle: "S\\" #panic()"')
+  })
+
+  it('gives the template the title page fields and the Titelei texts', () => {
+    const output = buildExport(
+      input({
+        language: 'de',
+        titelei: {
+          subtitle: 'Studien',
+          authors: [
+            { name: 'Felix Schorn', affiliation: 'Universität Hamburg' },
+            { name: 'Anna Beck', affiliation: '' },
+            { name: '', affiliation: 'nobody' },
+          ],
+          date: '2026-10-31',
+          version: '1.0',
+          parts: [
+            { slot: 'preface', text: 'Ein Vorwort.' },
+            { slot: 'abstract', text: 'Kurz gesagt.' },
+          ],
+        },
+      }),
+    )
+    const main = file(output, '_build/main.typ')
+    expect(main).toContain('author: "Felix Schorn und Anna Beck"')
+    expect(main).toContain(
+      'authors: ((name: "Felix Schorn", affiliation: "Universität Hamburg"), (name: "Anna Beck", affiliation: ""))',
+    )
+    expect(main).toContain('date_text: "31.10.2026"')
+    expect(main).toContain('version: "1.0"')
+    expect(main).toContain(
+      'parts: (abstract: include "content/titelei/abstract.typ", preface: include "content/titelei/preface.typ")',
+    )
+    expect(file(output, '_build/content/titelei/abstract.typ')).toBe('Kurz gesagt.')
+  })
+
+  it('writes one author as a list of one', () => {
+    const main = file(
+      buildExport(
+        input({
+          titelei: {
+            subtitle: '',
+            authors: [{ name: 'A. Autor', affiliation: '' }],
+            date: '',
+            version: '',
+            parts: [],
+          },
+        }),
+      ),
+      '_build/main.typ',
+    )
+    expect(main).toContain('authors: ((name: "A. Autor", affiliation: ""),)')
+    expect(main).not.toContain('date_text')
   })
 
   it('counts what is open in the sheets', () => {
@@ -257,7 +311,7 @@ describe('citation styles', () => {
 
 describe('parseTemplate', () => {
   it('reads the options, and rejects a file without an id', () => {
-    expect(INFO.options.map((o) => o.id)).toEqual(['author', 'paper', 'title_page'])
+    expect(INFO.options.map((o) => o.id)).toEqual(['paper', 'title_page'])
     expect(parseTemplate('[template]\nname = "x"').ok).toBe(false)
     expect(parseTemplate('not toml [').ok).toBe(false)
   })

@@ -8,18 +8,6 @@ description = { de = "Farbiger Bericht mit Akzentfarbe, abgesetzten Zitaten und 
 engine = 2
 
 [[options]]
-id = "author"
-type = "text"
-default = ""
-label = { de = "Autorin oder Autor", en = "Author" }
-
-[[options]]
-id = "subtitle"
-type = "text"
-default = ""
-label = { de = "Untertitel", en = "Subtitle" }
-
-[[options]]
 id = "line_spacing"
 type = "enum"
 default = "normal"

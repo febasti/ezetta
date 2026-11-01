@@ -1,3 +1,4 @@
+import { TITELEI } from '@core/project/paths'
 import { i18n } from '../i18n/i18n.svelte'
 import { project } from '../features/sidebar/project.svelte'
 import { editor } from '../features/editor/editorSession.svelte'
@@ -198,6 +199,12 @@ function defaultCommands(): Command[] {
       shortcut: { key: 'e', shift: true },
       available: hasProject,
       run: () => void exporting.show(),
+    },
+    {
+      id: 'titelei',
+      label: () => i18n.t('titelei.menu'),
+      available: hasProject,
+      run: () => project.selectGroup(TITELEI),
     },
     {
       id: 'history',

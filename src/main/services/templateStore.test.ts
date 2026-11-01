@@ -186,26 +186,28 @@ describe('the writer’s own templates', () => {
       const { options } = await store().get(id)
       const title = options.find((o) => o.id === 'title_page')!
       expect(title).toMatchObject({ default: false, baseDefault: false, hidden: false })
-      expect((await store().get('monographie')).options.some((o) => o.id === 'author')).toBe(true)
+      expect((await store().get('monographie')).options.some((o) => o.id === 'line_spacing')).toBe(
+        true,
+      )
     })
 
     it('changes a default and hides an option, in the template only', async () => {
       const id = await store().create('essay', 'Meine')
       await store().setOption(id, 'title_page', { default: true })
-      const options = await store().setOption(id, 'author', { default: 'A. Autor', hidden: true })
+      const options = await store().setOption(id, 'line_spacing', { default: 'wide', hidden: true })
       expect(options.find((o) => o.id === 'title_page')).toMatchObject({
         default: true,
         baseDefault: false,
       })
-      expect(options.find((o) => o.id === 'author')).toMatchObject({
-        default: 'A. Autor',
+      expect(options.find((o) => o.id === 'line_spacing')).toMatchObject({
+        default: 'wide',
         hidden: true,
       })
       const { templates } = await loadTemplates(BUNDLED, join(dir, 'templates'))
       const mine = templates.find((t) => t.info.id === id)!
-      expect(mine.info.options.find((o) => o.id === 'author')).toMatchObject({ hidden: true })
+      expect(mine.info.options.find((o) => o.id === 'line_spacing')).toMatchObject({ hidden: true })
       const essay = templates.find((t) => t.info.id === 'essay')!
-      expect(essay.info.options.find((o) => o.id === 'author')?.hidden).toBeUndefined()
+      expect(essay.info.options.find((o) => o.id === 'line_spacing')?.hidden).toBeUndefined()
       // Back to the base's.
       const back = await store().setOption(id, 'title_page', { default: null })
       expect(back.find((o) => o.id === 'title_page')).toMatchObject({ default: false })
@@ -221,7 +223,9 @@ describe('the writer’s own templates', () => {
       await expect(store().setOption(id, 'nope', { hidden: true })).rejects.toMatchObject({
         code: 'invalid_request',
       })
-      await expect(store().setOption('essay', 'author', { hidden: true })).rejects.toMatchObject({
+      await expect(
+        store().setOption('essay', 'line_spacing', { hidden: true }),
+      ).rejects.toMatchObject({
         code: 'forbidden',
       })
     })

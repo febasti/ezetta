@@ -28,6 +28,23 @@ export interface ItemSettings {
   extra?: TomlTable
 }
 
+/** One author of the title page. */
+export interface Author {
+  name: string
+  affiliation: string
+}
+
+/** The standard fields of the title page (`[titelei]`); the title itself is `project.title`. */
+export interface TiteleiFields {
+  subtitle: string
+  authors: Author[]
+  /** Empty: the day of the export. Otherwise a fixed day, `YYYY-MM-DD`. */
+  date: string
+  version: string
+}
+
+export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
 export interface Manifest {
   project: {
     version: 1
@@ -37,6 +54,8 @@ export interface Manifest {
     citationStyle: string
   }
   goals: { words?: number }
+  /** The title page fields: subtitle, authors, date, version. */
+  titelei: TiteleiFields
   /** Numbering of footnotes: continuous, or restarting at each level-1 heading. */
   footnotes: { restart: FootnoteRestart }
   /** Quotation marks around block quotes, and the kind of marks (by default those of the project language). */
@@ -65,6 +84,7 @@ export interface Manifest {
   extras: {
     project: TomlTable
     goals: TomlTable
+    titelei: TomlTable
     proofing: TomlTable
     footnotes: TomlTable
     quotes: TomlTable
@@ -95,6 +115,7 @@ export function defaultManifest(title: string, language = 'de'): Manifest {
       citationStyle: 'apa-7',
     },
     goals: {},
+    titelei: { subtitle: '', authors: [], date: '', version: '' },
     footnotes: { restart: 'continuous' },
     quotes: { blockMarks: false, style: 'auto' },
     history: { enabled: true },
@@ -110,6 +131,7 @@ export function defaultManifest(title: string, language = 'de'): Manifest {
     extras: {
       project: {},
       goals: {},
+      titelei: {},
       proofing: {},
       footnotes: {},
       quotes: {},
@@ -147,6 +169,7 @@ export function parseManifest(
     return { ok: false, error: { code: 'unsupported_version', version: project['version'] } }
   }
   const goals = isTable(doc['goals']) ? doc['goals'] : {}
+  const titelei = isTable(doc['titelei']) ? doc['titelei'] : {}
   const proofing = isTable(doc['proofing']) ? doc['proofing'] : {}
   const footnotes = isTable(doc['footnotes']) ? doc['footnotes'] : {}
   const quotes = isTable(doc['quotes']) ? doc['quotes'] : {}
@@ -162,6 +185,7 @@ export function parseManifest(
       citationStyle: str(project['citation_style'], base.project.citationStyle),
     },
     goals: {},
+    titelei: readTitelei(titelei, warnings),
     footnotes: { restart: footnotes['restart'] === 'chapter' ? 'chapter' : 'continuous' },
     quotes: {
       blockMarks: quotes['block_marks'] === true,
@@ -190,6 +214,7 @@ export function parseManifest(
         'citation_style',
       ]),
       goals: takeKnown(goals, ['words']),
+      titelei: takeKnown(titelei, ['subtitle', 'authors', 'date', 'version']),
       proofing: takeKnown(proofing, [
         'language',
         'level',
@@ -203,6 +228,7 @@ export function parseManifest(
       rest: takeKnown(doc, [
         'project',
         'goals',
+        'titelei',
         'proofing',
         'footnotes',
         'quotes',
@@ -213,6 +239,7 @@ export function parseManifest(
       ]),
     },
   }
+  if (!isTable(doc['titelei'])) adoptLegacyFields(manifest)
   if (typeof goals['words'] === 'number' && goals['words'] > 0)
     manifest.goals.words = Math.floor(goals['words'])
   if (typeof proofing['language'] === 'string') manifest.proofing.language = proofing['language']
@@ -303,6 +330,8 @@ export function serializeManifest(manifest: Manifest): string {
     ...extras.goals,
   }
   if (Object.keys(goalsTable).length > 0) doc['goals'] = goalsTable
+  const titeleiTable = titeleiToml(manifest.titelei, extras.titelei)
+  if (Object.keys(titeleiTable).length > 0) doc['titelei'] = titeleiTable
   doc['proofing'] = {
     ...(proofing.language !== undefined ? { language: proofing.language } : {}),
     level: proofing.level,
@@ -325,6 +354,72 @@ export function serializeManifest(manifest: Manifest): string {
   if (manifest.exports.length > 0) doc['export'] = manifest.exports.map(profileTable)
   Object.assign(doc, extras.rest)
   return `${stringify(doc)}\n`
+}
+
+/** `[titelei]`: wrong types are ignored with a warning; an author without a name stays (the row may be new). */
+function readTitelei(table: TomlTable, warnings: string[]): TiteleiFields {
+  const text = (key: string): string => {
+    const value = table[key]
+    if (value === undefined) return ''
+    if (typeof value !== 'string') {
+      warnings.push(`titelei.${key} is invalid and was ignored`)
+      return ''
+    }
+    return value.replace(/[\r\n]+/g, ' ').trim()
+  }
+  const authors: Author[] = []
+  if (Array.isArray(table['authors']))
+    for (const raw of table['authors']) {
+      if (!isTable(raw)) continue
+      authors.push({
+        name: typeof raw['name'] === 'string' ? raw['name'].replace(/[\r\n]+/g, ' ').trim() : '',
+        affiliation:
+          typeof raw['affiliation'] === 'string'
+            ? raw['affiliation'].replace(/[\r\n]+/g, ' ').trim()
+            : '',
+      })
+    }
+  else if (table['authors'] !== undefined)
+    warnings.push('titelei.authors is invalid and was ignored')
+  const date = text('date')
+  if (date !== '' && !DATE_PATTERN.test(date))
+    warnings.push('titelei.date is invalid and was ignored')
+  return {
+    subtitle: text('subtitle'),
+    authors,
+    date: DATE_PATTERN.test(date) ? date : '',
+    version: text('version'),
+  }
+}
+
+/**
+ * A project from before the Titelei had author and subtitle as options of an export profile. The
+ * first profile that has them gives them to the project's fields, once, so they show on the page.
+ * The profile's options stay as they are.
+ */
+function adoptLegacyFields(manifest: Manifest): void {
+  for (const profile of manifest.exports) {
+    const author = profile.options['author']
+    const subtitle = profile.options['subtitle']
+    if (typeof author === 'string' && author.trim() !== '' && manifest.titelei.authors.length === 0)
+      manifest.titelei.authors = [{ name: author.trim(), affiliation: '' }]
+    if (typeof subtitle === 'string' && subtitle.trim() !== '' && manifest.titelei.subtitle === '')
+      manifest.titelei.subtitle = subtitle.trim()
+    delete profile.options['author']
+    delete profile.options['subtitle']
+  }
+}
+
+function titeleiToml(fields: TiteleiFields, extras: TomlTable): TomlTable {
+  return {
+    ...(fields.subtitle !== '' ? { subtitle: fields.subtitle } : {}),
+    ...(fields.date !== '' ? { date: fields.date } : {}),
+    ...(fields.version !== '' ? { version: fields.version } : {}),
+    ...(fields.authors.length > 0
+      ? { authors: fields.authors.map((a) => ({ name: a.name, affiliation: a.affiliation })) }
+      : {}),
+    ...extras,
+  }
 }
 
 /** `[[export]]`: a profile each; an entry that is not a table is ignored. */

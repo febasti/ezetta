@@ -1,19 +1,19 @@
 <script lang="ts">
-  import type { GroupNodeDto } from '@shared/project'
-  import { MATERIAL } from '@core/project/paths'
+  import { TITELEI } from '@core/project/paths'
   import { i18n } from '../../i18n/i18n.svelte'
   import { clearDrag, drag, DROP_END, dropTarget } from '../../lib/dnd.svelte'
   import { slotAt } from '../../lib/dropSlot'
   import type { DropSlot } from '../../lib/dropSlot'
   import { openDropdown } from '../../lib/menu.svelte'
-  import type { MenuItem } from '../../lib/menu.svelte'
   import { ui, setOutlineVisible } from '../../lib/ui.svelte'
   import IconButton from '../../ui/kit/IconButton.svelte'
   import EmptyState from '../../ui/kit/EmptyState.svelte'
   import FolderIcon from '../../ui/FolderIcon.svelte'
   import Icon from '../../ui/Icon.svelte'
+  import { groupMenuItems } from './groupMenu'
   import { project } from './project.svelte'
   import SheetRow from './SheetRow.svelte'
+  import TiteleiList from './TiteleiList.svelte'
 
   const group = $derived(project.currentGroup)
 
@@ -54,25 +54,6 @@
     }
     return out
   })
-
-  /** The group tree as menu items, for switching groups when the groups column is hidden. */
-  function groupItems(): MenuItem[] {
-    const items: MenuItem[] = []
-    const walk = (node: GroupNodeDto, depth: number): void => {
-      items.push({
-        label: `${' '.repeat(depth)}${node.path === '' ? (project.snapshot?.title ?? '') : node.name}`,
-        checked: node.path === project.selectedGroup,
-        onselect: () => project.selectGroup(node.path),
-      })
-      for (const child of node.children)
-        if (child.kind === 'group' && child.path !== MATERIAL && (!node.inExport || child.export))
-          walk(child, depth + 1)
-    }
-    if (project.tree) walk(project.tree, 0)
-    // The material stands outside the structure, under its own heading.
-    for (const outside of project.outside) walk(outside, 0)
-    return items
-  }
 
   let rowsElement = $state<HTMLElement>()
 
@@ -119,78 +100,86 @@
   }
 </script>
 
-<section class="column" aria-label={i18n.t('sidebar.sheets')}>
-  <header>
-    {#if ui.groupsVisible}
-      <h2>{title}</h2>
-    {:else}
-      <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- the column’s title, which opens the menu of groups -->
-      <button
-        class="switcher"
-        aria-haspopup="menu"
-        aria-label={i18n.t('sidebar.switchGroup')}
-        onclick={(e) => openDropdown(e.currentTarget, groupItems())}
-      >
-        <span class="switcher-name">{title}</span>
-        <Icon name="chevron-down" size={14} />
-      </button>
-    {/if}
-    {#if !ui.groupsVisible}
+{#if project.selectedGroup === TITELEI}
+  <TiteleiList />
+{:else}
+  <section class="column" aria-label={i18n.t('sidebar.sheets')}>
+    <header>
+      {#if ui.groupsVisible}
+        <h2>{title}</h2>
+      {:else}
+        <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- the column’s title, which opens the menu of groups -->
+        <button
+          class="switcher"
+          aria-haspopup="menu"
+          aria-label={i18n.t('sidebar.switchGroup')}
+          onclick={(e) => openDropdown(e.currentTarget, groupMenuItems())}
+        >
+          <span class="switcher-name">{title}</span>
+          <Icon name="chevron-down" size={14} />
+        </button>
+      {/if}
+      {#if !ui.groupsVisible}
+        <IconButton
+          icon="list-tree"
+          label={i18n.t('outline.title')}
+          onclick={() => setOutlineVisible(true)}
+        />
+      {/if}
       <IconButton
-        icon="list-tree"
-        label={i18n.t('outline.title')}
-        onclick={() => setOutlineVisible(true)}
+        icon="plus"
+        label={i18n.t('sidebar.newSheet')}
+        onclick={() => void project.createSheet()}
       />
-    {/if}
-    <IconButton
-      icon="plus"
-      label={i18n.t('sidebar.newSheet')}
-      onclick={() => void project.createSheet()}
-    />
-  </header>
-  <div
-    class="rows"
-    role="listbox"
-    tabindex="-1"
-    aria-multiselectable="true"
-    aria-label={i18n.t('sidebar.sheets')}
-    data-rows
-    bind:this={rowsElement}
-    ondragover={onDragOver}
-    ondragleave={onDragLeave}
-    ondrop={onDrop}
-  >
-    {#if sections.length}
-      {#each sections as section, index (`${index}:${section.folder}`)}
-        <div role="group" aria-label={section.heading ?? title}>
-          {#if section.heading !== null}
-            <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a subgroup’s heading in the list, which opens the group -->
-            <button
-              class="heading"
-              tabindex="-1"
-              title={section.heading}
-              onclick={() => project.selectGroup(section.folder)}
-            >
-              <FolderIcon
-                icon={groupOf(section.folder)?.icon ?? null}
-                color={groupOf(section.folder)?.color ?? null}
-                size={14}
-              />
-              <span>{section.heading}</span>
-            </button>
-          {/if}
-          {#each section.rows as node (node.path)}
-            <SheetRow {node} />
-          {/each}
-        </div>
-      {/each}
-    {:else}
-      <EmptyState icon="file" title={i18n.t('sidebar.empty')} text={i18n.t('sidebar.emptyHint')} />
-    {/if}
-    <!-- Under the last row: a drop there puts the sheet at the end of the group. -->
-    {#if dropTarget.path === DROP_END}<div class="drop-end" aria-hidden="true"></div>{/if}
-  </div>
-</section>
+    </header>
+    <div
+      class="rows"
+      role="listbox"
+      tabindex="-1"
+      aria-multiselectable="true"
+      aria-label={i18n.t('sidebar.sheets')}
+      data-rows
+      bind:this={rowsElement}
+      ondragover={onDragOver}
+      ondragleave={onDragLeave}
+      ondrop={onDrop}
+    >
+      {#if sections.length}
+        {#each sections as section, index (`${index}:${section.folder}`)}
+          <div role="group" aria-label={section.heading ?? title}>
+            {#if section.heading !== null}
+              <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a subgroup’s heading in the list, which opens the group -->
+              <button
+                class="heading"
+                tabindex="-1"
+                title={section.heading}
+                onclick={() => project.selectGroup(section.folder)}
+              >
+                <FolderIcon
+                  icon={groupOf(section.folder)?.icon ?? null}
+                  color={groupOf(section.folder)?.color ?? null}
+                  size={14}
+                />
+                <span>{section.heading}</span>
+              </button>
+            {/if}
+            {#each section.rows as node (node.path)}
+              <SheetRow {node} />
+            {/each}
+          </div>
+        {/each}
+      {:else}
+        <EmptyState
+          icon="file"
+          title={i18n.t('sidebar.empty')}
+          text={i18n.t('sidebar.emptyHint')}
+        />
+      {/if}
+      <!-- Under the last row: a drop there puts the sheet at the end of the group. -->
+      {#if dropTarget.path === DROP_END}<div class="drop-end" aria-hidden="true"></div>{/if}
+    </div>
+  </section>
+{/if}
 
 <style>
   .column {

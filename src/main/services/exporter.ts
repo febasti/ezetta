@@ -293,6 +293,7 @@ export function createExporter(deps: ExporterDeps): {
   const warningsOf = (built: PreparedExport): ExportInfo['warnings'] => ({
     unknownCitations: built.unknownCitations,
     emptyImages: built.emptyImages,
+    noAuthors: built.noAuthors,
     highlights: built.counts.highlights,
     comments: built.counts.comments,
     missingCitations: built.counts.missingCitations,

@@ -11,6 +11,16 @@ export const MATERIAL_DIR = 'material'
  * nothing of their own; `projectFile` says which file a path is.
  */
 export const MATERIAL = ':material'
+/** The folder next to `content/` that holds the sheets of the Titelei (abstract, dedication, …). */
+export const TITELEI_DIR = 'titelei'
+/**
+ * The tree path prefix of those sheets, like `MATERIAL` for the material: `:titelei/abstract.typ`
+ * stands for `titelei/abstract.typ`. The Titelei is not part of the document's tree (no order list,
+ * no group); it has a fixed set of slots, each holding at most one sheet.
+ */
+export const TITELEI = ':titelei'
+export const TITELEI_SLOTS = ['abstract', 'dedication', 'preface', 'acknowledgements'] as const
+export type TiteleiSlot = (typeof TITELEI_SLOTS)[number]
 export const MANIFEST_FILE = 'project.toml'
 export const SHEET_EXT = '.typ'
 
@@ -38,8 +48,19 @@ export function rebase(path: string, from: string, to: string): string {
 export const isMaterial = (path: string): boolean =>
   path === MATERIAL || path.startsWith(`${MATERIAL}/`)
 
+export const isTitelei = (path: string): boolean => path.startsWith(`${TITELEI}/`)
+
+/** The tree path of a slot's sheet: `:titelei/abstract.typ`. */
+export const slotPath = (slot: TiteleiSlot): string => `${TITELEI}/${slot}${SHEET_EXT}`
+
+/** The slot a tree path is the sheet of, or null. */
+export function slotOf(path: string): TiteleiSlot | null {
+  return TITELEI_SLOTS.find((slot) => path === slotPath(slot)) ?? null
+}
+
 /** The file or folder of the project (from its root) that a path of the tree is. */
 export function projectFile(path: string): string {
+  if (isTitelei(path)) return join(TITELEI_DIR, path.slice(TITELEI.length + 1))
   return isMaterial(path)
     ? join(MATERIAL_DIR, path.slice(MATERIAL.length + 1))
     : join(CONTENT_DIR, path)
@@ -48,6 +69,7 @@ export function projectFile(path: string): string {
 /** The path of the tree for a path of the project (from its root), or null for a file that is not of the tree. */
 export function treePathOf(file: string): string | null {
   if (file.startsWith(`${CONTENT_DIR}/`)) return file.slice(CONTENT_DIR.length + 1)
+  if (file.startsWith(`${TITELEI_DIR}/`)) return join(TITELEI, file.slice(TITELEI_DIR.length + 1))
   if (file.startsWith(`${MATERIAL_DIR}/`))
     return join(MATERIAL, file.slice(MATERIAL_DIR.length + 1))
   return null
