@@ -106,6 +106,33 @@ test('@ offers the works of the library while typing', async () => {
   }
 })
 
+test('the @ menu searches again with every key, and marks the works with a book', async () => {
+  const { app, page } = await open()
+  try {
+    await page.locator('.cm-content').focus()
+    await page.keyboard.press(`${MOD}+End`)
+    await page.keyboard.type(' @')
+    const menu = page.locator('.cm-tooltip-autocomplete')
+    const works = menu.getByRole('option').filter({ has: page.locator('svg.cm-completionKind') })
+    await expect(menu).toContainText('smith2020')
+    await expect(menu).toContainText('jones2019')
+    // The list is open before the next keys come, so it must narrow itself.
+    await page.keyboard.type('j')
+    await page.keyboard.type('o')
+    await page.keyboard.type('n')
+    await expect(menu.getByRole('option')).toHaveCount(1)
+    await expect(menu).toContainText('jones2019')
+    await expect(works).toHaveCount(1)
+    // And widens again when a letter is taken back.
+    await page.keyboard.press('Backspace')
+    await page.keyboard.press('Backspace')
+    await page.keyboard.press('Backspace')
+    await expect(menu).toContainText('smith2020')
+  } finally {
+    await app.close()
+  }
+})
+
 test('a citation is atomic: Backspace selects it, a second press removes it whole', async () => {
   const { app, page } = await open()
   try {

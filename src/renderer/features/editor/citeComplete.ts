@@ -9,6 +9,8 @@ import { isCitableKey } from '@core/typst/citations'
 import { referenceText } from '@core/typst/targets'
 import type { NumberedTarget } from '@core/typst/targets'
 import { citeConfig } from '../../editor/citeState'
+import { TARGET_ICONS, icon } from '../../editor/icons'
+import type { IconName } from '../../editor/icons'
 import { refConfig, refField } from '../../editor/refState'
 import { labelFor } from './refEditor'
 
@@ -47,14 +49,20 @@ function citeSource(context: CompletionContext): CompletionResult | null {
       label: entry.key,
       detail: chipText(entry, { language: config.language }),
       info: entry.title ?? undefined,
-      type: 'text',
+      type: 'work',
     }))
   const targets = targetOptions(context, query)
   const options = WANTS_TARGET.test(query)
     ? [...targets, ...works].slice(0, MAX_OPTIONS)
     : [...works.slice(0, MAX_OPTIONS - targets.length), ...targets]
   if (options.length === 0 && query === '') return null
-  return { from: match.from + 1, options, filter: false, validFor: /^[\p{L}\p{N}_:.-]*$/u }
+  // Every key typed searches again: the results are not a prefix match CodeMirror could narrow itself.
+  return {
+    from: match.from + 1,
+    options,
+    filter: false,
+    update: (_r, _f, _t, next) => citeSource(next),
+  }
 }
 
 function targetOptions(context: CompletionContext, query: string): Completion[] {
@@ -80,7 +88,7 @@ function completionFor(target: NumberedTarget, text: string): Completion {
     label: target.label ?? text,
     displayLabel: text,
     detail: target.title,
-    type: 'xref',
+    type: target.kind,
     apply: (view, _completion, from, to) => {
       const typed = view.state.sliceDoc(from, to)
       void (async () => {
@@ -100,8 +108,21 @@ function completionFor(target: NumberedTarget, text: string): Completion {
   }
 }
 
+/** The icon before each option: a work of the bibliography, or the kind of target. */
+const OPTION_ICONS: Record<string, IconName> = { work: 'book', ...TARGET_ICONS }
+
 export const citeComplete: Extension = autocompletion({
   override: [citeSource],
   icons: false,
+  addToOptions: [
+    {
+      render: (completion) => {
+        const name = completion.type ? OPTION_ICONS[completion.type] : undefined
+        return name ? icon(name, 16, 'cm-completionKind') : null
+      },
+      // Before the label (CodeMirror's own icons sit at 20, the label at 50).
+      position: 20,
+    },
+  ],
   defaultKeymap: true,
 })

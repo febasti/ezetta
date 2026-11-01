@@ -202,6 +202,9 @@ test('@ offers the targets next to the works, and Enter writes the label', async
     const menu = page.locator('.cm-tooltip-autocomplete')
     await expect(menu).toBeVisible()
     await expect(menu).toContainText('Tabelle 1')
+    // A table is marked as one.
+    const table = menu.getByRole('option').filter({ hasText: 'Tabelle 1' })
+    await expect(table.locator('svg.cm-completionKind')).toHaveCount(1)
     await pastMenuGuard(page)
     await page.keyboard.press('Enter')
     await expect(chips(page)).toHaveText(['Tabelle 1'])

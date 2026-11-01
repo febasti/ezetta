@@ -65,6 +65,10 @@ export const writingTheme = EditorView.theme({
     background: 'var(--color-selection)',
     color: 'var(--color-label)',
   },
+  '.cm-completionKind': { flex: 'none', color: 'var(--color-label-tertiary)' },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionKind': {
+    color: 'var(--color-accent)',
+  },
   '.cm-completionLabel': { font: 'var(--type-emphasis)' },
   '.cm-completionDetail': {
     marginLeft: 'auto',
