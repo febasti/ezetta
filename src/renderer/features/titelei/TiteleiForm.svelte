@@ -90,7 +90,6 @@
 <div class="scroll">
   <div class="page">
     <h1>{i18n.t('titelei.details')}</h1>
-    <p class="intro">{i18n.t('titelei.intro')}</p>
 
     <Section title={i18n.t('titelei.section.title')} region={false}>
       <Form>
@@ -219,13 +218,8 @@
     padding: var(--sp-32) var(--sp-24);
   }
   h1 {
-    margin: 0 0 var(--sp-4);
-    font: var(--type-large-title);
-  }
-  .intro {
     margin: 0 0 var(--sp-24);
-    color: var(--color-label-secondary);
-    font: var(--type-body);
+    font: var(--type-large-title);
   }
   .authors {
     display: flex;
