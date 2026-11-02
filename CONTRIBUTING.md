@@ -47,6 +47,7 @@ Try things with a copy of real material, never the only copy. The tests use the 
 - **Styling uses the design tokens only**: no colour values, sizes or fonts of their own, spacing on the scale, and buttons as flat fills. Screens are built from the blocks in `src/renderer/ui/kit/`. See [docs/DESIGN.md](docs/DESIGN.md).
 - **Content files hold no styling.** How the PDF looks is up to the templates and export profiles (SPEC 7).
 - **Spelling and grammar** are checked by LanguageTool running locally as a child process, never by a web service (SPEC 4.7).
+- **The example project is kept up to date.** `examples/<language>/` is a small project that explains the app and shows its features, opened from the start screen as a copy (the original is never opened). A change to what the writer sees, such as a new element, tool or setting, goes into it in German and English, and onto the list in `src/main/services/examples.test.ts`, which checks that every feature on it is shown, that both languages say the same, and that the example exports.
 
 The stack, the architecture and the design system are settled; a change to one of them needs a discussion in an issue first.
 
@@ -54,6 +55,7 @@ The stack, the architecture and the design system are settled; a change to one o
 
 - **Unit tests** (Vitest) sit next to the code as `*.test.ts`. Logic in `core` comes with them.
 - **End-to-end tests** (`tests/e2e`) share their helpers in `tests/e2e/helpers.ts` (`launchAt`, `openSheet`, `quietFor`, …). Wait for what happens, never for a fixed time. The tests of a file run on several workers, and the windows are not shown (on macOS; on Windows and Linux they are shown, since they would not draw otherwise). A test whose pointer rests on an element (a chip's tooltip) or drags it is marked `POINTER`: it runs one at a time, and CI runs these after the others on Windows and Linux, where another test's window could end the rest.
+- **The example project** (`src/main/services/examples.test.ts`) opens and exports both languages, compares their shape, and checks that each listed feature is shown. `exampleProject.test.ts` covers the copy that is made for the writer.
 - **Golden tests** (`src/main/services/golden.test.ts`, `tests/golden`) pin the look of each bundled template's PDF; they need `EZETTA_TYPST`.
 - **Performance** is measured on a generated 95,000-word project (`tests/perf`); the numbers and budgets are in [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 

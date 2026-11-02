@@ -27,6 +27,8 @@ extraResources:
     to: thesaurus
   - from: templates
     to: templates
+  - from: examples
+    to: examples
   - from: THIRD-PARTY-NOTICES.txt
     to: THIRD-PARTY-NOTICES.txt
   - from: LICENSE

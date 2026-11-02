@@ -12,6 +12,8 @@ Ezetta is in active development, and its first release (0.9) is a pre-release: e
 - **Cross-references** to headings, figures, tables and formulas, which say what the PDF will print ("Abbildung 3", "Abschnitt 2.1").
 - **Footnotes, images, tables and formulas**, edited where they stand. Formulas are drawn by Typst itself.
 - **Spelling, grammar and synonyms** with [LanguageTool](https://languagetool.org), running on the machine and never sending text anywhere.
+- **A title page and front matter** (title, authors, date, version, abstract, dedication, preface) edited while writing, and printed by the template.
+- **An example project** on the start screen: a tour of Ezetta, written in Ezetta, in German and English. It opens as a copy, so the original stays as it is however much is tried out.
 - **Versions** are kept automatically, and backups go to a folder of the writer's choice.
 - **PDF export** with six bundled templates and a template editor with a live preview, custom fonts included.
 

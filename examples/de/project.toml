@@ -1,0 +1,68 @@
+[project]
+version = 1
+title = "Beispielprojekt"
+language = "de"
+bibliography = "library.bib"
+citation_style = "apa-7"
+
+[goals]
+words = 3000
+
+[titelei]
+subtitle = "Ein Rundgang durch Ezetta"
+version = "1.0"
+
+[[titelei.authors]]
+name = "Erika Mustermann"
+affiliation = "Universität Beispielstadt"
+
+[[titelei.authors]]
+name = "Max Mustermann"
+affiliation = "Universität Beispielstadt"
+
+[proofing]
+level = "default"
+disabled_rules = []
+dictionary = "dictionary.txt"
+
+[order]
+"" = ["start", "schreiben", "ausgabe"]
+start = ["willkommen.typ", "aufbau.typ"]
+schreiben = ["grundlagen.typ", "belege.typ", "fussnoten.typ", "zitate.typ", "bilder.typ", "pruefen.typ", "ideen.typ"]
+ausgabe = ["export.typ", "sicherung.typ"]
+":material" = ["Notizen"]
+":material/Notizen" = ["ideen.typ"]
+
+[items."start/willkommen.typ"]
+status = "final"
+
+[items."start/aufbau.typ"]
+status = "final"
+
+[items."schreiben/grundlagen.typ"]
+status = "final"
+goal = 300
+
+[items."schreiben/belege.typ"]
+status = "final"
+
+[items."schreiben/fussnoten.typ"]
+status = "revised"
+
+[items."schreiben/zitate.typ"]
+status = "final"
+
+[items."schreiben/bilder.typ"]
+status = "revised"
+
+[items."schreiben/ideen.typ"]
+export = false
+
+[items."ausgabe/export.typ"]
+status = "final"
+
+[items.":titelei/abstract.typ"]
+status = "final"
+
+[items.":titelei/dedication.typ"]
+status = "final"

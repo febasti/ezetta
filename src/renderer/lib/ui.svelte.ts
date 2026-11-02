@@ -7,6 +7,8 @@ export interface ConfirmRequest {
   title: string
   message: string
   confirmLabel: string
+  /** The cancel button's text, where "Cancel" would not say what it does (here it keeps something). */
+  cancelLabel?: string
   resolve: (confirmed: boolean) => void
 }
 

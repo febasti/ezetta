@@ -155,6 +155,10 @@ void app.whenReady().then(async () => {
     pickRestoreFolder: (title) => openPath(folder(title), 'EZETTA_TEST_RESTORE_TO'),
     pickBibliographyFile: (title, filterName) =>
       openPath(file(title, filterName, ['bib', 'bibtex']), 'EZETTA_TEST_BIB'),
+    examples: {
+      examplesDir: resourceDir('examples'),
+      copiesDir: join(app.getPath('userData'), 'examples'),
+    },
     emitChanged: (payload) => sendEvent(contents(), events.project.changed, payload),
     emitBackup: (status) => sendEvent(contents(), events.backup.changed, status),
     log,

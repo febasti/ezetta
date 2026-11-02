@@ -1,0 +1,1 @@
+Das Material liegt neben dem Dokument: Ordner, die nicht in den Text sollen. Hier könnten Rechercheergebnisse, Exzerpte oder Entwürfe stehen. Sie lassen sich wie alle Abschnitte öffnen, bearbeiten und zählen, nur nicht im Export.

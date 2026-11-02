@@ -1,0 +1,68 @@
+[project]
+version = 1
+title = "Example project"
+language = "en"
+bibliography = "library.bib"
+citation_style = "apa-7"
+
+[goals]
+words = 3000
+
+[titelei]
+subtitle = "A tour of Ezetta"
+version = "1.0"
+
+[[titelei.authors]]
+name = "Jane Doe"
+affiliation = "University of Exampleton"
+
+[[titelei.authors]]
+name = "John Doe"
+affiliation = "University of Exampleton"
+
+[proofing]
+level = "default"
+disabled_rules = []
+dictionary = "dictionary.txt"
+
+[order]
+"" = ["start", "write", "output"]
+start = ["welcome.typ", "layout.typ"]
+write = ["basics.typ", "citations.typ", "footnotes.typ", "quotes.typ", "figures.typ", "checking.typ", "ideas.typ"]
+output = ["export.typ", "backup.typ"]
+":material" = ["Notes"]
+":material/Notes" = ["ideas.typ"]
+
+[items."start/welcome.typ"]
+status = "final"
+
+[items."start/layout.typ"]
+status = "final"
+
+[items."write/basics.typ"]
+status = "final"
+goal = 300
+
+[items."write/citations.typ"]
+status = "final"
+
+[items."write/footnotes.typ"]
+status = "revised"
+
+[items."write/quotes.typ"]
+status = "final"
+
+[items."write/figures.typ"]
+status = "revised"
+
+[items."write/ideas.typ"]
+export = false
+
+[items."output/export.typ"]
+status = "final"
+
+[items.":titelei/abstract.typ"]
+status = "final"
+
+[items.":titelei/dedication.typ"]
+status = "final"

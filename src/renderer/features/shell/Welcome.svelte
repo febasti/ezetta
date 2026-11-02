@@ -17,6 +17,7 @@
   const actions = [
     { id: 'new', primary: true, run: () => void project.createProject() },
     { id: 'open', primary: false, run: () => void project.openProject() },
+    { id: 'example', primary: false, run: () => void project.openExample() },
     { id: 'restore', primary: false, run: () => void backup.restoreFromFile() },
   ] as const
 </script>

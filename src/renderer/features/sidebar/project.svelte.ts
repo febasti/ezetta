@@ -212,6 +212,31 @@ class ProjectStore {
     await this.adopt(result?.snapshot)
   }
 
+  /**
+   * Opens a copy of the example project that comes with the app, in the language of the interface.
+   * A copy the writer has changed is kept unless they say to start over: the original is never touched.
+   */
+  async openExample(): Promise<void> {
+    await editor.flush()
+    const language = i18n.locale === 'de' ? 'de' : 'en'
+    let result = await call(window.api.project.openExample({ language }))
+    if (result?.status === 'modified') {
+      const startOver = await confirmDialog({
+        title: i18n.t('example.modified.title'),
+        message: i18n.t('example.modified.message'),
+        confirmLabel: i18n.t('example.startOver'),
+        cancelLabel: i18n.t('example.keep'),
+      })
+      result = await call(
+        window.api.project.openExample({ language, choice: startOver ? 'fresh' : 'continue' }),
+      )
+    }
+    if (result?.status === 'opened') {
+      await this.adopt(result.snapshot)
+      await this.refreshRecent()
+    }
+  }
+
   async openRecent(path: string): Promise<void> {
     await editor.flush()
     const result = await call(window.api.project.openRecent({ path }))

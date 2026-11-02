@@ -49,7 +49,9 @@
     onescape={() => answerConfirm(false)}
   >
     {#snippet actions()}
-      <Button onclick={() => answerConfirm(false)}>{i18n.t('confirm.cancel')}</Button>
+      <Button onclick={() => answerConfirm(false)}
+        >{ui.confirm!.cancelLabel ?? i18n.t('confirm.cancel')}</Button
+      >
       <Button variant="primary" onclick={() => answerConfirm(true)}>
         {ui.confirm!.confirmLabel}
       </Button>

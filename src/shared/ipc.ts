@@ -282,6 +282,21 @@ export const ipc = {
       z.object({ path: z.string().max(4000) }).strict(),
       withSnapshot,
     ),
+    /** Opens a copy of the example project that comes with the app. */
+    openExample: defineInvoke(
+      'project:open-example',
+      z
+        .object({
+          language: z.enum(['de', 'en']),
+          /** The answer to "you changed the example": go on with the copy, or make a new one. */
+          choice: z.enum(['continue', 'fresh']).optional(),
+        })
+        .strict(),
+      z.union([
+        z.object({ status: z.literal('opened'), snapshot: snapshotSchema }).strict(),
+        z.object({ status: z.literal('modified') }).strict(),
+      ]),
+    ),
     close: defineInvoke('project:close', empty, empty),
     recent: defineInvoke(
       'project:recent',

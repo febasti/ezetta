@@ -14,6 +14,8 @@ import { ZipError, commonTopFolder, extractZip, listZip } from './unzip'
 import type { BackupOutcome } from './backup'
 import { ProjectHistory } from './history'
 import type { VersionEntry, VersionFile } from './history'
+import { prepareExample } from './exampleProject'
+import type { ExampleLanguage } from './exampleProject'
 import { watchProject } from './watcher'
 import type { ProjectWatcher } from './watcher'
 import { AUTO_INTERVAL_MS, isBinary } from '@core/history/versions'
@@ -46,6 +48,8 @@ export interface ProjectHostDeps {
   /** Milliseconds between automatic versions, and before the first one (tests change them). */
   versionIntervalMs?: number
   firstVersionDelayMs?: number
+  /** Where the example projects are (one folder per language) and where their copies are made. Without them there is no example. */
+  examples?: { examplesDir: string; copiesDir: string }
   /** Tells the renderer that a backup started, finished or failed. */
   emitBackup?: (status: BackupStatusDto) => void
   /** Milliseconds between the checks whether a backup is due, and before the first (tests change them). */
@@ -177,6 +181,31 @@ export class ProjectHost {
     const session = await ProjectSession.open(createRootedFs(path, this.deps.trashItem))
     if (!session.ok) throw fromError(session.error)
     return this.attach(path, session.value)
+  }
+
+  /**
+   * Opens a copy of the example project in `language`. A copy the writer has changed is not opened
+   * until they have said whether to go on with it (`continue`) or start over (`fresh`).
+   */
+  async openExample(
+    language: ExampleLanguage,
+    choice?: 'continue' | 'fresh',
+  ): Promise<{ status: 'opened'; snapshot: ProjectSnapshot } | { status: 'modified' }> {
+    const { examples } = this.deps
+    if (!examples) throw new IpcFailure('not_found', 'There is no example project')
+    let outcome
+    try {
+      outcome = await prepareExample(
+        { ...examples, trashItem: this.deps.trashItem },
+        language,
+        choice,
+      )
+    } catch (cause) {
+      this.deps.log('example project failed', cause)
+      throw new IpcFailure('io', 'The example project could not be prepared')
+    }
+    if (outcome.status === 'modified') return { status: 'modified' }
+    return { status: 'opened', snapshot: await this.openPath(outcome.path) }
   }
 
   async close(): Promise<void> {

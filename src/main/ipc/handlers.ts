@@ -117,6 +117,7 @@ export function createHandlers({
         await host.close()
         return {}
       },
+      openExample: ({ language, choice }) => host.openExample(language, choice),
       recent: () => ({ projects: [...settings.recentProjects()] }),
       createSheet: async ({ parent, name }) => {
         const { path } = unwrap(await host.session().createSheet(parent, name))
