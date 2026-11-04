@@ -120,7 +120,10 @@ export function createMainWindow(
     },
   })
 
-  if (place.maximized) window.maximize()
+  // It is made in its mode already: the page's first report of the mode must not set the size and
+  // place again once the window is on screen (it would jump and resize in front of the writer).
+  launchers.set(window, launcher)
+  if (place.maximized && !launcher) window.maximize()
 
   // Its place is kept for the next start (the size it has when not maximized or in full screen):
   // a moment after it moved or changed size, so a quit does not have to wait for it, and on close.
