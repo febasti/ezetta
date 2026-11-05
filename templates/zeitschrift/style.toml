@@ -47,7 +47,7 @@ slot_center = "none"
 [element.heading]
 number_depth = "3"
 number_gap = "0.5em"
-number_suffix = "point"
+number_suffix = "."
 
 [element.heading_1]
 size = "1.15em"

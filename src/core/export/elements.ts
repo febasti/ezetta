@@ -133,11 +133,6 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     dash: { de: 'Bindestrich (1-2)', en: 'Hyphen (1-2)' },
     space: { de: 'Leerzeichen (1 2)', en: 'Space (1 2)' },
   },
-  number_suffix: {
-    none: { de: 'Keiner', en: 'None' },
-    point: { de: 'Punkt (1.)', en: 'Point (1.)' },
-    paren: { de: 'Klammer (1)', en: 'Bracket (1)' },
-  },
   number_style: {
     inline: { de: 'Fortlaufend', en: 'Inline' },
     hanging: { de: 'Hängend', en: 'Hanging' },
@@ -238,11 +233,7 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
       'space',
     ]),
     prop('number_prefix', 'text', 'Text vor der Nummer', 'Text before the number'),
-    prop('number_suffix', 'enum', 'Zeichen nach der Nummer', 'Mark after the number', [
-      'none',
-      'point',
-      'paren',
-    ]),
+    prop('number_suffix', 'text', 'Text nach der Nummer', 'Text after the number'),
     prop('number_gap', 'length', 'Abstand zum Titel', 'Gap to the title'),
     prop('number_style', 'enum', 'Umbruch langer Titel', 'Long titles', ['inline', 'hanging']),
     prop('border_style', 'enum', 'Linien', 'Rules', ['rows', 'booktabs', 'grid', 'none']),
@@ -772,7 +763,6 @@ export const ELEMENTS: readonly ElementDef[] = [
       number_depth: '6',
       number_format: 'arabic',
       number_separator: 'point',
-      number_suffix: 'none',
       number_gap: '0.6em',
       number_style: 'inline',
       line_above: false,

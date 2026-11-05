@@ -316,7 +316,7 @@ const VARIANTS: {
     sets: {
       heading: {
         number_separator: 'dash',
-        number_suffix: 'point',
+        number_suffix: '.',
         number_gap: '1em',
         number_style: 'hanging',
       },

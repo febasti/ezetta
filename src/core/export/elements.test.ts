@@ -172,6 +172,17 @@ describe('the break before a heading', () => {
     expect(style['heading_2']!['break_before']).toBe('page')
     expect(style['heading_3']!['break_before']).toBe('odd')
   })
+
+  it('reads the old mark after a number as a text', () => {
+    const { style, problems } = parseStyle(
+      '[element.heading]\nnumber_suffix = "point"\n[element.heading_1]\nnumber_suffix = "paren"\n[element.heading_2]\nnumber_suffix = "none"\n[element.heading_3]\nnumber_suffix = " Teil"',
+    )
+    expect(problems).toEqual([])
+    expect(style['heading']!['number_suffix']).toBe('.')
+    expect(style['heading_1']!['number_suffix']).toBe(')')
+    expect(style['heading_2']!['number_suffix']).toBe('.')
+    expect(style['heading_3']!['number_suffix']).toBe(' Teil')
+  })
 })
 
 describe('styleToTypst', () => {

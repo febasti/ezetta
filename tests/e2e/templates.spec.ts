@@ -546,7 +546,7 @@ test('tables have rules, a header and stripes; a block quote can have a bar and 
   }
 })
 
-test('the numbers of headings have a prefix, a mark and a separator, and the contents a depth', async () => {
+test('the numbers of headings have a text before and after them and a separator, and the contents a depth', async () => {
   const { app, page } = await open()
   try {
     await openEditor(page)
@@ -555,11 +555,13 @@ test('the numbers of headings have a prefix, a mark and a separator, and the con
 
     await choose(page, 'Alle Überschriften')
     await editor(page).getByLabel('Trenner der Ebenen').selectOption({ label: 'Bindestrich (1-2)' })
-    await editor(page).getByLabel('Zeichen nach der Nummer').selectOption({ label: 'Punkt (1.)' })
+    const suffix = editor(page).getByLabel('Text nach der Nummer')
+    await suffix.fill('.')
+    await suffix.press('Tab')
     await editor(page).getByLabel('Umbruch langer Titel').selectOption({ label: 'Hängend' })
     await expect.poll(toml).toContain('number_style = "hanging"')
     expect(await toml()).toContain('number_separator = "dash"')
-    expect(await toml()).toContain('number_suffix = "point"')
+    expect(await toml()).toContain('number_suffix = "."')
 
     // The text before a number keeps its space.
     await choose(page, 'Überschrift 1 (Kapitel)')

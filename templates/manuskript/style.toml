@@ -45,7 +45,7 @@ weight = "bold"
 text_case = "upper"
 number_depth = "2"
 number_gap = "0.8em"
-number_suffix = "point"
+number_suffix = "."
 
 [element.heading_1]
 size = "1.1em"

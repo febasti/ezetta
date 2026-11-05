@@ -88,6 +88,14 @@ export function elementTables(doc: unknown): Record<string, unknown> {
         ? rest
         : { ...rest, break_before: old ? 'page' : 'none' }
   }
+  // `number_suffix` was a choice of mark and became a text after the number.
+  for (const id of ['heading', 'heading_1', 'heading_2', 'heading_3', 'heading_4']) {
+    const table = out[id]
+    if (!isTable(table) || !('number_suffix' in table)) continue
+    if (!['none', 'point', 'paren'].includes(table['number_suffix'] as string)) continue
+    const { number_suffix: mark, ...rest } = table
+    out[id] = mark === 'none' ? rest : { ...rest, number_suffix: mark === 'point' ? '.' : ')' }
+  }
   return out
 }
 

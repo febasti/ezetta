@@ -118,9 +118,9 @@
         v(c.line_above_distance)
       }
       let title = if c.text_case == "upper" { upper(it.body) } else if c.text_case == "smallcaps" { smallcaps(it.body) } else { it.body }
-      // The number: a word before it, a mark after it, and a gap to the title.
+      // The number: a text before it, a text after it, and a gap to the title.
       let prefix = if c.number_prefix == none { "" } else { c.number_prefix }
-      let suffix = if c.number_suffix == "point" { "." } else if c.number_suffix == "paren" { ")" } else { "" }
+      let suffix = if c.number_suffix == none { "" } else { c.number_suffix }
       let numbered = it.numbering != none and it.level <= depth
       if numbered and c.number_style == "hanging" {
         // Lines after the first start under the title, not under the number.
