@@ -68,6 +68,14 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     const hyphenation = dialog(page).getByRole('checkbox', { name: 'Silbentrennung' })
     await expect(hyphenation).toBeChecked()
     await hyphenation.uncheck()
+    // The binding offset: a length up to 3 cm, refused otherwise.
+    const binding = dialog(page).getByLabel('Bindekorrektur')
+    await binding.fill('5cm')
+    await binding.press('Tab')
+    await expect(dialog(page).getByRole('alert')).toContainText('0 bis 3 cm')
+    await binding.fill('1cm')
+    await binding.press('Tab')
+    await expect(dialog(page).getByRole('alert')).toHaveCount(0)
     // What is still open in the sheets is said before the export.
     await expect(dialog(page)).toContainText('Offene Kommentare: 1')
     await dialog(page).getByRole('button', { name: 'Exportieren …' }).click()
@@ -80,6 +88,7 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     expect(manifest).toContain('line_spacing = "wide"')
     expect(manifest).toContain('citation_style = "chicago-author-date"')
     expect(manifest).toContain('hyphenate = false')
+    expect(manifest).toContain('binding = "1cm"')
     // The sheets themselves are untouched.
     expect(await readFile(join(sandbox.projectDir, SHEET), 'utf8')).toContain('::Markierung::')
 
@@ -89,6 +98,7 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     await expect(dialog(page).getByLabel('Zeilenabstand')).toHaveValue('wide')
     await expect(dialog(page).getByLabel('Zitierstil')).toHaveValue('chicago-author-date')
     await expect(dialog(page).getByRole('checkbox', { name: 'Silbentrennung' })).not.toBeChecked()
+    await expect(dialog(page).getByLabel('Bindekorrektur')).toHaveValue('1cm')
   } finally {
     await app.close()
   }

@@ -31,6 +31,8 @@
   // left-hand page at the right; chapters may start on a right-hand page; a header may be mirrored.
   // Single pages: every page is the same, the inside margin is the left one.
   let facing = style.page.facing == "facing"
+  // The binding offset of the document: added to the inside margin, for what the binding takes.
+  let inside = style.page.margin_inside + meta.at("binding", default: 0pt)
   let wide = meta.at("line_spacing", default: "normal") == "wide"
   let title-page = meta.at("title_page", default: true)
   let contents = meta.at("contents", default: true)
@@ -56,14 +58,14 @@
       (
         top: style.page.margin_top,
         bottom: style.page.margin_bottom,
-        inside: style.page.margin_inside,
+        inside: inside,
         outside: style.page.margin_outside,
       )
     } else {
       (
         top: style.page.margin_top,
         bottom: style.page.margin_bottom,
-        left: style.page.margin_inside,
+        left: inside,
         right: style.page.margin_outside,
       )
     },
@@ -75,7 +77,7 @@
   let notes-in-margin = fn.placement == "margin" and int(style.page.columns) == 1
   let notes-layout(content) = if notes-in-margin {
     marginalia.setup(
-      inner: (far: style.page.margin_inside, width: 0pt, sep: 0pt),
+      inner: (far: inside, width: 0pt, sep: 0pt),
       outer: (far: style.page.margin_outside, width: fn.margin_width, sep: fn.margin_gap),
       top: style.page.margin_top,
       bottom: style.page.margin_bottom,

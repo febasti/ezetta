@@ -337,6 +337,8 @@
   "export.panel": "Dokument einrichten",
   "export.colours": "Farben",
   "export.hyphenate": "Silbentrennung",
+  "export.binding": "Bindekorrektur",
+  "export.binding.invalid": "Eine Länge von 0 bis 3 cm, zum Beispiel 8mm oder 1cm.",
   "export.content": "Inhalt",
   "export.run": "Exportieren …",
   "export.running": "Exportiere …",

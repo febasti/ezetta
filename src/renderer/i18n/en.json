@@ -337,6 +337,8 @@
   "export.panel": "Document Setup",
   "export.colours": "Colours",
   "export.hyphenate": "Hyphenation",
+  "export.binding": "Binding offset",
+  "export.binding.invalid": "A length from 0 to 3 cm, for example 8mm or 1cm.",
   "export.content": "Content",
   "export.run": "Export …",
   "export.running": "Exporting …",

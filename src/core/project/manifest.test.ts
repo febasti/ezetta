@@ -347,7 +347,7 @@ template = "monographie"
     expect(saved.manifest.titelei.authors).toEqual([])
   })
 
-  it('keeps the hyphenation of an export profile, and writes none it does not choose', () => {
+  it('keeps the hyphenation and the binding offset of an export profile, and writes none it does not choose', () => {
     const base = defaultManifest('x')
     const profile = base.exports[0] ?? {
       name: 'Abgabe',
@@ -362,6 +362,13 @@ template = "monographie"
     expect(parseOk(off).manifest.exports[0]?.hyphenate).toBe(false)
     const none = serializeManifest({ ...base, exports: [profile] })
     expect(none).not.toContain('hyphenate')
+    expect(none).not.toContain('binding')
+    const bound = serializeManifest({ ...base, exports: [{ ...profile, binding: '1cm' }] })
+    expect(parseOk(bound).manifest.exports[0]?.binding).toBe('1cm')
+    // A value in the file that is not a binding offset is left out.
+    expect(
+      parseOk(bound.replace('binding = "1cm"', 'binding = "9cm"')).manifest.exports[0]?.binding,
+    ).toBeUndefined()
     expect(parseOk(none).manifest.exports[0]?.hyphenate).toBeUndefined()
   })
 })

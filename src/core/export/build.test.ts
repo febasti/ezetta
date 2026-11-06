@@ -161,6 +161,20 @@ describe('buildExport', () => {
     expect(style(off)).toContain('hyphenate: false')
   })
 
+  it('gives the engine the binding offset of the profile as a length, and none that is not one', () => {
+    const main = (binding?: string) =>
+      file(
+        buildExport({
+          ...input(),
+          profile: { ...input().profile, ...(binding ? { binding } : {}) },
+        }),
+        '_build/main.typ',
+      )
+    expect(main('1cm')).toContain('binding: 1cm')
+    expect(main()).not.toContain('binding:')
+    expect(main('1cm); #panic("x"')).not.toContain('binding:')
+  })
+
   it('writes the title of the bibliography the template sets', () => {
     const plain = buildExport({ ...input(), bibliography: '/library.bib' })
     expect(file(plain, '_build/main.typ')).toContain('title: "Literaturverzeichnis"')

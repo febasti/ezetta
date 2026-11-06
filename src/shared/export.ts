@@ -11,6 +11,7 @@ export const profileSchema = z
     marks: z.enum(['hide', 'show']),
     comments: z.enum(['remove', 'footnote']),
     hyphenate: z.boolean().optional(),
+    binding: z.string().max(20).optional(),
     options: z.record(z.string().max(60), z.union([z.string().max(500), z.boolean()])),
   })
   .strict()

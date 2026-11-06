@@ -1,6 +1,7 @@
 import { parse, stringify } from 'smol-toml'
 import { isTable } from '../toml'
 import type { TomlTable } from '../toml'
+import { checkBinding } from '../export/profile'
 import type { ExportProfile } from '../export/profile'
 import { currentTemplateId } from '../export/legacy'
 import type { FootnoteRestart } from '../typst/footnotes'
@@ -439,10 +440,17 @@ function readProfiles(value: unknown, citationStyle: string): ExportProfile[] {
       marks: raw['marks'] === 'show' ? 'show' : 'hide',
       comments: raw['comments'] === 'footnote' ? 'footnote' : 'remove',
       ...(typeof raw['hyphenate'] === 'boolean' ? { hyphenate: raw['hyphenate'] } : {}),
+      ...bindingOf(raw['binding']),
       options,
     })
   }
   return out
+}
+
+/** A binding offset from the file, kept only when it is one. */
+function bindingOf(value: unknown): { binding?: string } {
+  const binding = typeof value === 'string' ? checkBinding(value) : null
+  return binding === null ? {} : { binding }
 }
 
 function profileTable(profile: ExportProfile): TomlTable {
@@ -453,6 +461,7 @@ function profileTable(profile: ExportProfile): TomlTable {
     marks: profile.marks,
     comments: profile.comments,
     ...(profile.hyphenate !== undefined ? { hyphenate: profile.hyphenate } : {}),
+    ...(profile.binding !== undefined ? { binding: profile.binding } : {}),
     ...(Object.keys(profile.options).length > 0 ? { options: profile.options } : {}),
   }
 }

@@ -10,6 +10,7 @@ import {
   isShown,
 } from './elements'
 import { checkValue, parseStyle, resolveStyle, styleToTypst } from './style'
+import { checkBinding } from './profile'
 
 describe('the element registry', () => {
   it('has unique ids, known parents and properties of known types', () => {
@@ -360,5 +361,17 @@ describe('the size of the page', () => {
       /page: \(.*paper: "custom".*page_width: 12cm, page_height: 19cm/s,
     )
     expect(styleToTypst(style)).toMatch(/orientation: "landscape"/)
+  })
+})
+
+describe('the binding offset', () => {
+  it('is an absolute length from 0 to 3 cm, with a comma as decimal point', () => {
+    expect(checkBinding('1cm')).toBe('1cm')
+    expect(checkBinding(' 8 mm ')).toBe('8mm')
+    expect(checkBinding('0,5cm')).toBe('0.5cm')
+    expect(checkBinding('0mm')).toBe('0mm')
+    expect(checkBinding('1in')).toBe('1in')
+    for (const bad of ['4cm', '1em', '5%', '-1cm', 'abc', '', '1cm)'])
+      expect(checkBinding(bad), bad).toBeNull()
   })
 })

@@ -7,6 +7,7 @@ import { quoteStyleSetRule } from '../typst/quoteStyle'
 import type { QuoteStyle } from '../typst/quoteStyle'
 import { numberTargets, referenceText, scanTargets, supplementsFor } from '../typst/targets'
 import type { NumberedTarget } from '../typst/targets'
+import { checkBinding } from './profile'
 import type { ExportProfile } from './profile'
 import { preprocessSheet } from './preprocess'
 import { parseStyle, styleToTypst } from './style'
@@ -128,10 +129,21 @@ function metaLiteral(
   language: string,
   options: OptionValues,
   titelei: TiteleiInput,
+  binding: string | null,
 ): string {
   const authors = titelei.authors.filter((author) => author.name !== '')
   const subtitle = titelei.subtitle
-  const own = ['title', 'lang', 'author', 'authors', 'subtitle', 'date_text', 'version', 'parts']
+  const own = [
+    'title',
+    'lang',
+    'author',
+    'authors',
+    'subtitle',
+    'date_text',
+    'version',
+    'parts',
+    'binding',
+  ]
   const parts = TITELEI_SLOTS.filter((slot) => titelei.parts.some((part) => part.slot === slot))
   const entries = [
     `title: ${typstString(oneLine(title))}`,
@@ -149,6 +161,8 @@ function metaLiteral(
       )
       .join(', ')}${authors.length === 1 ? ',' : ''})`,
     `subtitle: ${typstString(oneLine(subtitle))}`,
+    // A length literal, checked to be one (`checkBinding`).
+    ...(binding !== null ? [`binding: ${binding}`] : []),
     `version: ${typstString(oneLine(titelei.version))}`,
     ...(titelei.date !== '' ? [`date_text: ${typstString(dayText(titelei.date))}`] : []),
     `parts: (${parts.map((slot) => `${slot}: include ${typstString(`content/${partFile(slot)}`)}`).join(', ')}${parts.length === 0 ? ':' : ''})`,
@@ -265,7 +279,7 @@ export function buildExport(input: BuildInput): BuildOutput {
     `// Project: ${input.title.replace(/[\r\n]+/g, ' ')}`,
     '#import "prelude.typ": *',
     '#import "template/lib.typ": project',
-    `#show: project.with(${metaLiteral(input.title, input.language, options, titelei)})`,
+    `#show: project.with(${metaLiteral(input.title, input.language, options, titelei, profile.binding !== undefined ? checkBinding(profile.binding) : null)})`,
     ...[quoteStyleSetRule(input.quoteStyle ?? 'auto')].filter((rule) => rule !== null),
     ...(input.blockQuoteMarks ? ['#set quote(quotes: true)'] : []),
     '',

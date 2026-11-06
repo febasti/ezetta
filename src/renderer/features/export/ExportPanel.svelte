@@ -11,6 +11,7 @@
   import { project } from '../sidebar/project.svelte'
   import PropertiesPanel from '../templates/PropertiesPanel.svelte'
   import { exporting } from './export.svelte'
+  import { checkBinding } from '@core/export/profile'
 
   const info = $derived(exporting.info)
   const profile = $derived(exporting.profile)
@@ -24,6 +25,19 @@
   const hyphenate = $derived(
     profile?.hyphenate ?? exporting.resolved['body']?.['hyphenate'] === true,
   )
+  /** A binding offset that is not one: kept in the field, marked, and not stored. */
+  let bindingRefused = $state(false)
+  function setBinding(text: string): void {
+    if (!profile) return
+    if (text.trim() === '') {
+      bindingRefused = false
+      delete profile.binding
+      return
+    }
+    const binding = checkBinding(text)
+    bindingRefused = binding === null
+    if (binding !== null) profile.binding = binding
+  }
 </script>
 
 {#if info && profile}
@@ -44,6 +58,19 @@
           >
             {i18n.t('export.hyphenate')}
           </Checkbox>
+          <FormRow label={i18n.t('export.binding')} for="export-binding">
+            <TextField
+              id="export-binding"
+              value={profile.binding ?? ''}
+              placeholder="0 cm"
+              invalid={bindingRefused}
+              disabled={exporting.busy}
+              onchange={(e) => setBinding((e.currentTarget as HTMLInputElement).value)}
+            />
+          </FormRow>
+          {#if bindingRefused}
+            <p class="refused" role="alert">{i18n.t('export.binding.invalid')}</p>
+          {/if}
           {#each template.options.filter((o) => !o.hidden) as option (option.id)}
             {#if option.type === 'bool'}
               <Checkbox
@@ -228,6 +255,11 @@
     list-style: none;
     color: var(--color-label);
     font: var(--type-body);
+  }
+  .refused {
+    margin: 0;
+    color: var(--color-danger);
+    font: var(--type-caption);
   }
   .quiet,
   .where {

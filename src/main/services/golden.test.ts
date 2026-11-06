@@ -107,6 +107,7 @@ const VARIANTS: {
   comments?: ExportProfile['comments']
   marks?: ExportProfile['marks']
   hyphenate?: ExportProfile['hyphenate']
+  binding?: ExportProfile['binding']
   /** Values set on top of the template's style, as a writer's own template would. */
   sets?: Sets
   /** Sheets added to the fixture for this variant, by path under `content/`. */
@@ -164,6 +165,7 @@ const VARIANTS: {
       citations: { color: '#b00020', fill: '#e8f0fe', underline: true },
     },
   },
+  { name: 'monographie-bindung', template: 'monographie', options: {}, binding: '1.5cm' },
   {
     name: 'monographie-pruef',
     template: 'monographie',
@@ -598,6 +600,7 @@ async function exportPages(variant: (typeof VARIANTS)[number]): Promise<string[]
     comments: variant.comments ?? 'remove',
     marks: variant.marks ?? 'hide',
     ...(variant.hyphenate !== undefined ? { hyphenate: variant.hyphenate } : {}),
+    ...(variant.binding !== undefined ? { binding: variant.binding } : {}),
     options: resolveOptions(template.info, variant.options),
   }
   const built = await opened.value.prepareExport(profile, template, prelude, { write: true })
