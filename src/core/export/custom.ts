@@ -86,6 +86,37 @@ export function setValue(
   return { ok: true, sets: next }
 }
 
+/** The elements an element stands for as a whole: "Alle Überschriften" is every level of heading. */
+export const ALL_OF: Readonly<Record<string, readonly string[]>> = {
+  heading: ['heading_1', 'heading_2', 'heading_3', 'heading_4'],
+}
+
+/**
+ * A value set on an element that stands for others as a whole ("Alle Überschriften"): it is set
+ * there, and on every one of them that sets the property itself (in the base or in the writer's
+ * changes), so the choice reaches them all; one that inherits it follows anyway. `base` is what
+ * the template's base sets, `sets` the writer's changes. Taking a value back (`null`) takes back
+ * only the element's own.
+ */
+export function setValueForAll(
+  base: Sets,
+  sets: Sets,
+  elementId: string,
+  propId: string,
+  value: string | boolean | null,
+): { ok: true; sets: Sets } | { ok: false; message: string } {
+  const first = setValue(sets, elementId, propId, value)
+  if (!first.ok || value === null) return first
+  let next = first.sets
+  for (const member of ALL_OF[elementId] ?? []) {
+    const own = sets[member]?.[propId] ?? base[member]?.[propId]
+    if (own === undefined) continue
+    const result = setValue(next, member, propId, value)
+    if (result.ok) next = result.sets
+  }
+  return { ok: true, sets: next }
+}
+
 /** What the writer changed about an option of the base: its default, and whether the dialog offers it. */
 export interface OptionOverride {
   default?: string | boolean

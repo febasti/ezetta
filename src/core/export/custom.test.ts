@@ -12,6 +12,7 @@ import {
   setOptionOverride,
   setValue,
   setsToToml,
+  setValueForAll,
 } from './custom'
 import { resolveOptions } from './template'
 import type { TemplateOption } from './template'
@@ -57,6 +58,40 @@ describe('sets', () => {
     const { style, problems } = parseStyle(setsToToml({ body: { size: '9pt' } }))
     expect(problems).toEqual([])
     expect(style['body']!['size']).toBe('9pt')
+  })
+})
+
+describe('a value of all headings', () => {
+  const base = { heading_1: { text_case: 'smallcaps', size: '2em' }, heading: { weight: 'bold' } }
+
+  it('reaches every level that sets it itself, in the base or in the changes', () => {
+    const result = setValueForAll(
+      base,
+      { heading_3: { text_case: 'normal' } },
+      'heading',
+      'text_case',
+      'upper',
+    )
+    expect(result).toEqual({
+      ok: true,
+      sets: {
+        heading: { text_case: 'upper' },
+        heading_1: { text_case: 'upper' },
+        heading_3: { text_case: 'upper' },
+      },
+    })
+  })
+
+  it('leaves the levels alone when taken back, and other elements always', () => {
+    const changes = { heading: { text_case: 'upper' }, heading_1: { text_case: 'upper' } }
+    expect(setValueForAll(base, changes, 'heading', 'text_case', null)).toEqual({
+      ok: true,
+      sets: { heading_1: { text_case: 'upper' } },
+    })
+    expect(setValueForAll(base, {}, 'body', 'size', '12pt')).toEqual({
+      ok: true,
+      sets: { body: { size: '12pt' } },
+    })
   })
 })
 

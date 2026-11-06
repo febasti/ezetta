@@ -341,6 +341,22 @@ test('the letter case of headings is chosen with radio buttons, and the properti
       .toContain('text_case = "smallcaps"')
     await group.getByRole('radio', { name: 'Versalien' }).click()
     await expect.poll(() => readFile(style('versalien'), 'utf8')).toContain('text_case = "upper"')
+
+    // A choice for all headings reaches every level, also the chapters, which set small caps
+    // themselves in this template.
+    await choose(page, 'Überschrift 1 (Kapitel)')
+    await expect(group.getByRole('radio', { name: 'Kapitälchen' })).toBeChecked()
+    await choose(page, 'Alle Überschriften')
+    await group.getByRole('radio', { name: 'Versalien' }).click()
+    await expect
+      .poll(() => readFile(style('versalien'), 'utf8'))
+      .toMatch(/\[element\.heading_1\][^[]*text_case = "upper"/)
+    await choose(page, 'Überschrift 1 (Kapitel)')
+    await expect(group.getByRole('radio', { name: 'Versalien' })).toBeChecked()
+    await choose(page, 'Alle Überschriften')
+    await group.getByRole('radio', { name: 'Normal' }).click()
+    await choose(page, 'Überschrift 1 (Kapitel)')
+    await expect(group.getByRole('radio', { name: 'Normal' })).toBeChecked()
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {

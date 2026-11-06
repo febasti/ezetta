@@ -10,7 +10,7 @@ import {
   parseCustom,
   newTemplateId,
   parseSets,
-  setValue,
+  setValueForAll,
   setsToToml,
 } from '@core/export/custom'
 import type { OptionOverride, Sets } from '@core/export/custom'
@@ -328,7 +328,11 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
 
     async set(id, element, prop, value) {
       const template = await custom(id)
-      const result = setValue(template.custom!.overrides, element, prop, value)
+      const { all: templates } = await find(id)
+      const base = templates.find((t) => t.info.id === template.custom!.base)
+      const baseSets = parseSets(base?.files.find((f) => f.path === 'style.toml')?.content ?? '')
+      // A value of "Alle Überschriften" reaches every level, also one that sets its own.
+      const result = setValueForAll(baseSets, template.custom!.overrides, element, prop, value)
       if (!result.ok) throw new IpcFailure('invalid_request', result.message)
       await writeFileAtomic(join(folder(id), 'style.toml'), setsToToml(result.sets))
       return result.sets
