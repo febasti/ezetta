@@ -247,9 +247,6 @@ export function createHandlers({
       importFile: async ({ dialogTitle, filterName }) => ({
         id: await templates.importFile(dialogTitle, filterName),
       }),
-      addFonts: ({ id, dialogTitle, filterName }) =>
-        templates.addFonts(id, dialogTitle, filterName),
-      removeFont: ({ id, file }) => templates.removeFont(id, file),
       setOption: async ({ id, option, default: value, hidden }) => ({
         options: await templates.setOption(id, option, {
           ...(value !== undefined ? { default: value } : {}),

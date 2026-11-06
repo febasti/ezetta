@@ -19,7 +19,6 @@ import {
   thumbnailSchema,
 } from './export'
 import {
-  fontsSchema,
   optionDetailSchema,
   setsSchema,
   templateDetailSchema,
@@ -534,7 +533,7 @@ export const ipc = {
     ),
     /** Moves the template's folder to the trash. */
     remove: defineInvoke('templates:remove', z.object({ id: z.string().max(60) }).strict(), empty),
-    /** Asks where to save the template (the writer's own) as one file with its fonts, and writes it. `path` is null when they cancel. */
+    /** Asks where to save the template (the writer's own) as one file, and writes it. `path` is null when they cancel. */
     exportFile: defineInvoke(
       'templates:export-file',
       templateFileSchema.extend({ id: z.string().max(60), fileName: z.string().max(200) }).strict(),
@@ -545,24 +544,6 @@ export const ipc = {
       'templates:import-file',
       templateFileSchema,
       z.object({ id: z.string().nullable() }).strict(),
-    ),
-    /** Asks for font files and copies them into the template (the writer's own only); returns what the template has now. */
-    addFonts: defineInvoke(
-      'templates:add-fonts',
-      z
-        .object({
-          id: z.string().max(60),
-          dialogTitle: z.string().max(200),
-          filterName: z.string().max(100),
-        })
-        .strict(),
-      fontsSchema,
-    ),
-    /** Moves a font file of the template to the trash. */
-    removeFont: defineInvoke(
-      'templates:remove-font',
-      z.object({ id: z.string().max(60), file: z.string().max(200) }).strict(),
-      fontsSchema,
     ),
     /** Changes the default of an option of a template, or whether the export dialog offers it; null takes a field back to the base's. */
     setOption: defineInvoke(

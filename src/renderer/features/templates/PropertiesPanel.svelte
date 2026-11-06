@@ -2,7 +2,6 @@
   import {
     ELEMENTS,
     SUB_ELEMENTS,
-    EMBEDDED_FONTS,
     LINE_SECTIONS,
     PROP_SECTIONS,
     PROPS,
@@ -10,15 +9,17 @@
     isShown,
   } from '@core/export/elements'
   import { COLOR_TOKENS, checkValue, isColorToken } from '@core/export/style'
-  import { exporting as editor, FONTS, OPTIONS } from '../export/export.svelte'
+  import { exporting as editor, OPTIONS } from '../export/export.svelte'
+  import { elementFont, findFamily, hasItalic, hasWeight } from '@core/export/fonts'
+  import type { FontProblem } from '@core/export/fonts'
+  import FontPicker from './FontPicker.svelte'
+  import { fontProblemText } from './fontProblems'
   import type { ElementDef, PropDef } from '@core/export/elements'
   import type { StyleValue } from '@core/export/style'
   import { i18n } from '../../i18n/i18n.svelte'
   import type { IconName } from '../../ui/Icon.svelte'
-  import Button from '../../ui/kit/Button.svelte'
   import Callout from '../../ui/kit/Callout.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
-  import IconButton from '../../ui/kit/IconButton.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Segmented from '../../ui/kit/Segmented.svelte'
   import Select from '../../ui/kit/Select.svelte'
@@ -42,17 +43,21 @@
     ...(SUB_ELEMENTS[element.id] ?? []).flatMap((id) => elementById(id) ?? []),
   ])
   const valuesOf = (el: ElementDef): Record<string, StyleValue> => editor.resolved[el.id] ?? {}
-  /** The families a property can name: those the template has, and those it already uses. */
-  const fonts = $derived(
-    [
-      ...new Set([
-        ...(detail?.families ?? EMBEDDED_FONTS),
-        ...Object.values(editor.resolved).flatMap((v) =>
-          typeof v['font'] === 'string' ? [v['font']] : [],
-        ),
-      ]),
-    ].sort((a, b) => a.localeCompare(b)),
-  )
+  /** The families a property can name, with what each has: the compiler's own and the system's. */
+  const families = $derived(detail?.families ?? [])
+  /** The family an element is set in, as this machine has it (none when it does not). */
+  const familyOf = (el: ElementDef) => findFamily(families, elementFont(editor.resolved, el.id))
+  /** The italic of an element: whether its font has one, and whether it asks for one. */
+  const italicOf = (el: ElementDef): boolean => valuesOf(el)['italic'] === true
+  /** What an element asks of its font that the font does not have, for the property it is about. */
+  const problemFor = (el: ElementDef, prop: string): FontProblem | undefined =>
+    editor.fontIssues.find(
+      (p) =>
+        p.element === el.id &&
+        (p.kind === 'missing' || p.kind === 'emphasis' || p.kind === 'strong'
+          ? prop === 'font'
+          : p.kind === prop),
+    )
   /** The properties of the lines of a heading, which are drawn as a group of their own. */
   const LINE_IDS = new Set(LINE_SECTIONS.flatMap((section) => [section.toggle, ...section.fields]))
   /** The properties of an element in groups; the lines of a heading are groups of their own. */
@@ -78,7 +83,6 @@
     // Titles over the groups only help when there is more than one group.
     return { groups, lines, titled: groups.length + lines.length > 1 }
   }
-  const showFonts = $derived(!only && editor.elementId === FONTS)
   const showOptions = $derived(!only && editor.elementId === OPTIONS)
   const own = (el: ElementDef, prop: string): boolean =>
     detail?.overrides[el.id]?.[prop] !== undefined
@@ -130,10 +134,12 @@
     >
     <div class="control">
       {#if def.type === 'bool'}
+        {@const family = id === 'italic' ? familyOf(element) : undefined}
+        <!-- Italic for a font without one cannot be chosen; one already chosen can be taken off. -->
         <Checkbox
           id={control}
           checked={value === true}
-          disabled={readOnly}
+          disabled={readOnly || (family !== undefined && !hasItalic(family) && value !== true)}
           onchange={(on) => void editor.set(element.id, id, on)}
         />
       {:else if def.type === 'enum' && (def.id === 'align' || def.id === 'cell_align')}
@@ -173,10 +179,18 @@
           onchange={(v) => void editor.set(element.id, id, v)}
         />
       {:else if def.type === 'enum'}
+        {@const family = id === 'weight' ? familyOf(element) : undefined}
+        <!-- A weight the font does not have is shown, greyed: Typst would print another. -->
         <Select
           id={control}
           value={typeof value === 'string' ? value : ''}
-          options={choices(def, value)}
+          options={choices(def, value).map((choice) => ({
+            ...choice,
+            disabled:
+              family !== undefined &&
+              choice.value !== '' &&
+              !hasWeight(family, choice.value, italicOf(element) && hasItalic(family)),
+          }))}
           disabled={readOnly}
           onchange={(v) => void editor.set(element.id, id, v)}
         />
@@ -219,10 +233,19 @@
             {/each}
           </span>
         {/if}
+      {:else if def.type === 'font'}
+        <FontPicker
+          id={control}
+          value={typeof value === 'string' ? value : ''}
+          {families}
+          placeholder="—"
+          invalid={editor.refused === key}
+          disabled={readOnly}
+          oncommit={(text) => commit(element, def, text)}
+        />
       {:else}
         <TextField
           id={control}
-          list={def.type === 'font' ? 'template-fonts' : undefined}
           value={typeof value === 'string' ? value : ''}
           placeholder="—"
           invalid={editor.refused === key}
@@ -233,6 +256,10 @@
     </div>
     {#if editor.refused === key}
       <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
+    {/if}
+    {#if problemFor(element, id)}
+      {@const problem = problemFor(element, id)!}
+      <p class="missing">{fontProblemText(problem)}</p>
     {/if}
   </div>
 {/snippet}
@@ -275,43 +302,7 @@
     {/each}
   </div>
 {:else if detail}
-  {#if showFonts}
-    <section class="properties" aria-label={i18n.t('templates.fonts.files')}>
-      <h3 class="title">{i18n.t('templates.fonts.files')}</h3>
-      {#if readOnly}
-        <Callout>{i18n.t('templates.readonly')}</Callout>
-      {:else}
-        <Section>
-          <Callout>{i18n.t('templates.fonts.licence')}</Callout>
-          {#if detail.fonts.length === 0}
-            <p class="quiet">{i18n.t('templates.fonts.none')}</p>
-          {/if}
-          <ul class="files">
-            {#each detail.fonts as file (file)}
-              <li>
-                <span class="file">{file}</span>
-                <IconButton
-                  icon="x"
-                  size="sm"
-                  label={i18n.t('templates.fonts.remove', { file })}
-                  onclick={() => void editor.removeFont(file)}
-                />
-              </li>
-            {/each}
-          </ul>
-          <span
-            ><Button onclick={() => void editor.addFonts()}>{i18n.t('templates.fonts.add')}</Button
-            ></span
-          >
-        </Section>
-      {/if}
-      <Section title={i18n.t('templates.fonts.available')} level={4}>
-        <ul class="families">
-          {#each detail.families as family (family)}<li>{family}</li>{/each}
-        </ul>
-      </Section>
-    </section>
-  {:else if showOptions}
+  {#if showOptions}
     <section class="properties" aria-label={i18n.t('templates.options')}>
       <h3 class="title">{i18n.t('templates.options')}</h3>
       <Callout>
@@ -371,9 +362,6 @@
         {#if index > 0}<h3 class="sub">{member[lang]}</h3>{/if}
         {@render sections(member)}
       {/each}
-      <datalist id="template-fonts">
-        {#each fonts as font (font)}<option value={font}></option>{/each}
-      </datalist>
     </section>
   {/if}
 {/if}
@@ -482,7 +470,8 @@
     color: var(--color-danger);
     font: var(--type-caption);
   }
-  .stacked .invalid {
+  .stacked .invalid,
+  .stacked .missing {
     grid-column: 1;
   }
   .option {
@@ -497,31 +486,11 @@
   .offer {
     margin-left: calc(var(--form-label-width) + var(--sp-12));
   }
-  .quiet {
+  /* What the font of the element does not have: said under the property, quietly. */
+  .missing {
+    grid-column: 2;
     margin: 0;
-    color: var(--color-label-tertiary);
+    color: var(--color-warning);
     font: var(--type-caption);
-  }
-  .files,
-  .families {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    color: var(--color-label);
-    font: var(--type-body);
-  }
-  .files li {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-8);
-    min-height: var(--row-single);
-  }
-  .file {
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-  .families li {
-    padding: var(--sp-4) 0;
   }
 </style>

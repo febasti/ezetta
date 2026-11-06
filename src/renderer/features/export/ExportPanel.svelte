@@ -10,6 +10,8 @@
   import TextField from '../../ui/kit/TextField.svelte'
   import { project } from '../sidebar/project.svelte'
   import PropertiesPanel from '../templates/PropertiesPanel.svelte'
+  import { fontProblemText } from '../templates/fontProblems'
+  import { elementById } from '@core/export/elements'
   import { exporting } from './export.svelte'
   import { checkBinding } from '@core/export/profile'
 
@@ -185,6 +187,16 @@
                 <Link onclick={() => void exporting.goTo(image.sheet, image.line)}>
                   {i18n.t('export.warn.emptyImage')}
                   · {project.sheetLabel(image.sheet)}
+                </Link>
+              </li>
+            {/each}
+            {#each exporting.fontIssues as problem, index (index)}
+              <li>
+                <Link onclick={() => (exporting.elementId = problem.element)}>
+                  {i18n.t('export.warn.font', {
+                    element: elementById(problem.element)?.[lang] ?? problem.element,
+                    problem: fontProblemText(problem),
+                  })}
                 </Link>
               </li>
             {/each}

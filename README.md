@@ -15,7 +15,7 @@ Ezetta is in active development, and its first release (0.9) is a pre-release: e
 - **A title page and front matter** (title, authors, date, version, abstract, dedication, preface) edited while writing, and printed by the template.
 - **An example project** on the start screen: a tour of Ezetta, written in Ezetta, in German and English. It opens as a copy, so the original stays as it is however much is tried out.
 - **Versions** are kept automatically, and backups go to a folder of the writer's choice.
-- **PDF export** with six bundled templates and a template editor with a live preview, custom fonts included.
+- **PDF export** with six bundled templates and a template editor with a live preview; any font installed on the computer can be used, with only the weights and styles it has offered.
 
 ## Download
 

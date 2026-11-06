@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -7,7 +7,7 @@ import { ProjectSession } from '@core/project/session'
 import {
   countPages,
   createExporter,
-  listFontFamilies,
+  listFontVariants,
   loadTemplates,
   spawnCompiler,
 } from './exporter'
@@ -522,27 +522,23 @@ describe.skipIf(!installed)('with the real Typst compiler', () => {
   })
 })
 
-/** A font file that is on the machine but is not one of the compiler's own. */
+/** A font of the system, not one of the compiler's own (macOS). */
 const SYSTEM_FONT = '/System/Library/Fonts/Supplemental/Georgia.ttf'
 
-describe.skipIf(!installed || !existsSync(SYSTEM_FONT))('fonts the writer added', () => {
-  it('are found by the compiler only where it is told, and never from the system', async () => {
+describe.skipIf(!installed || !existsSync(SYSTEM_FONT))('the fonts of the system', () => {
+  it('are listed with their variants, and the compiler sets them', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'wm-fonts-'))
     try {
-      await copyFile(SYSTEM_FONT, join(dir, 'Georgia.ttf'))
-      expect(await listFontFamilies(binary, null)).not.toContain('Georgia')
-      expect(await listFontFamilies(binary, dir)).toEqual(
-        expect.arrayContaining(['Georgia', 'Libertinus Serif']),
-      )
+      const families = await listFontVariants(binary, null)
+      const georgia = families.find((f) => f.name === 'Georgia')
+      expect(georgia?.variants.map((v) => v.style)).toContain('italic')
+      expect(families.map((f) => f.name)).toContain('Libertinus Serif')
 
       await mkdir(join(dir, 'p', '_build'), { recursive: true })
       await writeFile(join(dir, 'p', '_build', 'main.typ'), '#set text(font: "Georgia")\nHallo\n')
-      const compile = spawnCompiler(binary)
-      const without = await compile(join(dir, 'p'))
-      expect(without.output).toMatch(/unknown font family/i)
-      const withFont = await compile(join(dir, 'p'), { fontPaths: [dir] })
-      expect(withFont.output).not.toMatch(/unknown font family/i)
-      expect(withFont.code).toBe(0)
+      const result = await spawnCompiler(binary)(join(dir, 'p'))
+      expect(result.output).not.toMatch(/unknown font family/i)
+      expect(result.code).toBe(0)
     } finally {
       await rm(dir, { recursive: true, force: true })
     }

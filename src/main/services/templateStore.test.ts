@@ -13,7 +13,6 @@ const BUNDLED = resolve('templates')
 
 let dir: string
 let trashed: string[]
-let picked: string[]
 let savePath: string | null
 let templateFile: string | null
 const store = () =>
@@ -24,20 +23,22 @@ const store = () =>
       trashed.push(path)
       await rm(path, { recursive: true })
     },
-    pickFonts: async () => picked,
     pickSavePath: async () => savePath,
     pickTemplateFile: async () => templateFile,
     // The compiler names families; here a file named Foo.ttf stands for the family Foo.
-    families: async (fontsDir) => [
-      ...EMBEDDED_FONTS,
-      ...(fontsDir ? (await readdir(fontsDir)).map((f) => f.replace(/\.[a-z]+$/, '')) : []),
-    ],
+    families: async (fontsDir) =>
+      [
+        ...EMBEDDED_FONTS,
+        ...(fontsDir ? (await readdir(fontsDir)).map((f) => f.replace(/\.[a-z]+$/, '')) : []),
+      ].map((name) => ({
+        name,
+        variants: [{ style: 'normal' as const, weight: [400, 400] as [number, number] }],
+      })),
   })
 
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), 'wm-templates-'))
   trashed = []
-  picked = []
   savePath = join(dir, 'out.ezetta-template')
   templateFile = null
 })
@@ -275,86 +276,38 @@ describe('the writer’s own templates', () => {
   })
 
   describe('fonts', () => {
-    const fontsOf = (id: string) => readdir(join(dir, 'templates', id, 'fonts')).catch(() => [])
+    const fontsDir = (id: string) => join(dir, 'templates', id, 'fonts')
 
-    it('copies font files into the template and lists the families', async () => {
-      const id = await store().create('essay', 'Meine')
-      await writeFile(join(dir, 'Lato.ttf'), 'not really a font')
-      await writeFile(join(dir, 'Notes.txt'), 'x')
-      picked = [join(dir, 'Lato.ttf'), join(dir, 'Notes.txt'), join(dir, 'missing.otf')]
-      const result = await store().addFonts(id, 'Wählen', 'Schriften')
-      expect(result.fonts).toEqual(['Lato.ttf'])
-      expect(result.families).toEqual([...EMBEDDED_FONTS, 'Lato'])
-      expect(await fontsOf(id)).toEqual(['Lato.ttf'])
-      const detail = await store().get(id)
-      expect(detail.fonts).toEqual(['Lato.ttf'])
-      expect(detail.families).toContain('Lato')
+    it('shows a template the families the compiler finds, with their variants', async () => {
+      const families = (await store().get('essay')).families
+      expect(families.map((f) => f.name)).toEqual([...EMBEDDED_FONTS])
+      expect(families[0]!.variants).toEqual([{ style: 'normal', weight: [400, 400] }])
     })
 
-    it('does not overwrite a file of the same name', async () => {
-      const id = await store().create('essay', 'Meine')
-      await writeFile(join(dir, 'Lato.ttf'), 'one')
-      picked = [join(dir, 'Lato.ttf')]
-      await store().addFonts(id, 't', 'f')
-      await writeFile(join(dir, 'Lato.ttf'), 'two')
-      const result = await store().addFonts(id, 't', 'f')
-      expect(result.fonts).toEqual(['Lato 2.ttf', 'Lato.ttf'])
-      expect(await readFile(join(dir, 'templates', id, 'fonts', 'Lato.ttf'), 'utf8')).toBe('one')
-    })
-
-    it('tells the compiler where the fonts are, once there are some', async () => {
+    it('still gives the compiler the fonts a template made earlier has in its folder', async () => {
       const id = await store().create('essay', 'Meine')
       const before = await loadTemplates(BUNDLED, join(dir, 'templates'))
       expect(before.templates.find((t) => t.info.id === id)!.fontsDir).toBeNull()
-      await writeFile(join(dir, 'Lato.otf'), 'x')
-      picked = [join(dir, 'Lato.otf')]
-      await store().addFonts(id, 't', 'f')
+      await mkdir(fontsDir(id), { recursive: true })
+      await writeFile(join(fontsDir(id), 'Lato.otf'), 'x')
       const after = await loadTemplates(BUNDLED, join(dir, 'templates'))
-      expect(after.templates.find((t) => t.info.id === id)!.fontsDir).toBe(
-        join(dir, 'templates', id, 'fonts'),
-      )
-      expect(after.templates.find((t) => t.info.id === 'essay')!.fontsDir).toBeNull()
-    })
-
-    it('removes a font to the trash, and only a file the template has', async () => {
-      const id = await store().create('essay', 'Meine')
-      await writeFile(join(dir, 'Lato.ttf'), 'x')
-      picked = [join(dir, 'Lato.ttf')]
-      await store().addFonts(id, 't', 'f')
-      await expect(store().removeFont(id, '../custom.toml')).rejects.toMatchObject({
-        code: 'invalid_request',
-      })
-      await expect(store().removeFont(id, 'Other.ttf')).rejects.toMatchObject({ code: 'not_found' })
-      const result = await store().removeFont(id, 'Lato.ttf')
-      expect(result.fonts).toEqual([])
-      expect(trashed).toEqual([join(dir, 'templates', id, 'fonts', 'Lato.ttf')])
-    })
-
-    it('does not add fonts to a bundled template', async () => {
-      picked = [join(dir, 'Lato.ttf')]
-      await expect(store().addFonts('essay', 't', 'f')).rejects.toMatchObject({
-        code: 'forbidden',
-      })
-    })
-
-    it('shows a bundled template the families the compiler brings', async () => {
-      expect((await store().get('essay')).families).toEqual([...EMBEDDED_FONTS])
+      expect(after.templates.find((t) => t.info.id === id)!.fontsDir).toBe(fontsDir(id))
+      expect((await store().get(id)).families.map((f) => f.name)).toContain('Lato')
     })
   })
 
   describe('template files', () => {
     const fileOf = (name: string) => join(dir, name)
 
-    it('writes the template with its styles and fonts as one file', async () => {
+    it('writes the template with its styles as one file, without fonts', async () => {
       const id = await store().create('essay', 'Meine')
       await store().set(id, 'body', 'size', '9pt')
-      await writeFile(join(dir, 'Lato.ttf'), 'font data')
-      picked = [join(dir, 'Lato.ttf')]
-      await store().addFonts(id, 't', 'f')
+      await mkdir(join(dir, 'templates', id, 'fonts'), { recursive: true })
+      await writeFile(join(dir, 'templates', id, 'fonts', 'Lato.ttf'), 'font data')
       const path = await store().exportFile(id, 't', 'f', 'Meine.ezetta-template')
       expect(path).toBe(join(dir, 'out.ezetta-template'))
       const names = (await listZip(path!)).map((e) => e.name).sort()
-      expect(names).toEqual([`${id}/custom.toml`, `${id}/fonts/Lato.ttf`, `${id}/style.toml`])
+      expect(names).toEqual([`${id}/custom.toml`, `${id}/style.toml`])
     })
 
     it('writes nothing when the writer cancels, and nothing of a bundled template', async () => {
@@ -368,12 +321,9 @@ describe('the writer’s own templates', () => {
       expect(await readdir(dir)).not.toContain('out.ezetta-template')
     })
 
-    it('takes a template file back in as a template of its own, with its values and fonts', async () => {
+    it('takes a template file back in as a template of its own, with its values', async () => {
       const id = await store().create('manuskript', 'Weitergegeben')
       await store().set(id, 'heading_1', 'size', '2.5em')
-      await writeFile(join(dir, 'Lato.otf'), 'font data')
-      picked = [join(dir, 'Lato.otf')]
-      await store().addFonts(id, 't', 'f')
       templateFile = (await store().exportFile(id, 't', 'f', 'x'))!
 
       // On another machine the id is free; here it is not, and the copy gets its own.
@@ -384,14 +334,13 @@ describe('the writer’s own templates', () => {
         name: 'Weitergegeben',
         base: 'manuskript',
         overrides: { heading_1: { size: '2.5em' } },
-        fonts: ['Lato.otf'],
       })
       expect(await readdir(join(dir, 'templates'))).not.toContainEqual(
         expect.stringContaining('.importing'),
       )
     })
 
-    it('keeps only valid values and font files', async () => {
+    it('keeps only valid values, and no fonts', async () => {
       await writeZip(
         fileOf('mixed.ezetta-template'),
         await files({
@@ -407,12 +356,7 @@ describe('the writer’s own templates', () => {
       const id = (await store().importFile('t', 'f'))!
       expect(id).toBe('gemischt')
       expect((await store().get(id)).overrides).toEqual({ body: { size: '9pt' } })
-      expect(await readdir(join(dir, 'templates', id))).toEqual([
-        'custom.toml',
-        'fonts',
-        'style.toml',
-      ])
-      expect(await readdir(join(dir, 'templates', id, 'fonts'))).toEqual(['Good.ttf'])
+      expect(await readdir(join(dir, 'templates', id))).toEqual(['custom.toml', 'style.toml'])
     })
 
     it('refuses a file that is not a template, one based on a template this app lacks, and a hostile one', async () => {

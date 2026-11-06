@@ -26,7 +26,33 @@ export interface PropDef {
 }
 
 const SLOTS = ['none', 'page', 'chapter', 'section', 'title', 'author'] as const
-const WEIGHTS = ['regular', 'medium', 'semibold', 'bold'] as const
+/** The weights Typst names, from 100 to 900. */
+export const WEIGHTS = [
+  'thin',
+  'extralight',
+  'light',
+  'regular',
+  'medium',
+  'semibold',
+  'bold',
+  'extrabold',
+  'black',
+] as const
+/** The number of each weight (CSS and OpenType: 100 to 900). */
+export const WEIGHT_NUMBERS: Readonly<Record<string, number>> = Object.fromEntries(
+  WEIGHTS.map((w, i) => [w, (i + 1) * 100]),
+)
+const WEIGHT_LABELS: Record<string, { de: string; en: string }> = {
+  thin: { de: 'Haarfein (100)', en: 'Thin (100)' },
+  extralight: { de: 'Extraleicht (200)', en: 'Extra light (200)' },
+  light: { de: 'Leicht (300)', en: 'Light (300)' },
+  regular: { de: 'Normal (400)', en: 'Regular (400)' },
+  medium: { de: 'Mittel (500)', en: 'Medium (500)' },
+  semibold: { de: 'Halbfett (600)', en: 'Semibold (600)' },
+  bold: { de: 'Fett (700)', en: 'Bold (700)' },
+  extrabold: { de: 'Extrafett (800)', en: 'Extra bold (800)' },
+  black: { de: 'Schwarz (900)', en: 'Black (900)' },
+}
 const ALIGNS = ['left', 'center', 'right'] as const
 
 const SLOT_LABELS: Record<string, { de: string; en: string }> = {
@@ -47,12 +73,7 @@ const NUMBER_FORMAT_LABELS: Record<string, { de: string; en: string }> = {
 }
 
 const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> = {
-  weight: {
-    regular: { de: 'Normal', en: 'Regular' },
-    medium: { de: 'Mittel', en: 'Medium' },
-    semibold: { de: 'Halbfett', en: 'Semibold' },
-    bold: { de: 'Fett', en: 'Bold' },
-  },
+  weight: WEIGHT_LABELS,
   align: {
     left: { de: 'Links', en: 'Left' },
     center: { de: 'Zentriert', en: 'Centered' },
@@ -189,12 +210,7 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     '4': { de: 'Bis Ebene 4', en: 'Down to level 4' },
     '6': { de: 'Alle Ebenen', en: 'All levels' },
   },
-  chapter_weight: {
-    regular: { de: 'Normal', en: 'Regular' },
-    medium: { de: 'Mittel', en: 'Medium' },
-    semibold: { de: 'Halbfett', en: 'Semibold' },
-    bold: { de: 'Fett', en: 'Bold' },
-  },
+  chapter_weight: WEIGHT_LABELS,
   number_format: NUMBER_FORMAT_LABELS,
   number_depth: {
     '0': { de: 'Keine Nummerierung', en: 'No numbering' },
@@ -290,12 +306,7 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
       'dots',
       'none',
     ]),
-    prop('chapter_weight', 'enum', 'Schnitt der Kapitel', 'Weight of chapters', [
-      'regular',
-      'medium',
-      'semibold',
-      'bold',
-    ]),
+    prop('chapter_weight', 'enum', 'Schnitt der Kapitel', 'Weight of chapters', WEIGHTS),
     prop('title_text', 'text', 'Titel', 'Title'),
     // A list of figures or of tables has a title property of its own, so it does not take the contents'.
     prop('list_title', 'text', 'Titel', 'Title'),

@@ -10,7 +10,7 @@
   import { project } from '../sidebar/project.svelte'
   import PropertiesPanel from '../templates/PropertiesPanel.svelte'
   import ExportPanel from './ExportPanel.svelte'
-  import { EXPORT, FONTS, OPTIONS, exporting } from './export.svelte'
+  import { EXPORT, OPTIONS, exporting } from './export.svelte'
   import TemplateList from './TemplateList.svelte'
 
   const lang = $derived(i18n.locale)
@@ -164,14 +164,6 @@
           panel === OPTIONS,
           null,
           () => (exporting.elementId = OPTIONS),
-        )}
-        <h3>{i18n.t('templates.fonts')}</h3>
-        {@render row(
-          'letter-case',
-          i18n.t('templates.fonts.files'),
-          panel === FONTS,
-          detail.fonts.length > 0 ? detail.fonts.length : null,
-          () => (exporting.elementId = FONTS),
         )}
       </nav>
 

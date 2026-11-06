@@ -165,48 +165,50 @@ test('the copy is offered in the export dialog, and its settings survive a resta
   }
 })
 
-// A font file that is on the machine but is not one of the compiler's own.
-const FONT = '/System/Library/Fonts/Supplemental/Georgia.ttf'
+// Fonts of the system (macOS): one with an italic and a bold, one with neither.
+const GEORGIA = '/System/Library/Fonts/Supplemental/Georgia.ttf'
+const PLAIN = '/System/Library/Fonts/Supplemental/Academy Engraved LET Fonts.ttf'
 
-test('a font file is added to a copy, offered for the elements, and used in the pages', async () => {
-  test.skip(!existsSync(FONT), 'needs a font file to add')
-  const { app, page } = await open({ EZETTA_TEST_FONTS: FONT })
+test('any font of the system can be chosen, and what it lacks is greyed out and said', async () => {
+  test.skip(!existsSync(GEORGIA) || !existsSync(PLAIN), 'needs the fonts of macOS')
+  const { app, page } = await open()
   try {
     await openEditor(page)
-    // A bundled template shows what it has and cannot take fonts.
-    await editor(page).getByRole('button', { name: 'Eigene Schriften' }).click()
-    await expect(
-      editor(page).getByText('Mitgelieferte Vorlagen lassen sich nicht ändern'),
-    ).toBeVisible()
-    await expect(editor(page).getByRole('button', { name: 'Schrift hinzufügen …' })).toHaveCount(0)
-
-    await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
-    await prompt(page).getByLabel('Name der Vorlage').fill('Mit Schrift')
-    await prompt(page).getByRole('button', { name: 'OK' }).click()
-    await expect(editor(page).getByText('Noch keine eigenen Schriften')).toBeVisible()
-    await editor(page).getByRole('button', { name: 'Schrift hinzufügen …' }).click()
-    await expect(editor(page).locator('.files')).toContainText('Georgia.ttf')
-    await expect(editor(page).locator('.families')).toContainText('Georgia')
-    await expect
-      .poll(() =>
-        existsSync(join(sandbox.userData, 'templates', 'mit-schrift', 'fonts', 'Georgia.ttf')),
-      )
-      .toBe(true)
-
-    // The family is offered for a property, and the pages are made with it (a family the
-    // compiler does not know would still compile, so the check is that the preview works).
+    await makeCopy(page, 'Mit Schrift')
+    const toml = () => readFile(style('mit-schrift'), 'utf8').catch(() => '')
     await choose(page, 'Fließtext')
-    const font = editor(page).getByLabel('Schriftart')
-    await font.fill('Georgia')
-    await font.press('Tab')
-    await expect.poll(() => readFile(style('mit-schrift'), 'utf8')).toContain('font = "Georgia"')
-    await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
-    await expect(editor(page).getByRole('alert')).toHaveCount(0)
 
-    // Removing the file takes it from the list and from the folder.
-    await editor(page).getByRole('button', { name: 'Eigene Schriften' }).click()
-    await editor(page).getByRole('button', { name: 'Georgia.ttf entfernen' }).click()
-    await expect(editor(page).getByText('Noch keine eigenen Schriften')).toBeVisible()
+    // The field lists the fonts as it is typed into, each with what it has.
+    const font = editor(page).getByRole('combobox', { name: 'Schriftart' })
+    await font.click()
+    await font.fill('Georg')
+    const georgia = editor(page).getByRole('option', { name: /^Georgia\b/ })
+    await expect(georgia).toContainText('kursiv')
+    await georgia.click()
+    await expect.poll(toml).toContain('font = "Georgia"')
+    await expect(editor(page).getByRole('listbox')).toHaveCount(0)
+    // Georgia has a regular and a bold: the other weights are greyed out.
+    const weight = editor(page).locator('#prop-body-weight')
+    await expect(weight.locator('option[value="bold"]')).toBeEnabled()
+    await expect(weight.locator('option[value="thin"]')).toBeDisabled()
+    await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
+
+    // A font without an italic or a bold: italic cannot be chosen, and the text's emphasis is said.
+    await font.fill('Academy Engraved LET')
+    await font.press('Tab')
+    await expect.poll(toml).toContain('font = "Academy Engraved LET"')
+    await expect(editor(page).locator('#prop-body-italic')).toBeDisabled()
+    await expect(editor(page).getByText('hat keine Kursive: Betontes im Text')).toBeVisible()
+
+    // A font this machine does not have is said too, here and in "Dokument einrichten".
+    await font.fill('Nirgends Sans')
+    await font.press('Tab')
+    await expect.poll(toml).toContain('font = "Nirgends Sans"')
+    await expect(editor(page).getByText('ist auf diesem Rechner nicht installiert')).toBeVisible()
+    await showExport(page)
+    await expect(
+      editor(page).getByRole('button', { name: /Fließtext: „Nirgends Sans“/ }),
+    ).toBeVisible()
   } finally {
     await app.close()
   }
@@ -964,7 +966,6 @@ test('the elements are in groups that open and close: the headings under one ent
       'Formeln',
       'Code',
       'Optionen',
-      'Eigene Schriften',
     ])
     const indent = (name: string) => group(name).evaluate((el) => el.getBoundingClientRect().left)
     // The dialog opens on the "Dokument einrichten" panel: every group is closed, and says so.
@@ -1164,7 +1165,7 @@ test('links and cross-references have a colour, a weight, italics and a backgrou
     for (const label of ['Farbe', 'Schnitt', 'Kursiv', 'Hintergrund', 'Unterstrichen'])
       await expect(panel.getByLabel(label, { exact: true }).first()).toBeVisible()
     await panel.locator('#prop-link-italic').check()
-    await panel.locator('#prop-link-weight').selectOption({ label: 'Fett' })
+    await panel.locator('#prop-link-weight').selectOption({ label: 'Fett (700)' })
     const fill = panel.locator('#prop-link-fill')
     await fill.fill('#e8f0fe')
     await fill.press('Tab')

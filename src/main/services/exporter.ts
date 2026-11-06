@@ -26,6 +26,8 @@ import {
 import type { OptionOverride, Sets } from '@core/export/custom'
 import { DEFAULT_TEMPLATE } from '@core/export/profile'
 import { parseStyle } from '@core/export/style'
+import { parseFontVariants } from '@core/export/fonts'
+import type { FontFamily } from '@core/export/fonts'
 import { referenceStyleOf } from '@core/export/numbering'
 import type { ReferenceStyle } from '@core/export/numbering'
 import { CITATION_STYLES } from '@core/export/styles'
@@ -207,7 +209,7 @@ export function spawnCompiler(binary: string): Compiler {
           'compile',
           '--root',
           cwd,
-          '--ignore-system-fonts',
+          // The system's fonts too: a template may name any font the writer has installed.
           ...(options.fontPaths ?? []).flatMap((path) => ['--font-path', path]),
           '--diagnostic-format',
           'short',
@@ -540,30 +542,22 @@ export function createExporter(deps: ExporterDeps): {
   }
 }
 
-/** The font families the compiler finds: its own and those in `fontsDir`, never the system's. */
-export function listFontFamilies(binary: string, fontsDir: string | null): Promise<string[]> {
+/**
+ * The font families the compiler finds, with their variants: its own, the system's, and those in
+ * `fontsDir`. None when it cannot be asked.
+ */
+export function listFontVariants(binary: string, fontsDir: string | null): Promise<FontFamily[]> {
   return new Promise((resolve) => {
     const child = spawn(
       binary,
-      ['fonts', '--ignore-system-fonts', ...(fontsDir ? ['--font-path', fontsDir] : [])],
+      ['fonts', '--variants', ...(fontsDir ? ['--font-path', fontsDir] : [])],
       { shell: false, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true },
     )
     let output = ''
     child.stdout.on('data', (chunk: Buffer) => {
-      if (output.length < 1_000_000) output += chunk.toString('utf8')
+      if (output.length < 8_000_000) output += chunk.toString('utf8')
     })
     child.once('error', () => resolve([]))
-    child.once('exit', () =>
-      resolve(
-        [
-          ...new Set(
-            output
-              .split('\n')
-              .map((line) => line.trim())
-              .filter((line) => line !== ''),
-          ),
-        ].sort((a, b) => a.localeCompare(b)),
-      ),
-    )
+    child.once('exit', () => resolve(parseFontVariants(output)))
   })
 }

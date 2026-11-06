@@ -2,6 +2,7 @@ import type { z } from 'zod'
 import { mergeSets } from '@core/export/custom'
 import type { Sets } from '@core/export/custom'
 import { resolveStyle } from '@core/export/style'
+import { fontProblems } from '@core/export/fonts'
 import { TITELEI } from '@core/project/paths'
 import type { exportInfoSchema, exportResultSchema } from '@shared/export'
 import type { templateDetailSchema, templateEntrySchema } from '@shared/templates'
@@ -23,9 +24,6 @@ export type PropValue = string | boolean
 
 /** The id of the panel with what the export itself needs: citation style, options, warnings, the result. */
 export const EXPORT = '__export'
-
-/** The id of the panel for font files, which is shown where an element's properties are. */
-export const FONTS = '__fonts'
 
 /** The id of the panel for the options of the template, which the "Dokument einrichten" panel offers. */
 export const OPTIONS = '__options'
@@ -49,7 +47,7 @@ class ExportStore {
 
   list = $state.raw<TemplateEntry[]>([])
   detail = $state.raw<TemplateDetail | null>(null)
-  /** The panel shown: an element's id, or one of `EXPORT`, `FONTS`, `OPTIONS`. */
+  /** The panel shown: an element's id, or one of `EXPORT`, `OPTIONS`. */
   elementId = $state(EXPORT)
   /** The id of a property whose last value was refused, to mark it. */
   refused = $state<string | null>(null)
@@ -73,12 +71,15 @@ class ExportStore {
           w.references.length +
           w.unknownCitations.length +
           w.emptyImages.length +
-          (w.noAuthors ? 1 : 0)
-      : 0
+          (w.noAuthors ? 1 : 0) +
+          this.fontIssues.length
+      : this.fontIssues.length
   })
   /** What the template sets: its base's values with the writer's on top. */
   sets = $derived<Sets>(this.detail ? mergeSets(this.detail.baseSets, this.detail.overrides) : {})
   resolved = $derived(resolveStyle({ element: this.sets }, { keepTokens: true }).style)
+  /** What the template asks of its fonts that this machine's fonts do not have. */
+  fontIssues = $derived(fontProblems(this.resolved, this.detail?.families ?? []))
 
   /** Opens the dialog on a panel: unsaved text is written first, so the export has what is on the screen. */
   async show(panel: string = EXPORT): Promise<void> {
@@ -282,33 +283,6 @@ class ExportStore {
       this.detail = { ...detail, options: result.options }
       const info = await call(window.api.export.info({}))
       if (info) this.info = info
-    }
-  }
-
-  /** Asks for font files and adds them to the template shown. */
-  async addFonts(): Promise<void> {
-    const detail = this.detail
-    if (!detail || detail.builtin) return
-    const result = await call(
-      window.api.templates.addFonts({
-        id: detail.id,
-        dialogTitle: i18n.t('templates.fonts.pickTitle'),
-        filterName: i18n.t('templates.fonts.filter'),
-      }),
-    )
-    if (result && this.detail?.id === detail.id) {
-      this.detail = { ...detail, ...result }
-      this.refreshPreview()
-    }
-  }
-
-  async removeFont(file: string): Promise<void> {
-    const detail = this.detail
-    if (!detail || detail.builtin) return
-    const result = await call(window.api.templates.removeFont({ id: detail.id, file }))
-    if (result && this.detail?.id === detail.id) {
-      this.detail = { ...detail, ...result }
-      this.refreshPreview()
     }
   }
 

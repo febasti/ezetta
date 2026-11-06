@@ -1,8 +1,7 @@
 import { randomBytes } from 'node:crypto'
-import { copyFile, mkdir, readdir, readFile, rm, stat, unlink } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
-  MAX_FONT_BYTES,
   optionAccepts,
   setOptionOverride,
   cleanName,
@@ -16,6 +15,7 @@ import {
 } from '@core/export/custom'
 import type { OptionOverride, Sets } from '@core/export/custom'
 import type { TemplateOption } from '@core/export/template'
+import type { FontFamily } from '@core/export/fonts'
 import { IpcFailure } from '@shared/ipc'
 import { FONTS_DIR, loadTemplates } from './exporter'
 import type { Template } from './exporter'
@@ -34,8 +34,6 @@ export interface TemplateStoreDeps {
   customDir: string
   /** Moves a file or folder to the system trash. */
   trash: (absPath: string) => Promise<void>
-  /** Asks the writer for font files; the paths, none when they cancel. */
-  pickFonts: (dialogTitle: string, filterName: string) => Promise<string[]>
   /** Asks where to save a template file; the path, null when they cancel. */
   pickSavePath: (
     dialogTitle: string,
@@ -44,8 +42,11 @@ export interface TemplateStoreDeps {
   ) => Promise<string | null>
   /** Asks for a template file; the path, null when they cancel. */
   pickTemplateFile: (dialogTitle: string, filterName: string) => Promise<string | null>
-  /** The families the compiler finds: its own and those in a folder of font files. */
-  families: (fontsDir: string | null) => Promise<string[]>
+  /**
+   * The families the compiler finds, with their variants: its own, the system's, and those in a
+   * folder of font files (a template made before fonts came from the system may have one).
+   */
+  families: (fontsDir: string | null) => Promise<FontFamily[]>
 }
 
 export interface TemplateDetail {
@@ -57,10 +58,8 @@ export interface TemplateDetail {
   baseSets: Sets
   /** What the writer changed on top of the base. */
   overrides: Sets
-  /** The font files the writer added. */
-  fonts: string[]
-  /** The families a property can name. */
-  families: string[]
+  /** The families a property can name, with what each has. */
+  families: FontFamily[]
   /** The options of the template, with the writer's changes. */
   options: OptionDetail[]
 }
@@ -77,7 +76,7 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
   rename(id: string, name: string): Promise<void>
   remove(id: string): Promise<void>
   set(id: string, element: string, prop: string, value: string | boolean | null): Promise<Sets>
-  /** Writes the template and its fonts as one file where the writer says; null when they cancel. */
+  /** Writes the template as one file where the writer says (its values, no fonts); null when they cancel. */
   exportFile(
     id: string,
     dialogTitle: string,
@@ -86,12 +85,6 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
   ): Promise<string | null>
   /** Adds the template in a file the writer picks as one of their own; null when they cancel. */
   importFile(dialogTitle: string, filterName: string): Promise<string | null>
-  addFonts(
-    id: string,
-    dialogTitle: string,
-    filterName: string,
-  ): Promise<{ fonts: string[]; families: string[] }>
-  removeFont(id: string, file: string): Promise<{ fonts: string[]; families: string[] }>
   /** Changes the default of an option of the template, or whether the export dialog offers it; null takes a field back to the base's. */
   setOption(
     id: string,
@@ -135,10 +128,10 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
       .filter((file) => fontFileName(file) === file)
       .sort((a, b) => a.localeCompare(b))
 
-  /** The font files of a template and the families a property can name there. */
-  const fontsOf = async (id: string): Promise<{ fonts: string[]; families: string[] }> => {
+  /** The families a property can name in a template. */
+  const familiesOf = async (id: string): Promise<FontFamily[]> => {
     const fonts = await fontFiles(id)
-    return { fonts, families: await deps.families(fonts.length > 0 ? fontsFolder(id) : null) }
+    return deps.families(fonts.length > 0 ? fontsFolder(id) : null)
   }
 
   /** The options of a template as the editor shows them. */
@@ -195,9 +188,7 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
         baseSets,
         overrides: template.custom?.overrides ?? {},
         options: optionsOf(template, templates),
-        ...(template.custom
-          ? await fontsOf(id)
-          : { fonts: [], families: await deps.families(null) }),
+        families: template.custom ? await familiesOf(id) : await deps.families(null),
       }
     },
 
@@ -241,35 +232,6 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
       await deps.trash(folder(id))
     },
 
-    async addFonts(id, dialogTitle, filterName) {
-      await custom(id)
-      const picked = await deps.pickFonts(dialogTitle, filterName)
-      const taken = new Set(await fontFiles(id))
-      for (const source of picked) {
-        const wanted = fontFileName(source)
-        if (!wanted) continue
-        const info = await stat(source).catch(() => null)
-        if (!info?.isFile() || info.size > MAX_FONT_BYTES) continue
-        // A file of the same name is not overwritten: the other one gets a number.
-        let name = wanted
-        for (let n = 2; taken.has(name); n++) name = wanted.replace(/(\.[a-z]+)$/, ` ${n}$1`)
-        await mkdir(fontsFolder(id), { recursive: true })
-        await copyFile(source, join(fontsFolder(id), name))
-        taken.add(name)
-      }
-      return fontsOf(id)
-    },
-
-    async removeFont(id, file) {
-      await custom(id)
-      // Only a file this service would have written: no path, a font extension.
-      if (fontFileName(file) !== file)
-        throw new IpcFailure('invalid_request', 'Not a font file of this template')
-      if (!(await fontFiles(id)).includes(file)) throw new IpcFailure('not_found', 'No such font')
-      await deps.trash(join(fontsFolder(id), file))
-      return fontsOf(id)
-    },
-
     async exportFile(id, dialogTitle, filterName, fileName) {
       await custom(id)
       const target = await deps.pickSavePath(dialogTitle, filterName, fileName)
@@ -278,12 +240,6 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
       const entries: ZipEntry[] = [
         { name: `${id}/custom.toml`, path: join(folder(id), 'custom.toml'), mtime },
         { name: `${id}/style.toml`, path: join(folder(id), 'style.toml'), mtime },
-        ...(await fontFiles(id)).map((file) => ({
-          name: `${id}/${FONTS_DIR}/${file}`,
-          path: join(fontsFolder(id), file),
-          mtime,
-          store: true,
-        })),
       ]
       const temp = `${target}.${randomBytes(4).toString('hex')}.tmp`
       try {
@@ -332,15 +288,6 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
         // The values are read and written again, so only valid ones arrive.
         const sets = parseSets(await readFile(join(unpacked, 'style.toml'), 'utf8').catch(() => ''))
         await writeFileAtomic(join(folder(id), 'style.toml'), setsToToml(sets))
-        const fonts = await readdir(join(unpacked, FONTS_DIR)).catch(() => [] as string[])
-        for (const file of fonts) {
-          const name = fontFileName(file)
-          const from = join(unpacked, FONTS_DIR, file)
-          const info = await stat(from).catch(() => null)
-          if (name !== file || !info?.isFile() || info.size > MAX_FONT_BYTES) continue
-          await mkdir(fontsFolder(id), { recursive: true })
-          await copyFile(from, join(fontsFolder(id), name))
-        }
         // The file that makes it a template comes last: a failure before leaves no half template.
         await writeFileAtomic(
           join(folder(id), 'custom.toml'),
@@ -395,8 +342,6 @@ export function createTemplateStore(deps: TemplateStoreDeps): {
     remove: (...args) => exclusive(() => methods.remove(...args)),
     set: (...args) => exclusive(() => methods.set(...args)),
     setOption: (...args) => exclusive(() => methods.setOption(...args)),
-    addFonts: (...args) => exclusive(() => methods.addFonts(...args)),
-    removeFont: (...args) => exclusive(() => methods.removeFont(...args)),
     importFile: (...args) => exclusive(() => methods.importFile(...args)),
   }
 }

@@ -28,6 +28,23 @@ export const optionDetailSchema = z.intersection(
   z.object({ baseDefault: value, hidden: z.boolean() }),
 )
 
+/** A font family and its variants (`core/export/fonts.ts`). */
+export const fontFamilySchema = z
+  .object({
+    name: z.string().max(200),
+    variants: z
+      .array(
+        z
+          .object({
+            style: z.enum(['normal', 'italic', 'oblique']),
+            weight: z.tuple([z.number(), z.number()]),
+          })
+          .strict(),
+      )
+      .max(500),
+  })
+  .strict()
+
 export const templateDetailSchema = z
   .object({
     id: z.string(),
@@ -36,17 +53,11 @@ export const templateDetailSchema = z
     base: z.string().nullable(),
     baseSets: setsSchema,
     overrides: setsSchema,
-    /** The font files the writer added to this template. */
-    fonts: z.array(z.string()),
-    /** The families a property can name here: those Typst brings and those of the added files. */
-    families: z.array(z.string()),
+    /** The families a property can name here, with their variants: Typst's own and the system's. */
+    families: z.array(fontFamilySchema),
     /** The options of the template, with what the base has and what the writer changed. */
     options: z.array(optionDetailSchema),
   })
-  .strict()
-
-export const fontsSchema = z
-  .object({ fonts: z.array(z.string()), families: z.array(z.string()) })
   .strict()
 
 export const templateFileSchema = z

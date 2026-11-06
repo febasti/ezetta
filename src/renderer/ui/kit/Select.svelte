@@ -8,6 +8,8 @@
   interface Option {
     value: T
     label: string
+    /** Shown but not to be chosen (a weight the font does not have). */
+    disabled?: boolean
   }
   interface Props {
     value: T
@@ -38,7 +40,7 @@
     onchange={(event) => onchange?.(event.currentTarget.value as T)}
   >
     {#each options as option (option.value)}
-      <option value={option.value}>{option.label}</option>
+      <option value={option.value} disabled={option.disabled}>{option.label}</option>
     {/each}
   </select>
   <span class="chevrons" aria-hidden="true">

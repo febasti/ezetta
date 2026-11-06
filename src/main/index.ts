@@ -18,7 +18,7 @@ import { popupNativeMenu } from './services/nativeMenu'
 import {
   compilerAvailable,
   createExporter,
-  listFontFamilies,
+  listFontVariants,
   spawnCompiler,
 } from './services/exporter'
 import { createTemplateStore } from './services/templateStore'
@@ -31,6 +31,7 @@ import { originOf } from './security/origin'
 import { ProjectHost } from './services/projectHost'
 import { SettingsStore } from './services/settings'
 import { createMainWindow, insetTitleBar, setLauncherMode } from './window'
+import type { FontFamily } from '@core/export/fonts'
 
 // Chromium sandbox on for every renderer, in every build.
 app.enableSandbox()
@@ -224,18 +225,21 @@ void app.whenReady().then(async () => {
   const bundledTemplates = resourceDir('templates')
   // The writer's own templates belong to the app, not to a project.
   const customTemplates = join(app.getPath('userData'), 'templates')
+  // The fonts the compiler finds, with their variants. Asking takes a moment (the system's fonts
+  // are read), so the answer is kept for a minute: fonts installed meanwhile show up after that.
+  const fontCache = new Map<string, { at: number; families: Promise<FontFamily[]> }>()
+  const fontVariants = (fontsDir: string | null): Promise<FontFamily[]> => {
+    const key = fontsDir ?? ''
+    const known = fontCache.get(key)
+    if (known && Date.now() - known.at < 60_000) return known.families
+    const families = listFontVariants(typstBinary, fontsDir)
+    fontCache.set(key, { at: Date.now(), families })
+    return families
+  }
   const templates = createTemplateStore({
     bundledDir: bundledTemplates,
     customDir: customTemplates,
     trash: (absPath) => shell.trashItem(absPath),
-    pickFonts: (title, filterName) =>
-      openPaths(
-        {
-          ...file(title, filterName, ['ttf', 'otf', 'ttc', 'otc']),
-          properties: ['openFile', 'multiSelections'],
-        },
-        'EZETTA_TEST_FONTS',
-      ),
     pickSavePath: (title, filterName, fileName) =>
       savePath(
         {
@@ -247,7 +251,7 @@ void app.whenReady().then(async () => {
       ),
     pickTemplateFile: (title, filterName) =>
       openPath(file(title, filterName, ['ezetta-template']), 'EZETTA_TEST_TEMPLATE_IMPORT'),
-    families: (fontsDir) => listFontFamilies(typstBinary, fontsDir),
+    families: (fontsDir) => fontVariants(fontsDir),
   })
   const exporter = createExporter({
     host,
