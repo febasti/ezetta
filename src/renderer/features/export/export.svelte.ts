@@ -1,5 +1,5 @@
 import type { z } from 'zod'
-import { mergeSets } from '@core/export/custom'
+import { mergeSets, setValueForAll } from '@core/export/custom'
 import type { Sets } from '@core/export/custom'
 import { resolveStyle } from '@core/export/style'
 import { fontProblems } from '@core/export/fonts'
@@ -54,6 +54,8 @@ class ExportStore {
   /** The first page of each template as a picture (a data URL), by template id. */
   thumbnails = $state.raw<Record<string, string>>({})
 
+  /** Changes of the template on their way to the main process. */
+  private writes = 0
   private timer: ReturnType<typeof setTimeout> | undefined
   private thumbTimer: ReturnType<typeof setTimeout> | undefined
   /** The profile as it was last saved, to tell whether closing has anything to write. */
@@ -153,6 +155,12 @@ class ExportStore {
     }
     this.detail = detail
     this.refused = null
+  }
+
+  /** Reads the shown template again from what is saved. */
+  private async refreshDetail(id: string): Promise<void> {
+    const detail = await call(window.api.templates.get({ id }))
+    if (detail && this.detail?.id === id) this.detail = detail
   }
 
   /** Makes the pages again, at once or after the pause that lets a burst of changes count as one. */
@@ -278,9 +286,25 @@ class ExportStore {
   ): Promise<void> {
     const detail = this.detail
     if (!detail || detail.builtin) return
+    // Shown at once, so a click is not undone by the answer to an earlier one still on its way.
+    this.detail = {
+      ...detail,
+      options: detail.options.map((o) =>
+        o.id !== option
+          ? o
+          : ({
+              ...o,
+              ...(patch.default !== undefined ? { default: patch.default ?? o.baseDefault } : {}),
+              ...(patch.hidden !== undefined ? { hidden: patch.hidden ?? false } : {}),
+            } as typeof o),
+      ),
+    }
+    this.writes += 1
     const result = await call(window.api.templates.setOption({ id: detail.id, option, ...patch }))
-    if (result && this.detail?.id === detail.id) {
-      this.detail = { ...detail, options: result.options }
+    this.writes -= 1
+    // What is saved is taken once no other change is still on its way (it would not have it yet).
+    if (result && this.writes === 0 && this.detail?.id === detail.id) {
+      this.detail = { ...this.detail, options: result.options }
       const info = await call(window.api.export.info({}))
       if (info) this.info = info
     }
@@ -290,13 +314,22 @@ class ExportStore {
   async set(element: string, prop: string, value: PropValue | null): Promise<void> {
     const detail = this.detail
     if (!detail || detail.builtin) return
+    // Shown at once, as the main process will write it (a value for all headings reaches every
+    // level), so a click is not undone by the answer to an earlier one still on its way.
+    const optimistic = setValueForAll(detail.baseSets, detail.overrides, element, prop, value)
+    if (optimistic.ok) this.detail = { ...detail, overrides: optimistic.sets }
+    this.writes += 1
     const result = await call(window.api.templates.set({ id: detail.id, element, prop, value }))
+    this.writes -= 1
     if (!result) {
       this.refused = `${element}.${prop}`
+      // Refused: back to what is saved.
+      if (this.writes === 0 && this.detail?.id === detail.id) await this.refreshDetail(detail.id)
       return
     }
     this.refused = null
-    if (this.detail?.id === detail.id) this.detail = { ...detail, overrides: result.overrides }
+    if (this.writes === 0 && this.detail?.id === detail.id)
+      this.detail = { ...this.detail, overrides: result.overrides }
     this.refreshPreview()
     // The template's picture follows, after the same pause.
     clearTimeout(this.thumbTimer)

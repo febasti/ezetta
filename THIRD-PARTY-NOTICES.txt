@@ -47,6 +47,11 @@ WordNet 2.1, the English thesaurus (resources/thesaurus/th_en_US_v2.dat)
   resources/thesaurus/WordNet_license.txt and must stay with every copy.
   https://wordnet.princeton.edu
 
+Libertinus Math 7.051, the math font of the templates (resources/templates/fonts/)
+  Copyright 2012-2024 The Libertinus Project Authors. SIL Open Font License 1.1, unchanged; the
+  text is in resources/templates/fonts/Libertinus-OFL.txt.
+  https://github.com/alerque/libertinus
+
 Marginalia 0.3.1, margin notes for Typst (resources/templates/marginalia.typ)
   By nleanba. Unlicense (public domain), unchanged; the text is in
   resources/templates/marginalia.UNLICENSE.

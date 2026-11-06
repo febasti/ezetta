@@ -253,6 +253,20 @@ const VARIANTS: {
     sets: { footnote: { marker_style: 'parens', entry_number: 'period', number_color: '#b00020' } },
   },
   {
+    name: 'bericht-formeln',
+    template: 'bericht',
+    options: {},
+    sets: {
+      equation: {
+        color: 'accent',
+        number_color: '#b00020',
+        above: '2em',
+        below: '2em',
+        math_font: 'libertinus',
+      },
+    },
+  },
+  {
     name: 'essay-quer',
     template: 'essay',
     options: {},
@@ -640,6 +654,9 @@ async function exportPages(variant: (typeof VARIANTS)[number]): Promise<string[]
       '--root',
       root,
       '--ignore-system-fonts',
+      // The fonts the app brings for the templates (Libertinus Math).
+      '--font-path',
+      join(TEMPLATES, 'fonts'),
       '--format',
       'svg',
       MAIN_FILE,

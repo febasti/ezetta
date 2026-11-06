@@ -115,6 +115,12 @@ export async function loadTemplates(
 /** The folder of the fonts of a custom template, inside its folder. */
 export const FONTS_DIR = 'fonts'
 
+/**
+ * The fonts the app brings for the templates (Libertinus Math), in a folder of the bundled
+ * templates that is not a template itself.
+ */
+export const BUNDLED_FONTS_DIR = 'fonts'
+
 /** The folder when it has files in it, else null. */
 async function hasFiles(dir: string): Promise<string | null> {
   try {
@@ -294,6 +300,11 @@ export function createExporter(deps: ExporterDeps): {
     fileName: string
   }): Promise<ExportResult>
 } {
+  /** The folders of fonts the compiler gets besides the system's: the app's, and a template's own. */
+  const fontPathsOf = (template: Template): string[] => [
+    join(deps.templatesDir, BUNDLED_FONTS_DIR),
+    ...(template.fontsDir ? [template.fontsDir] : []),
+  ]
   const warningsOf = (built: PreparedExport): ExportInfo['warnings'] => ({
     unknownCitations: built.unknownCitations,
     emptyImages: built.emptyImages,
@@ -350,7 +361,7 @@ export function createExporter(deps: ExporterDeps): {
     const run = await deps.compiler(root, {
       preview: true,
       signal: controller.signal,
-      fontPaths: template.fontsDir ? [template.fontsDir] : [],
+      fontPaths: fontPathsOf(template),
     })
     if (controller.signal.aborted) return superseded()
     const diagnostics = parseDiagnostics(run.output).map(wire)
@@ -423,7 +434,7 @@ export function createExporter(deps: ExporterDeps): {
       const run = await deps.compiler(root, {
         preview: true,
         ppi: THUMBNAIL_PPI,
-        fontPaths: template.fontsDir ? [template.fontsDir] : [],
+        fontPaths: fontPathsOf(template),
       })
       const pages = (await readdir(join(root, PREVIEW_DIR)))
         .map((f) => /^p-(\d+)\.png$/.exec(f))
@@ -518,7 +529,7 @@ export function createExporter(deps: ExporterDeps): {
       unwrap(await session.prepareExport(profile, template, prelude, { write: true }))
 
       const run = await deps.compiler(root, {
-        fontPaths: template.fontsDir ? [template.fontsDir] : [],
+        fontPaths: fontPathsOf(template),
       })
       const diagnostics = parseDiagnostics(run.output).map(wire)
       const failed = run.code !== 0

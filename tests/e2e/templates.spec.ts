@@ -513,7 +513,7 @@ test('headers, footers and the page number are set with three places each', asyn
       .selectOption({ label: 'Titel der Arbeit' })
     await editor(page).getByLabel('Rechts', { exact: true }).selectOption({ label: 'Kapitel' })
     await expect.poll(toml).toContain('slot_right = "chapter"')
-    expect(await toml()).toContain('slot_left = "title"')
+    await expect.poll(toml).toContain('slot_left = "title"')
 
     // The divider has its own fields, there while it is switched on.
     await expect(editor(page).getByLabel('Stärke')).toHaveValue('0.4pt')
@@ -527,7 +527,7 @@ test('headers, footers and the page number are set with three places each', asyn
     await editor(page).getByLabel('Darstellung').selectOption({ label: 'Mit Wort (Seite 3)' })
     await editor(page).getByLabel('Zahlenformat im Vorspann').selectOption({ label: 'I, II, III' })
     await expect.poll(toml).toContain('page_style = "prefix"')
-    expect(await toml()).toContain('front_format = "roman"')
+    await expect.poll(toml).toContain('front_format = "roman"')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {
@@ -554,9 +554,9 @@ test('tables have rules, a header and stripes; a block quote can have a bar and 
       .getByRole('radio', { name: 'Zentriert' })
       .click()
     await expect.poll(toml).toContain('cell_align = "center"')
-    expect(await toml()).toContain('stripe_fill = "#f0f0f0"')
-    expect(await toml()).toContain('border_style = "grid"')
-    expect(await toml()).toContain('header_bold = true')
+    await expect.poll(toml).toContain('stripe_fill = "#f0f0f0"')
+    await expect.poll(toml).toContain('border_style = "grid"')
+    await expect.poll(toml).toContain('header_bold = true')
 
     await choose(page, 'Blockzitat')
     await editor(page).getByLabel('Balken links').check()
@@ -566,7 +566,7 @@ test('tables have rules, a header and stripes; a block quote can have a bar and 
     await padding.fill('0.5em')
     await padding.press('Tab')
     await expect.poll(toml).toContain('padding = "0.5em"')
-    expect(await toml()).toContain('bar = true')
+    await expect.poll(toml).toContain('bar = true')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {
@@ -588,8 +588,8 @@ test('the numbers of headings have a text before and after them and a separator,
     await suffix.press('Tab')
     await editor(page).getByLabel('Umbruch langer Titel').selectOption({ label: 'Hängend' })
     await expect.poll(toml).toContain('number_style = "hanging"')
-    expect(await toml()).toContain('number_separator = "dash"')
-    expect(await toml()).toContain('number_suffix = "."')
+    await expect.poll(toml).toContain('number_separator = "dash"')
+    await expect.poll(toml).toContain('number_suffix = "."')
 
     // The text before a number keeps its space.
     await choose(page, 'Überschrift 1 (Kapitel)')
@@ -600,7 +600,7 @@ test('the numbers of headings have a text before and after them and a separator,
     await prefix.fill('#panic()')
     await prefix.press('Tab')
     await expect(editor(page).getByRole('alert')).toContainText('kein gültiger Wert')
-    expect(await toml()).toContain('number_prefix = "Kapitel "')
+    await expect.poll(toml).toContain('number_prefix = "Kapitel "')
 
     await choose(page, 'Inhaltsverzeichnis')
     await editor(page).getByLabel('Ebenen anzeigen').selectOption({ label: 'Bis Ebene 2' })
@@ -609,8 +609,8 @@ test('the numbers of headings have a text before and after them and a separator,
     await title.fill('Inhalt')
     await title.press('Tab')
     await expect.poll(toml).toContain('title_text = "Inhalt"')
-    expect(await toml()).toContain('show_depth = "2"')
-    expect(await toml()).toContain('leader = "none"')
+    await expect.poll(toml).toContain('show_depth = "2"')
+    await expect.poll(toml).toContain('leader = "none"')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
   } finally {
     await app.close()
@@ -696,8 +696,8 @@ test('the bibliography has a title of its own, an indent and a space between ent
     await gap.fill('1em')
     await gap.press('Tab')
     await expect.poll(toml).toContain('entry_spacing = "1em"')
-    expect(await toml()).toContain('title_text = "Quellen"')
-    expect(await toml()).toContain('hanging_indent = "2em"')
+    await expect.poll(toml).toContain('title_text = "Quellen"')
+    await expect.poll(toml).toContain('hanging_indent = "2em"')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {
@@ -726,8 +726,8 @@ test('captions have a position and a mark, and references can use other words th
       .getByRole('radio', { name: 'Links' })
       .click()
     await expect.poll(toml).toContain('align = "left"')
-    expect(await toml()).toContain('caption_position = "above"')
-    expect(await toml()).toContain('caption_separator = "period"')
+    await expect.poll(toml).toContain('caption_position = "above"')
+    await expect.poll(toml).toContain('caption_separator = "period"')
 
     await choose(page, 'Querverweise')
     const word = editor(page).getByLabel('Wort für Abschnitte')
@@ -762,8 +762,8 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     await gap.fill('0.8em')
     await gap.press('Tab')
     await expect.poll(toml).toContain('item_spacing = "0.8em"')
-    expect(await toml()).toContain('marker = "dash"')
-    expect(await toml()).toContain('enum_format = "letter_paren"')
+    await expect.poll(toml).toContain('marker = "dash"')
+    await expect.poll(toml).toContain('enum_format = "letter_paren"')
 
     await choose(page, 'Fußnote')
     const indent = editor(page).getByLabel('Einzug der Fußnoten')
@@ -773,7 +773,7 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     await between.fill('0.8em')
     await between.press('Tab')
     await expect.poll(toml).toContain('note_gap = "0.8em"')
-    expect(await toml()).toContain('note_indent = "2em"')
+    await expect.poll(toml).toContain('note_indent = "2em"')
     // The number: its format, the marker in the text, the number in the note, and its colour.
     for (const title of ['Nummer', 'Trennlinie'])
       await expect(editor(page).getByRole('heading', { name: title, level: 4 })).toBeVisible()
@@ -800,6 +800,24 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     await choose(page, 'Formeln')
     await editor(page).getByLabel('Stellung der Nummer').selectOption({ label: 'Links' })
     await expect.poll(toml).toContain('number_side = "left"')
+    // The math font is one of the two the app brings; the colours and the space around a formula
+    // of its own are the template's.
+    const mathFont = editor(page).getByLabel('Mathematikschrift')
+    await expect(mathFont.locator('option')).toHaveText([
+      'New Computer Modern Math',
+      'Libertinus Math',
+    ])
+    await mathFont.selectOption({ label: 'Libertinus Math' })
+    await expect.poll(toml).toContain('math_font = "libertinus"')
+    const above = editor(page).locator('#prop-equation-above')
+    await above.fill('1.5em')
+    await above.press('Tab')
+    await expect.poll(toml).toContain('above = "1.5em"')
+    const numberColor = editor(page).locator('#prop-equation-number_color')
+    await numberColor.fill('#b00020')
+    await numberColor.press('Tab')
+    await expect.poll(toml).toContain('number_color = "#b00020"')
+    await expect(editor(page).getByRole('heading', { name: 'Nummer', level: 4 })).toHaveCount(1)
 
     await choose(page, 'Code')
     const fill = editor(page).locator('#prop-code-fill')
@@ -809,7 +827,7 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     await radius.fill('4pt')
     await radius.press('Tab')
     await expect.poll(toml).toContain('radius = "4pt"')
-    expect(await toml()).toContain('fill = "#eeeeee"')
+    await expect.poll(toml).toContain('fill = "#eeeeee"')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {
@@ -1097,7 +1115,7 @@ test('a quote in the text can have a style of its own, and the pages follow', as
     const italic = editor(page).locator('#prop-quote_inline-italic')
     await italic.check()
     await expect.poll(toml).toContain('[element.quote_inline]')
-    expect(await toml()).toContain('italic = true')
+    await expect.poll(toml).toContain('italic = true')
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {
     await app.close()
@@ -1196,8 +1214,8 @@ test('links and cross-references have a colour, a weight, italics and a backgrou
     await fill.fill('#e8f0fe')
     await fill.press('Tab')
     await expect.poll(toml).toContain('fill = "#e8f0fe"')
-    expect(await toml()).toContain('italic = true')
-    expect(await toml()).toContain('weight = "bold"')
+    await expect.poll(toml).toContain('italic = true')
+    await expect.poll(toml).toContain('weight = "bold"')
 
     // A colour is one row: the colour field, the text, and the two colours of the palette as dots.
     const row = panel.locator('.row', { has: page.locator('#prop-link-color') })
@@ -1229,8 +1247,8 @@ test('links and cross-references have a colour, a weight, italics and a backgrou
     await panel.locator('#prop-references-fill').press('Tab')
     await panel.locator('#prop-references-italic').check()
     await expect.poll(toml).toContain('[element.references]')
-    expect(await toml()).toContain('color = "#b00020"')
-    expect(await toml()).toContain('fill = "#fff2a8"')
+    await expect.poll(toml).toContain('color = "#b00020"')
+    await expect.poll(toml).toContain('fill = "#fff2a8"')
     // The pages are made with them.
     await expect(panel.locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(panel.getByRole('alert')).toHaveCount(0)
@@ -1255,8 +1273,8 @@ test('citations have a style, and so has each list of contents: of figures, of t
     await fill.fill('#e8f0fe')
     await fill.press('Tab')
     await expect.poll(toml).toContain('fill = "#e8f0fe"')
-    expect(await toml()).toContain('[element.citations]')
-    expect(await toml()).toContain('italic = true')
+    await expect.poll(toml).toContain('[element.citations]')
+    await expect.poll(toml).toContain('italic = true')
 
     // A list of figures has the text of the contents and a title of its own.
     await choose(page, 'Abbildungsverzeichnis')

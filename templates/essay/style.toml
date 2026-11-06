@@ -115,3 +115,7 @@ color = "accent"
 
 [element.highlight]
 fill = "#f2e0b8"
+
+[element.equation]
+# The formulas in the face of the text (Libertinus Serif).
+math_font = "libertinus"

@@ -166,3 +166,7 @@ above = "5cm"
 size = "0.9em"
 color = "accent_secondary"
 above = "1.5em"
+
+[element.equation]
+# The formulas in the face of the text (Libertinus Serif).
+math_font = "libertinus"

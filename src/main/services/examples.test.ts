@@ -160,7 +160,16 @@ describe('the example project', () => {
           expect(built.value.counts.comments).toBeGreaterThanOrEqual(1)
           execFileSync(
             binary,
-            ['compile', '--root', root, '--ignore-system-fonts', MAIN_FILE, '_build/out.pdf'],
+            [
+              'compile',
+              '--root',
+              root,
+              '--ignore-system-fonts',
+              '--font-path',
+              resolve('templates', 'fonts'),
+              MAIN_FILE,
+              '_build/out.pdf',
+            ],
             { cwd: root, stdio: 'pipe' },
           )
           const pdf = await readFile(join(root, '_build', 'out.pdf'))

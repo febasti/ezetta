@@ -405,3 +405,20 @@ describe('the number and the rule of footnotes', () => {
     expect(typst).toMatch(/footnote: \(.*number_color: rgb\(/s)
   })
 })
+
+describe('formulas', () => {
+  it('keep what Typst does until a template says otherwise', () => {
+    const eq = parseStyle('').style['equation']!
+    expect(eq['math_font']).toBe('new_computer_modern')
+    // The colour is the text's, as before.
+    expect(eq['color']).toBe(parseStyle('').style['body']!['color'])
+    expect(eq['number_color']).toBeNull()
+    expect(eq['above']).toBeNull()
+    expect(eq['below']).toBeNull()
+  })
+
+  it('take only the math fonts the app brings', () => {
+    expect(PROPS['math_font']!.values).toEqual(['new_computer_modern', 'libertinus'])
+    expect(parseStyle('[element.equation]\nmath_font = "Comic Sans"').problems).toHaveLength(1)
+  })
+})

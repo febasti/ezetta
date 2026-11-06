@@ -126,6 +126,10 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     dotted: { de: 'Gepunktet', en: 'Dotted' },
     none: { de: 'Keine', en: 'None' },
   },
+  math_font: {
+    new_computer_modern: { de: 'New Computer Modern Math', en: 'New Computer Modern Math' },
+    libertinus: { de: 'Libertinus Math', en: 'Libertinus Math' },
+  },
   orientation: {
     portrait: { de: 'Hochformat', en: 'Portrait' },
     landscape: { de: 'Querformat', en: 'Landscape' },
@@ -452,6 +456,10 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
       'custom',
     ]),
     prop('orientation', 'enum', 'Ausrichtung', 'Orientation', ['portrait', 'landscape']),
+    prop('math_font', 'enum', 'Mathematikschrift', 'Math font', [
+      'new_computer_modern',
+      'libertinus',
+    ]),
     prop('page_width', 'length', 'Breite', 'Width'),
     prop('page_height', 'length', 'Höhe', 'Height'),
     prop('columns', 'enum', 'Spalten', 'Columns', ['1', '2', '3']),
@@ -587,6 +595,7 @@ export const PROP_SECTIONS: readonly {
     en: 'Type',
     props: [
       'font',
+      'math_font',
       'size',
       'weight',
       'italic',
@@ -672,6 +681,7 @@ export const PROP_SECTIONS: readonly {
     de: 'Nummer',
     en: 'Number',
     props: ['note_numbering', 'marker_style', 'entry_number', 'number_color'],
+    only: ['footnote'],
   },
   {
     id: 'separator',
@@ -681,7 +691,7 @@ export const PROP_SECTIONS: readonly {
     only: ['footnote'],
   },
   { id: 'notes', de: 'Abstände', en: 'Spacing', props: ['note_gap', 'note_indent'] },
-  { id: 'equation', de: 'Nummer', en: 'Number', props: ['number_side'] },
+  { id: 'equation', de: 'Nummer', en: 'Number', props: ['number_side', 'number_color'] },
   {
     id: 'caption',
     de: 'Beschriftung',
@@ -1130,10 +1140,24 @@ export const ELEMENTS: readonly ElementDef[] = [
     accent: '#1a56b0',
     accent_secondary: '#666666',
   }),
-  el('equation', 'body', 'equations', 'Formeln', 'Equations', ['size', 'number_side'], {
-    size: '1em',
-    number_side: 'right',
-  }),
+  el(
+    'equation',
+    'body',
+    'equations',
+    'Formeln',
+    'Equations',
+    ['math_font', 'size', 'color', 'above', 'below', 'number_side', 'number_color'],
+    {
+      math_font: 'new_computer_modern',
+      size: '1em',
+      // Unset: the text's colour, and Typst's own space around a formula on lines of its own.
+      color: null,
+      above: null,
+      below: null,
+      number_side: 'right',
+      number_color: null,
+    },
+  ),
   el(
     'link',
     null,

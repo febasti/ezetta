@@ -220,9 +220,16 @@
   set page(header-ascent: hd.distance, footer-descent: ft.distance)
 
   // Equations are numbered (1), (2), …; code and raw text use the code style.
+  // Formulas: the math font, the size and colour, the space around one on lines of its own, and
+  // the number with its side and colour. What is unset stays as Typst has it.
   let eq = style.equation
-  set math.equation(numbering: "(1)", number-align: if eq.number_side == "left" { start + horizon } else { end + horizon })
+  let eq-number = if eq.number_color == none { "(1)" } else { (..n) => text(fill: eq.number_color, numbering("(1)", ..n)) }
+  set math.equation(numbering: eq-number, number-align: if eq.number_side == "left" { start + horizon } else { end + horizon })
   show math.equation: set text(size: eq.size)
+  show math.equation: set text(font: "Libertinus Math") if eq.math_font == "libertinus"
+  show math.equation: set text(fill: eq.color) if eq.color != none
+  show math.equation.where(block: true): set block(above: eq.above) if eq.above != none
+  show math.equation.where(block: true): set block(below: eq.below) if eq.below != none
   let code = style.code
   show raw: set text(..text-args(code))
   // A code block can be a box with a background.

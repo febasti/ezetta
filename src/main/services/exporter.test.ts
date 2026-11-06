@@ -16,6 +16,7 @@ import { findTypst } from './mathRenderer'
 import { createRootedFs } from './rootedFs'
 import type { ProjectHost } from './projectHost'
 import { defaultProfile } from '@core/export/profile'
+import { parseStyle } from '@core/export/style'
 
 const binary = findTypst({ override: process.env['EZETTA_TYPST'] })
 const installed = binary !== 'typst'
@@ -542,5 +543,19 @@ describe.skipIf(!installed || !existsSync(SYSTEM_FONT))('the fonts of the system
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
+  })
+})
+
+describe('the math font of the bundled templates', () => {
+  it('is Libertinus Math where the text is set in Libertinus Serif, and the app brings it', async () => {
+    for (const template of ['monographie', 'essay']) {
+      const style = parseStyle(
+        await readFile(join(TEMPLATES, template, 'style.toml'), 'utf8'),
+      ).style
+      expect(style['body']!['font'], template).toBe('Libertinus Serif')
+      expect(style['equation']!['math_font'], template).toBe('libertinus')
+    }
+    expect(existsSync(join(TEMPLATES, 'fonts', 'LibertinusMath-Regular.otf'))).toBe(true)
+    expect(existsSync(join(TEMPLATES, 'fonts', 'Libertinus-OFL.txt'))).toBe(true)
   })
 })
