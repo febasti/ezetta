@@ -32,6 +32,17 @@ const FONT = /^[\p{L}\p{N} .,'&+-]{1,80}$/u
 /** A short text the writer types (a word before a number, a title): no code, no markup. */
 const TEXT_VALUE = /^[\p{L}\p{N} .,:;()\-–—'/&]{1,40}$/u
 
+/** Millimetres in one unit of an absolute length. */
+const MM: Readonly<Record<string, number>> = { mm: 1, cm: 10, in: 25.4, pt: 25.4 / 72 }
+/** The width and the height of a custom page: an absolute length from 5 cm to 1.2 m. */
+const PAGE_SIZE = new Set(['page_width', 'page_height'])
+const pageSizeOk = (text: string): boolean => {
+  const match = /^(\d+(?:\.\d+)?|\.\d+)(mm|cm|in|pt)$/.exec(text)
+  if (!match) return false
+  const mm = Number(match[1]) * MM[match[2]!]!
+  return mm >= 50 && mm <= 1200
+}
+
 /** A value of the property's type, or null when it is not one (an empty string means "unset" and is null too). */
 export function checkValue(
   def: PropDef,
@@ -42,7 +53,10 @@ export function checkValue(
   if (typeof value !== 'string') return null
   const text = value.trim()
   if (text === '') return null
-  if (def.type === 'length') return LENGTH.test(text) ? text : null
+  if (def.type === 'length') {
+    if (PAGE_SIZE.has(def.id)) return pageSizeOk(text) ? text : null
+    return LENGTH.test(text) ? text : null
+  }
   if (def.type === 'color') {
     if (COLOR.test(text)) return text.toLowerCase()
     return allowToken && isColorToken(text) ? text : null

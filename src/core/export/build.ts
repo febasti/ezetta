@@ -198,6 +198,10 @@ export function buildExport(input: BuildInput): BuildOutput {
   const style = parseStyle(
     template.files.find((file) => file.path === 'style.toml')?.content ?? '',
   ).style
+  // The profile's hyphenation is the document's, over the template's (the body text's, which the
+  // engine sets for the whole text).
+  if (profile.hyphenate !== undefined && style['body'])
+    style['body'] = { ...style['body'], hyphenate: profile.hyphenate }
   const references = referenceStyleOf(style)
   const headingText = headingTexts(
     input.sheets,

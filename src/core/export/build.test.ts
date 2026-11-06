@@ -152,6 +152,15 @@ describe('buildExport', () => {
     expect(file(output, '_build/template/style.typ')).toContain('supplement_section: "Kap."')
   })
 
+  it('sets the hyphenation the profile chooses over the template’s, and the template’s otherwise', () => {
+    const style = (output: ReturnType<typeof buildExport>) =>
+      file(output, '_build/template/style.typ')
+    const on = '[element.body]\nhyphenate = true'
+    expect(style(buildExport(styled(on)))).toContain('hyphenate: true')
+    const off = buildExport({ ...styled(on), profile: { ...input().profile, hyphenate: false } })
+    expect(style(off)).toContain('hyphenate: false')
+  })
+
   it('writes the title of the bibliography the template sets', () => {
     const plain = buildExport({ ...input(), bibliography: '/library.bib' })
     expect(file(plain, '_build/main.typ')).toContain('title: "Literaturverzeichnis"')

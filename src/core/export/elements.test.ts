@@ -7,6 +7,7 @@ import {
   SUB_ELEMENTS,
   elementById,
   isListed,
+  isShown,
 } from './elements'
 import { checkValue, parseStyle, resolveStyle, styleToTypst } from './style'
 
@@ -328,5 +329,36 @@ describe('facing pages or single pages', () => {
     expect(checkValue(def, 'single', false)).toBe('single')
     expect(checkValue(def, 'facing', false)).toBe('facing')
     expect(checkValue(def, 'spread', false)).toBeNull()
+  })
+})
+
+describe('the size of the page', () => {
+  it('takes a custom width and height from 5 cm to 1.2 m, in absolute units only', () => {
+    const width = PROPS['page_width']!
+    expect(checkValue(width, '12cm')).toBe('12cm')
+    expect(checkValue(width, '170mm')).toBe('170mm')
+    expect(checkValue(width, '8.5in')).toBe('8.5in')
+    expect(checkValue(width, '595pt')).toBe('595pt')
+    for (const bad of ['4cm', '121cm', '50%', '10em', '-20cm', '0', 'abc'])
+      expect(checkValue(width, bad), bad).toBeNull()
+  })
+
+  it('shows the width and height only for a custom size, and the orientation only for a named one', () => {
+    expect(isShown('page_width', { paper: 'custom' })).toBe(true)
+    expect(isShown('page_height', { paper: 'a4' })).toBe(false)
+    expect(isShown('orientation', { paper: 'a4' })).toBe(true)
+    expect(isShown('orientation', { paper: 'custom' })).toBe(false)
+    expect(isShown('margin_top', { paper: 'custom' })).toBe(true)
+  })
+
+  it('writes a custom size and the orientation for the engine', () => {
+    const { style, problems } = parseStyle(
+      '[element.page]\npaper = "custom"\npage_width = "12cm"\npage_height = "19cm"\norientation = "landscape"',
+    )
+    expect(problems).toEqual([])
+    expect(styleToTypst(style)).toMatch(
+      /page: \(.*paper: "custom".*page_width: 12cm, page_height: 19cm/s,
+    )
+    expect(styleToTypst(style)).toMatch(/orientation: "landscape"/)
   })
 })

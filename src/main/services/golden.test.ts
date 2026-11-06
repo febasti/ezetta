@@ -106,6 +106,7 @@ const VARIANTS: {
   options: Record<string, string | boolean>
   comments?: ExportProfile['comments']
   marks?: ExportProfile['marks']
+  hyphenate?: ExportProfile['hyphenate']
   /** Values set on top of the template's style, as a writer's own template would. */
   sets?: Sets
   /** Sheets added to the fixture for this variant, by path under `content/`. */
@@ -220,6 +221,24 @@ const VARIANTS: {
     template: 'essay',
     options: {},
     sets: { page: { paper: 'b5' } },
+  },
+  {
+    name: 'essay-quer',
+    template: 'essay',
+    options: {},
+    sets: { page: { orientation: 'landscape' } },
+  },
+  {
+    name: 'essay-eigen',
+    template: 'essay',
+    options: {},
+    sets: { page: { paper: 'custom', page_width: '12cm', page_height: '19cm' } },
+  },
+  {
+    name: 'essay-ohne-trennung',
+    template: 'essay',
+    options: {},
+    hyphenate: false,
   },
   {
     name: 'essay-verweise',
@@ -578,6 +597,7 @@ async function exportPages(variant: (typeof VARIANTS)[number]): Promise<string[]
     template: variant.template,
     comments: variant.comments ?? 'remove',
     marks: variant.marks ?? 'hide',
+    ...(variant.hyphenate !== undefined ? { hyphenate: variant.hyphenate } : {}),
     options: resolveOptions(template.info, variant.options),
   }
   const built = await opened.value.prepareExport(profile, template, prelude, { write: true })

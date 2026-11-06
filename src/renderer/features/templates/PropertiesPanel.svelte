@@ -7,6 +7,7 @@
     PROP_SECTIONS,
     PROPS,
     elementById,
+    isShown,
   } from '@core/export/elements'
   import { COLOR_TOKENS, checkValue, isColorToken } from '@core/export/style'
   import { exporting as editor, FONTS, OPTIONS } from '../export/export.svelte'
@@ -144,6 +145,17 @@
           disabled={readOnly}
           onchange={(v) => void editor.set(element.id, id, v)}
         />
+      {:else if def.id === 'orientation'}
+        <Segmented
+          label={def[lang]}
+          options={(def.values ?? []).map((v) => ({
+            value: v,
+            label: def.valueLabels?.[v]?.[lang] ?? v,
+          }))}
+          value={typeof value === 'string' ? value : null}
+          disabled={readOnly}
+          onchange={(v) => void editor.set(element.id, id, v)}
+        />
       {:else if def.id === 'text_case' || def.id === 'columns'}
         <Segmented
           label={def[lang]}
@@ -228,7 +240,7 @@
   {#each shape.groups as group (group.id)}
     <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
       <div class="rows">
-        {#each group.ids as id (id)}
+        {#each group.ids.filter((id) => isShown(id, values)) as id (id)}
           {@render row(element, id)}
         {/each}
       </div>

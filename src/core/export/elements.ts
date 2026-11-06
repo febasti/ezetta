@@ -78,6 +78,11 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     b5: { de: 'B5', en: 'B5' },
     'us-letter': { de: 'US Letter', en: 'US Letter' },
     'us-legal': { de: 'US Legal', en: 'US Legal' },
+    custom: { de: 'Eigenes Format', en: 'Custom size' },
+  },
+  orientation: {
+    portrait: { de: 'Hochformat', en: 'Portrait' },
+    landscape: { de: 'Querformat', en: 'Landscape' },
   },
   columns: {
     '1': { de: 'Eine', en: 'One' },
@@ -381,7 +386,11 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
       'b5',
       'us-letter',
       'us-legal',
+      'custom',
     ]),
+    prop('orientation', 'enum', 'Ausrichtung', 'Orientation', ['portrait', 'landscape']),
+    prop('page_width', 'length', 'Breite', 'Width'),
+    prop('page_height', 'length', 'Höhe', 'Height'),
     prop('columns', 'enum', 'Spalten', 'Columns', ['1', '2', '3']),
     prop('column_gap', 'length', 'Spaltenabstand', 'Column gap'),
     prop('span_columns', 'bool', 'Über alle Spalten', 'Across all columns'),
@@ -429,6 +438,21 @@ export const SUB_ELEMENTS: Readonly<Record<string, readonly string[]>> = {
   table: ['table_caption'],
   title_page: ['title_page_title', 'title_page_subtitle', 'title_page_author', 'title_page_date'],
 }
+
+/**
+ * Properties shown only when the other values of their element allow them: the width and height of
+ * a page only for a custom size, the orientation only for a named one (a custom size has its own).
+ */
+const SHOWN_WHEN: Readonly<Record<string, (values: Readonly<Record<string, unknown>>) => boolean>> =
+  {
+    page_width: (v) => v['paper'] === 'custom',
+    page_height: (v) => v['paper'] === 'custom',
+    orientation: (v) => v['paper'] !== 'custom',
+  }
+
+/** Whether a property is shown, given the values its element has (its own and inherited). */
+export const isShown = (prop: string, values: Readonly<Record<string, unknown>>): boolean =>
+  SHOWN_WHEN[prop]?.(values) ?? true
 
 /** The elements set in the "Dokument einrichten" panel of the editor, not in its list: the colours. */
 export const SETUP_ELEMENTS: readonly string[] = ['palette']
@@ -608,7 +632,12 @@ export const PROP_SECTIONS: readonly {
       'entry_spacing',
     ],
   },
-  { id: 'format', de: 'Format', en: 'Format', props: ['paper', 'facing'] },
+  {
+    id: 'format',
+    de: 'Format',
+    en: 'Format',
+    props: ['paper', 'orientation', 'page_width', 'page_height', 'facing'],
+  },
   {
     id: 'margins',
     de: 'Ränder',
@@ -628,10 +657,13 @@ export const ELEMENTS: readonly ElementDef[] = [
     'page',
     null,
     'page',
-    'Ränder und Spalten',
-    'Margins and columns',
+    'Papier und Ränder',
+    'Paper and Margins',
     [
       'paper',
+      'orientation',
+      'page_width',
+      'page_height',
       'facing',
       'margin_top',
       'margin_bottom',
@@ -642,6 +674,9 @@ export const ELEMENTS: readonly ElementDef[] = [
     ],
     {
       paper: 'a4',
+      orientation: 'portrait',
+      page_width: '21cm',
+      page_height: '29.7cm',
       facing: 'facing',
       columns: '1',
       column_gap: '1cm',

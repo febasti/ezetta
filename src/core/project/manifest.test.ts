@@ -346,4 +346,22 @@ template = "monographie"
     const saved = parseOk(serializeManifest({ ...manifest, titelei: defaultManifest('x').titelei }))
     expect(saved.manifest.titelei.authors).toEqual([])
   })
+
+  it('keeps the hyphenation of an export profile, and writes none it does not choose', () => {
+    const base = defaultManifest('x')
+    const profile = base.exports[0] ?? {
+      name: 'Abgabe',
+      template: 'monographie',
+      citationStyle: 'apa-7',
+      marks: 'hide' as const,
+      comments: 'remove' as const,
+      options: {},
+    }
+    const off = serializeManifest({ ...base, exports: [{ ...profile, hyphenate: false }] })
+    expect(off).toContain('hyphenate = false')
+    expect(parseOk(off).manifest.exports[0]?.hyphenate).toBe(false)
+    const none = serializeManifest({ ...base, exports: [profile] })
+    expect(none).not.toContain('hyphenate')
+    expect(parseOk(none).manifest.exports[0]?.hyphenate).toBeUndefined()
+  })
 })

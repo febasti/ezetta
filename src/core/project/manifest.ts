@@ -438,6 +438,7 @@ function readProfiles(value: unknown, citationStyle: string): ExportProfile[] {
       citationStyle: str(raw['citation_style'], citationStyle),
       marks: raw['marks'] === 'show' ? 'show' : 'hide',
       comments: raw['comments'] === 'footnote' ? 'footnote' : 'remove',
+      ...(typeof raw['hyphenate'] === 'boolean' ? { hyphenate: raw['hyphenate'] } : {}),
       options,
     })
   }
@@ -451,6 +452,7 @@ function profileTable(profile: ExportProfile): TomlTable {
     citation_style: profile.citationStyle,
     marks: profile.marks,
     comments: profile.comments,
+    ...(profile.hyphenate !== undefined ? { hyphenate: profile.hyphenate } : {}),
     ...(Object.keys(profile.options).length > 0 ? { options: profile.options } : {}),
   }
 }

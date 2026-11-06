@@ -428,7 +428,7 @@ test('the text can be set in columns, with a gap, and figures can span them', as
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
 
-    await choose(page, 'Ränder und Spalten')
+    await choose(page, 'Papier und Ränder')
     for (const title of ['Ränder', 'Spalten']) {
       await expect(editor(page).getByRole('heading', { name: title, level: 4 })).toBeVisible()
     }
@@ -1020,7 +1020,7 @@ test('the elements are in groups that open and close: the headings under one ent
     ])
     await group('Seite').click()
     await expect(inside('Seite').getByRole('button')).toHaveText([
-      'Ränder und Spalten',
+      'Papier und Ränder',
       'Kopfzeile',
       'Fußzeile',
       'Seitenzahl',
@@ -1079,7 +1079,7 @@ test('the size of the text is set in the body text, and the paper size in the pa
     await expect.poll(stamp, { timeout: 30_000 }).not.toBe(before)
 
     // The paper size is in the page section, with the margins.
-    await choose(page, 'Ränder und Spalten')
+    await choose(page, 'Papier und Ränder')
     const paper = editor(page).getByLabel('Papierformat')
     await expect(paper).toHaveValue('a4')
     await expect(paper.locator('option')).toHaveText([
@@ -1089,7 +1089,29 @@ test('the size of the text is set in the body text, and the paper size in the pa
       'B5',
       'US Letter',
       'US Legal',
+      'Eigenes Format',
     ])
+    // A named size is upright or turned; the custom width and height show only for a custom size.
+    const orientation = editor(page).getByRole('radiogroup', { name: 'Ausrichtung' })
+    await expect(orientation.getByRole('radio', { name: 'Hochformat' })).toBeChecked()
+    await expect(editor(page).getByLabel('Breite', { exact: true })).toHaveCount(0)
+    await orientation.getByRole('radio', { name: 'Querformat' }).click()
+    await expect.poll(toml).toContain('orientation = "landscape"')
+    await paper.selectOption({ label: 'Eigenes Format' })
+    await expect.poll(toml).toContain('paper = "custom"')
+    await expect(orientation).toHaveCount(0)
+    const width = editor(page).getByLabel('Breite', { exact: true })
+    await expect(width).toHaveValue('21cm')
+    // Too small for a page: refused.
+    await width.fill('4cm')
+    await width.press('Tab')
+    await expect(editor(page).getByRole('alert')).toContainText('kein gültiger Wert')
+    await width.fill('17cm')
+    await width.press('Tab')
+    await expect.poll(toml).toContain('page_width = "17cm"')
+    await expect(editor(page).getByRole('alert')).toHaveCount(0)
+    await paper.selectOption({ label: 'A4' })
+    await expect.poll(toml).toContain('paper = "a4"')
     // Facing pages or single pages is chosen beside it.
     const layout = editor(page).getByLabel('Seitenanordnung')
     await expect(layout).toHaveValue('facing')

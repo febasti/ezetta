@@ -44,8 +44,14 @@
     spacing: bd.paragraph_spacing,
     first-line-indent: if bd.first_line_indent == none { 0pt } else { bd.first_line_indent },
   )
+  // The size: a named paper, upright or turned (landscape), or a custom width and height.
+  let size = if style.page.paper == "custom" {
+    (width: style.page.page_width, height: style.page.page_height)
+  } else {
+    (paper: paper, flipped: style.page.orientation == "landscape")
+  }
   set page(
-    paper: paper,
+    ..size,
     margin: if facing {
       (
         top: style.page.margin_top,

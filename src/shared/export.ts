@@ -10,6 +10,7 @@ export const profileSchema = z
     citationStyle: z.string().max(60),
     marks: z.enum(['hide', 'show']),
     comments: z.enum(['remove', 'footnote']),
+    hyphenate: z.boolean().optional(),
     options: z.record(z.string().max(60), z.union([z.string().max(500), z.boolean()])),
   })
   .strict()

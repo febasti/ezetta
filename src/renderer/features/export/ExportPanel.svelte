@@ -20,6 +20,10 @@
   const result = $derived(exporting.result)
 
   const anyOpen = $derived(exporting.openCount > 0)
+  /** Hyphenation: the document's own choice, else what the template's body text says. */
+  const hyphenate = $derived(
+    profile?.hyphenate ?? exporting.resolved['body']?.['hyphenate'] === true,
+  )
 </script>
 
 {#if info && profile}
@@ -30,9 +34,16 @@
       <Callout tone="danger">{i18n.t('export.noCompiler')}</Callout>
     {/if}
 
-    {#if template && template.options.some((o) => !o.hidden)}
+    {#if template}
       <Section title={template.name[lang]} level={4}>
         <Form stacked>
+          <Checkbox
+            checked={hyphenate}
+            disabled={exporting.busy}
+            onchange={(on) => (profile.hyphenate = on)}
+          >
+            {i18n.t('export.hyphenate')}
+          </Checkbox>
           {#each template.options.filter((o) => !o.hidden) as option (option.id)}
             {#if option.type === 'bool'}
               <Checkbox

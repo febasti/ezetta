@@ -336,6 +336,7 @@
   "export.group": "PDF",
   "export.panel": "Dokument einrichten",
   "export.colours": "Farben",
+  "export.hyphenate": "Silbentrennung",
   "export.content": "Inhalt",
   "export.run": "Exportieren …",
   "export.running": "Exportiere …",

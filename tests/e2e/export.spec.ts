@@ -64,6 +64,10 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     // The options come from the template.
     await dialog(page).getByLabel('Zeilenabstand').selectOption('wide')
     await dialog(page).getByLabel('Zitierstil').selectOption('chicago-author-date')
+    // Hyphenation is the document's: on as the template has it, and switched off here.
+    const hyphenation = dialog(page).getByRole('checkbox', { name: 'Silbentrennung' })
+    await expect(hyphenation).toBeChecked()
+    await hyphenation.uncheck()
     // What is still open in the sheets is said before the export.
     await expect(dialog(page)).toContainText('Offene Kommentare: 1')
     await dialog(page).getByRole('button', { name: 'Exportieren …' }).click()
@@ -75,6 +79,7 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     expect(manifest).toContain('[[export]]')
     expect(manifest).toContain('line_spacing = "wide"')
     expect(manifest).toContain('citation_style = "chicago-author-date"')
+    expect(manifest).toContain('hyphenate = false')
     // The sheets themselves are untouched.
     expect(await readFile(join(sandbox.projectDir, SHEET), 'utf8')).toContain('::Markierung::')
 
@@ -83,6 +88,7 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     await openDialog(page)
     await expect(dialog(page).getByLabel('Zeilenabstand')).toHaveValue('wide')
     await expect(dialog(page).getByLabel('Zitierstil')).toHaveValue('chicago-author-date')
+    await expect(dialog(page).getByRole('checkbox', { name: 'Silbentrennung' })).not.toBeChecked()
   } finally {
     await app.close()
   }

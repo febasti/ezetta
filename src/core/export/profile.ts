@@ -13,6 +13,8 @@ export interface ExportProfile {
   marks: 'hide' | 'show'
   /** Comments (Kommentare): left out, or put in as footnotes (for a review). */
   comments: 'remove' | 'footnote'
+  /** Hyphenation of the whole document; absent: what the template's body text says. */
+  hyphenate?: boolean
   options: OptionValues
 }
 
