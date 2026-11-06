@@ -42,6 +42,7 @@ export const fontFamilySchema = z
           .strict(),
       )
       .max(500),
+    smallCaps: z.enum(['yes', 'no', 'unknown']).optional(),
   })
   .strict()
 

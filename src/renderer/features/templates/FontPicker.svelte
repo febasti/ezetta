@@ -50,12 +50,16 @@
   })
   const listId = $derived(`${id}-families`)
 
-  /** What a family has: its weights (a range for a variable font), and an italic. */
+  /** What a family has: its weights (a range for a variable font), an italic, and small caps. */
   function summary(family: FontFamily): string {
     const low = Math.min(...family.variants.map((v) => v.weight[0]))
     const high = Math.max(...family.variants.map((v) => v.weight[1]))
     const weights = low === high ? `${low}` : `${low}–${high}`
-    return hasItalic(family) ? `${weights} · ${i18n.t('templates.font.italic')}` : weights
+    return [
+      weights,
+      ...(hasItalic(family) ? [i18n.t('templates.font.italic')] : []),
+      ...(family.smallCaps === 'yes' ? [i18n.t('templates.font.smallCaps')] : []),
+    ].join(' · ')
   }
 
   function choose(name: string): void {

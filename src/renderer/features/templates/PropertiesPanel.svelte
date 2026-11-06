@@ -56,7 +56,9 @@
         p.element === el.id &&
         (p.kind === 'missing' || p.kind === 'emphasis' || p.kind === 'strong'
           ? prop === 'font'
-          : p.kind === prop),
+          : p.kind === 'smallcaps'
+            ? prop === 'text_case'
+            : p.kind === prop),
     )
   /** The properties of the lines of a heading, which are drawn as a group of their own. */
   const LINE_IDS = new Set(LINE_SECTIONS.flatMap((section) => [section.toggle, ...section.fields]))
@@ -166,6 +168,8 @@
           onchange={(v) => void editor.set(element.id, id, v)}
         />
       {:else if def.id === 'text_case' || def.id === 'columns'}
+        {@const family = id === 'text_case' ? familyOf(element) : undefined}
+        <!-- Small caps for a font without them cannot be chosen; ones already chosen can be left. -->
         <Segmented
           label={def[lang]}
           options={(def.values ?? []).map((v) => ({
@@ -173,6 +177,7 @@
             label: def.valueLabels?.[v]?.[lang] ?? v,
             sample: def.id === 'columns' ? v : v === 'upper' ? 'AA' : 'Aa',
             ...(v === 'smallcaps' ? { sampleStyle: 'smallcaps' as const } : {}),
+            disabled: v === 'smallcaps' && family?.smallCaps === 'no' && value !== 'smallcaps',
           }))}
           value={typeof value === 'string' ? value : null}
           disabled={readOnly}

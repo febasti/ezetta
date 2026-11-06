@@ -1,5 +1,6 @@
 import { ELEMENTS, WEIGHTS, WEIGHT_NUMBERS, elementById } from './elements'
 import type { ResolvedStyle } from './style'
+import type { SmallCaps } from './fontFeatures'
 
 /**
  * The fonts the compiler can use and what each family has: its styles and weights, as
@@ -14,11 +15,15 @@ export interface FontVariant {
   style: FontStyle
   /** The weights, from and to (the same for a static font). */
   weight: [number, number]
+  /** The file it is in, as the compiler lists it; absent for the compiler's own fonts. */
+  path?: string
 }
 
 export interface FontFamily {
   name: string
   variants: FontVariant[]
+  /** Whether the family has real small caps (`fontFeatures.ts`); absent: not known. */
+  smallCaps?: SmallCaps
 }
 
 /** The family Typst sets when a style names none. */
@@ -34,8 +39,9 @@ export function parseFontVariants(output: string): FontFamily[] {
   let family: FontVariant[] | null = null
   let style: FontStyle | null = null
   let weight: [number, number] | null = null
+  let path: string | null = null
   const flush = (): void => {
-    if (family && style && weight) family.push({ style, weight })
+    if (family && style && weight) family.push({ style, weight, ...(path ? { path } : {}) })
     style = null
     weight = null
   }
@@ -43,6 +49,7 @@ export function parseFontVariants(output: string): FontFamily[] {
     if (raw.trim() === '') continue
     if (!/^[\s│├└]/.test(raw)) {
       flush()
+      path = null
       const name = raw.trim()
       family = families.get(name) ?? []
       families.set(name, family)
@@ -53,6 +60,8 @@ export function parseFontVariants(output: string): FontFamily[] {
     // line is `Key: value` (Style, Weight, Stretch, the axes of a variable font).
     if (!/^[A-Za-z]+:\s/.test(line)) {
       flush()
+      const file = line.replace(/\s*\(Variable\)\s*$/, '').trim()
+      path = /^[(<]embedded[)>]$/i.test(file) ? null : file
       continue
     }
     const styleMatch = /Style:\s*(Normal|Italic|Oblique)/i.exec(line)
@@ -126,6 +135,8 @@ export type FontProblem =
   | { kind: 'italic'; element: string; font: string }
   /** An element asks for a weight the family does not have; `printed` is the one Typst takes. */
   | { kind: 'weight'; element: string; font: string; weight: string; printed: string }
+  /** An element asks for small caps in a family that has none: Typst prints the letters as they are. */
+  | { kind: 'smallcaps'; element: string; font: string }
   /** The body text's family has no italic, so emphasis in the sheets prints upright. */
   | { kind: 'emphasis'; element: string; font: string }
   /** The body text's family has no heavier weight, so strong words in the sheets print plain. */
@@ -142,7 +153,7 @@ export function fontProblems(style: ResolvedStyle, families: readonly FontFamily
   const missing = new Set<string>()
   const fontOf = (id: string): string => elementFont(style, id)
   for (const element of ELEMENTS) {
-    if (!['font', 'italic', 'weight'].some((p) => element.props.includes(p))) continue
+    if (!['font', 'italic', 'weight', 'text_case'].some((p) => element.props.includes(p))) continue
     const values = style[element.id] ?? {}
     const font = fontOf(element.id)
     const family = findFamily(families, font)
@@ -156,6 +167,8 @@ export function fontProblems(style: ResolvedStyle, families: readonly FontFamily
     const italic = values['italic'] === true
     if (italic && element.props.includes('italic') && !hasItalic(family))
       problems.push({ kind: 'italic', element: element.id, font })
+    if (values['text_case'] === 'smallcaps' && family.smallCaps === 'no')
+      problems.push({ kind: 'smallcaps', element: element.id, font })
     const weight = values['weight']
     if (typeof weight === 'string' && !hasWeight(family, weight, italic && hasItalic(family)))
       problems.push({

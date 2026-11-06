@@ -13,6 +13,8 @@ export function fontProblemText(problem: FontProblem): string {
       const label = PROPS['weight']!.valueLabels?.[problem.printed]?.[i18n.locale]
       return i18n.t('templates.font.noWeight', { printed: label ?? problem.printed })
     }
+    case 'smallcaps':
+      return i18n.t('templates.font.noSmallCaps', { font: problem.font })
     case 'emphasis':
       return i18n.t('templates.font.noEmphasis', { font: problem.font })
     case 'strong':

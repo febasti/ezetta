@@ -15,6 +15,8 @@
     sample?: string
     /** How the sample is set. */
     sampleStyle?: 'smallcaps'
+    /** Shown but not to be chosen (small caps in a font without them). */
+    disabled?: boolean
   }
   interface Props {
     value: T | null
@@ -41,9 +43,15 @@
     if (step === 0) return
     event.preventDefault()
     if (disabled) return
+    // The arrow keys pass over a segment that cannot be chosen.
     const at = options.findIndex((o) => o.value === value)
-    const to = options[(at + step + options.length) % options.length]
-    if (to) onchange(to.value)
+    for (let n = 1; n < options.length; n += 1) {
+      const to = options[(at + step * n + options.length * n) % options.length]
+      if (to && !to.disabled) {
+        onchange(to.value)
+        return
+      }
+    }
   }
 </script>
 
@@ -64,7 +72,7 @@
       aria-label={shown ? option.label : undefined}
       title={shown ? option.label : undefined}
       tabindex={option.value === value || (value === null && index === 0) ? 0 : -1}
-      {disabled}
+      disabled={disabled || option.disabled}
       onclick={() => onchange(option.value)}
     >
       {#if option.icon}

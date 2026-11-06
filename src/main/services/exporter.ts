@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import {
@@ -27,6 +27,8 @@ import type { OptionOverride, Sets } from '@core/export/custom'
 import { DEFAULT_TEMPLATE } from '@core/export/profile'
 import { parseStyle } from '@core/export/style'
 import { parseFontVariants } from '@core/export/fonts'
+import { EMBEDDED_SMALL_CAPS, smallCapsOf } from '@core/export/fontFeatures'
+import type { SmallCaps } from '@core/export/fontFeatures'
 import type { FontFamily } from '@core/export/fonts'
 import { referenceStyleOf } from '@core/export/numbering'
 import type { ReferenceStyle } from '@core/export/numbering'
@@ -558,6 +560,57 @@ export function listFontVariants(binary: string, fontsDir: string | null): Promi
       if (output.length < 8_000_000) output += chunk.toString('utf8')
     })
     child.once('error', () => resolve([]))
-    child.once('exit', () => resolve(parseFontVariants(output)))
+    child.once('exit', () => resolve(withSmallCaps(parseFontVariants(output))))
   })
+}
+
+/** What each font file has, by its path and when it was changed: a file is read once. */
+const smallCapsCache = new Map<string, Promise<SmallCaps>>()
+
+/** Whether one font file has small caps, reading only its table directory and feature list. */
+async function smallCapsOfFile(path: string): Promise<SmallCaps> {
+  const info = await stat(path).catch(() => null)
+  if (!info?.isFile()) return 'unknown'
+  const key = `${path}:${info.size}:${info.mtimeMs}`
+  const known = smallCapsCache.get(key)
+  if (known) return known
+  const found = (async () => {
+    const handle = await open(path, 'r').catch(() => null)
+    if (!handle) return 'unknown' as const
+    try {
+      return await smallCapsOf(async (offset, length) => {
+        const buffer = new Uint8Array(Math.max(0, Math.min(length, 1_000_000)))
+        const { bytesRead } = await handle.read(buffer, 0, buffer.length, offset)
+        return buffer.subarray(0, bytesRead)
+      })
+    } finally {
+      await handle.close()
+    }
+  })()
+  smallCapsCache.set(key, found)
+  return found
+}
+
+/**
+ * The families with whether each has real small caps: yes when a file of the family has them, no
+ * when every file can be read and none has, else not known. The paths stay here; the families go
+ * to the editor without them.
+ */
+async function withSmallCaps(families: FontFamily[]): Promise<FontFamily[]> {
+  return Promise.all(
+    families.map(async (family) => {
+      const paths = [...new Set(family.variants.flatMap((v) => (v.path ? [v.path] : [])))]
+      const found =
+        paths.length === 0
+          ? (EMBEDDED_SMALL_CAPS[family.name] ?? 'unknown')
+          : await Promise.all(paths.map(smallCapsOfFile)).then((all) =>
+              all.includes('yes') ? 'yes' : all.includes('unknown') ? 'unknown' : 'no',
+            )
+      return {
+        name: family.name,
+        variants: family.variants.map((v) => ({ style: v.style, weight: v.weight })),
+        smallCaps: found,
+      }
+    }),
+  )
 }

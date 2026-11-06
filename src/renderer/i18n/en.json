@@ -703,6 +703,8 @@
   "templates.options.offer": "Offer in the export dialog",
   "templates.palette": "Colour from the palette",
   "templates.font.italic": "italic",
+  "templates.font.smallCaps": "small caps",
+  "templates.font.noSmallCaps": "“{font}” has no small caps: it prints in ordinary letters.",
   "templates.font.missing": "“{font}” is not installed on this computer; Typst sets another font.",
   "templates.font.noItalic": "“{font}” has no italic: it prints upright.",
   "templates.font.noWeight": "The font does not have this weight: it prints {printed}.",

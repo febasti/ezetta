@@ -191,6 +191,16 @@ test('any font of the system can be chosen, and what it lacks is greyed out and 
     const weight = editor(page).locator('#prop-body-weight')
     await expect(weight.locator('option[value="bold"]')).toBeEnabled()
     await expect(weight.locator('option[value="thin"]')).toBeDisabled()
+    // Nor has it small caps: the headings, which take the body text's font, cannot have them.
+    await choose(page, 'Alle Überschriften')
+    await expect(editor(page).getByRole('combobox', { name: 'Schriftart' })).toHaveValue('Georgia')
+    const letterCase = editor(page).getByRole('radiogroup', { name: 'Schreibweise' })
+    await expect(letterCase.getByRole('radio', { name: 'Kapitälchen' })).toBeDisabled()
+    await expect(letterCase.getByRole('radio', { name: 'Versalien' })).toBeEnabled()
+    // The chapter headings of this template are in small caps: that is said where they are set.
+    await choose(page, 'Überschrift 1 (Kapitel)')
+    await expect(editor(page).getByText('hat keine Kapitälchen')).toBeVisible()
+    await choose(page, 'Fließtext')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
 
     // A font without an italic or a bold: italic cannot be chosen, and the text's emphasis is said.

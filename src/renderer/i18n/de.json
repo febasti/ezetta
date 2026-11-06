@@ -703,6 +703,8 @@
   "templates.options.offer": "Im Exportdialog anbieten",
   "templates.palette": "Farbe aus der Palette",
   "templates.font.italic": "kursiv",
+  "templates.font.smallCaps": "Kapitälchen",
+  "templates.font.noSmallCaps": "„{font}“ hat keine Kapitälchen: gedruckt wird in normalen Buchstaben.",
   "templates.font.missing": "„{font}“ ist auf diesem Rechner nicht installiert; Typst setzt eine andere Schrift.",
   "templates.font.noItalic": "„{font}“ hat keine Kursive: gedruckt wird aufrecht.",
   "templates.font.noWeight": "Diesen Schnitt hat die Schrift nicht: gedruckt wird {printed}.",
