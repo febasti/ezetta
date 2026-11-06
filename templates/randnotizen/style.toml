@@ -21,8 +21,6 @@ font = "New Computer Modern"
 size = "10.5pt"
 justify = false
 hyphenate = false
-line_spacing = "0.78em"
-line_spacing_wide = "1.1em"
 paragraph_spacing = "1em"
 
 [element.footer]

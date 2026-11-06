@@ -12,7 +12,8 @@
  * as code, so nothing in a style can run anything.
  */
 
-export type PropType = 'font' | 'length' | 'color' | 'bool' | 'enum' | 'text'
+/** `factor`: a number of times (the line spacing, a factor of single spacing). */
+export type PropType = 'font' | 'length' | 'color' | 'bool' | 'enum' | 'text' | 'factor'
 
 export interface PropDef {
   id: string
@@ -262,8 +263,7 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
     prop('below', 'length', 'Abstand danach', 'Space below'),
     prop('indent_left', 'length', 'Einzug links', 'Indent left'),
     prop('indent_right', 'length', 'Einzug rechts', 'Indent right'),
-    prop('line_spacing', 'length', 'Zeilenabstand', 'Line spacing'),
-    prop('line_spacing_wide', 'length', 'Zeilenabstand (weit)', 'Line spacing (wide)'),
+    prop('line_height', 'factor', 'Zeilenabstand', 'Line spacing'),
     prop('paragraph_spacing', 'length', 'Abstand zwischen Absätzen', 'Space between paragraphs'),
     prop('first_line_indent', 'length', 'Einzug der ersten Zeile', 'First-line indent'),
     prop('justify', 'bool', 'Blocksatz', 'Justified'),
@@ -619,8 +619,7 @@ export const PROP_SECTIONS: readonly {
       'indent_left',
       'indent_right',
       'first_line_indent',
-      'line_spacing',
-      'line_spacing_wide',
+      'line_height',
       'paragraph_spacing',
       'width',
     ],
@@ -785,15 +784,7 @@ export const ELEMENTS: readonly ElementDef[] = [
     'text',
     'Fließtext',
     'Body text',
-    [
-      ...TEXT,
-      'justify',
-      'hyphenate',
-      'line_spacing',
-      'line_spacing_wide',
-      'paragraph_spacing',
-      'first_line_indent',
-    ],
+    [...TEXT, 'justify', 'hyphenate', 'paragraph_spacing', 'first_line_indent'],
     {
       font: 'Libertinus Serif',
       size: '11pt',
@@ -802,8 +793,6 @@ export const ELEMENTS: readonly ElementDef[] = [
       color: '#000000',
       justify: true,
       hyphenate: true,
-      line_spacing: '0.65em',
-      line_spacing_wide: '1em',
       paragraph_spacing: '0.9em',
       first_line_indent: null,
     },
@@ -876,6 +865,7 @@ export const ELEMENTS: readonly ElementDef[] = [
       'letter_spacing',
       'color',
       'align',
+      'line_height',
       'keep_with_next',
       'number_depth',
       'number_format',
@@ -948,7 +938,17 @@ export const ELEMENTS: readonly ElementDef[] = [
     'quotes',
     'Blockzitat',
     'Block quote',
-    [...TEXT, 'indent_left', 'indent_right', 'above', 'below', 'fill', 'padding', ...BAR_PROPS],
+    [
+      ...TEXT,
+      'line_height',
+      'indent_left',
+      'indent_right',
+      'above',
+      'below',
+      'fill',
+      'padding',
+      ...BAR_PROPS,
+    ],
     {
       size: '0.95em',
       indent_left: '1.2em',
@@ -962,12 +962,20 @@ export const ELEMENTS: readonly ElementDef[] = [
       bar_gap: '0.8em',
     },
   ),
-  el('epigraph', 'quote', 'quotes', 'Epigraph', 'Epigraph', [...TEXT, 'width', 'above', 'below'], {
-    italic: true,
-    width: '60%',
-    above: '1.5em',
-    below: '2em',
-  }),
+  el(
+    'epigraph',
+    'quote',
+    'quotes',
+    'Epigraph',
+    'Epigraph',
+    [...TEXT, 'line_height', 'width', 'above', 'below'],
+    {
+      italic: true,
+      width: '60%',
+      above: '1.5em',
+      below: '2em',
+    },
+  ),
   el(
     'epigraph_source',
     'epigraph',
@@ -988,8 +996,12 @@ export const ELEMENTS: readonly ElementDef[] = [
     'figures',
     'Bildunterschrift',
     'Figure caption',
-    [...TEXT, 'caption_position', 'caption_separator', 'align'],
-    { size: '0.92em', caption_position: 'below', caption_separator: 'colon' },
+    [...TEXT, 'line_height', 'caption_position', 'caption_separator', 'align'],
+    {
+      size: '0.92em',
+      caption_position: 'below',
+      caption_separator: 'colon',
+    },
   ),
   el(
     'table',
@@ -999,6 +1011,7 @@ export const ELEMENTS: readonly ElementDef[] = [
     'Table',
     [
       ...TEXT,
+      'line_height',
       'border_style',
       'inset',
       'rule_width',
@@ -1019,6 +1032,7 @@ export const ELEMENTS: readonly ElementDef[] = [
   ),
   el('table_caption', 'figure_caption', 'tables', 'Tabellenüberschrift', 'Table caption', [
     ...TEXT,
+    'line_height',
     'caption_position',
     'caption_separator',
     'align',
@@ -1063,6 +1077,7 @@ export const ELEMENTS: readonly ElementDef[] = [
     'Footnote',
     [
       ...TEXT,
+      'line_height',
       'placement',
       'margin_width',
       'margin_gap',
@@ -1119,7 +1134,7 @@ export const ELEMENTS: readonly ElementDef[] = [
     'indexes',
     'Literaturverzeichnis',
     'Bibliography',
-    [...TEXT, 'title_text', 'hanging_indent', 'entry_spacing'],
+    [...TEXT, 'line_height', 'title_text', 'hanging_indent', 'entry_spacing'],
     { size: '1em' },
   ),
   el(

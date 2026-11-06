@@ -149,9 +149,9 @@ const VARIANTS: {
     template: 'monographie',
     options: {
       author: 'A. Autor',
-      line_spacing: 'wide',
       list_of_figures: true,
       list_of_tables: true,
+      line_height: '1.5',
     },
     sets: { body: { size: '12pt' } },
   },
@@ -251,6 +251,19 @@ const VARIANTS: {
     template: 'randnotizen',
     options: {},
     sets: { footnote: { marker_style: 'parens', entry_number: 'period', number_color: '#b00020' } },
+  },
+  {
+    name: 'essay-doppelt-fussnoten-einfach',
+    template: 'essay',
+    options: { line_height: '2' },
+    sets: {
+      footnote: { line_height: '1' },
+      quote: { line_height: '1' },
+      bibliography: { line_height: '1' },
+      figure_caption: { line_height: '1' },
+      table: { line_height: '1' },
+      heading: { line_height: '1' },
+    },
   },
   {
     name: 'bericht-formeln',

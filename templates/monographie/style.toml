@@ -21,8 +21,6 @@ font = "Libertinus Serif"
 size = "11pt"
 justify = true
 hyphenate = true
-line_spacing = "0.7em"
-line_spacing_wide = "1.1em"
 paragraph_spacing = "0.7em"
 first_line_indent = "1.3em"
 

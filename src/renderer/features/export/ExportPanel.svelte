@@ -14,6 +14,7 @@
   import { elementById } from '@core/export/elements'
   import { exporting } from './export.svelte'
   import { checkBinding } from '@core/export/profile'
+  import { numberIn } from '@core/export/template'
 
   const info = $derived(exporting.info)
   const profile = $derived(exporting.profile)
@@ -93,6 +94,28 @@
                   onchange={(v) => (profile.options[option.id] = v)}
                 />
               </FormRow>
+            {:else if option.type === 'number'}
+              {@const typed = String(profile.options[option.id] ?? option.default)}
+              <!-- A number (the line spacing): a value outside its bounds is marked and not used. -->
+              <FormRow label={option.label[lang]} for="export-option-{option.id}">
+                <TextField
+                  id="export-option-{option.id}"
+                  value={typed.replace('.', i18n.locale === 'de' ? ',' : '.')}
+                  inputmode="numeric"
+                  invalid={numberIn(typed, option.min, option.max) === null}
+                  disabled={exporting.busy}
+                  onvalue={(v) =>
+                    (profile.options[option.id] = numberIn(v, option.min, option.max) ?? v)}
+                />
+              </FormRow>
+              {#if numberIn(typed, option.min, option.max) === null}
+                <p class="refused" role="alert">
+                  {i18n.t('export.number.invalid', {
+                    min: String(option.min).replace('.', i18n.locale === 'de' ? ',' : '.'),
+                    max: String(option.max).replace('.', i18n.locale === 'de' ? ',' : '.'),
+                  })}
+                </p>
+              {/if}
             {:else}
               <FormRow label={option.label[lang]} for="export-option-{option.id}">
                 <TextField

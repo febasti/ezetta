@@ -253,8 +253,8 @@ describe('the preview with a profile', () => {
       log: () => undefined,
     })
     const saved = session.exportProfile()
-    await run.preview({ ...saved, template: 'essay', options: { line_spacing: 'wide' } })
-    expect(seen).toContain('line_spacing: "wide"')
+    await run.preview({ ...saved, template: 'essay', options: { line_height: '1.5' } })
+    expect(seen).toContain('line_height: "1.5"')
     // The saved profile is not touched by a preview.
     expect(session.exportProfile().template).toBe(saved.template)
   })
@@ -441,7 +441,7 @@ describe.skipIf(!installed)('with the real Typst compiler', () => {
     expect(info.warnings.references).toEqual([])
     expect(info.warnings.unknownCitations).toEqual([])
     const result = await run.run({
-      profile: { ...defaultProfile('apa-7'), options: { line_spacing: 'wide' } },
+      profile: { ...defaultProfile('apa-7'), options: { line_height: '1.5' } },
       dialogTitle: 'Speichern',
       filterName: 'PDF',
       fileName: 'x.pdf',
@@ -454,7 +454,7 @@ describe.skipIf(!installed)('with the real Typst compiler', () => {
     expect(result.pages).toBeGreaterThanOrEqual(4)
     expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
     // The profile is kept in the project.
-    expect(await readFile(join(root, 'project.toml'), 'utf8')).toContain('line_spacing = "wide"')
+    expect(await readFile(join(root, 'project.toml'), 'utf8')).toContain('line_height = "1.5"')
     // The project's own sheets are as they were.
     expect(await readFile(join(root, 'content/einleitung/einleitung.typ'), 'utf8')).toBe(
       SHEETS['einleitung/einleitung.typ'],

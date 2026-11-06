@@ -25,6 +25,8 @@ export type TemplateOption =
       default: string
       values: { id: string; label: LocalText }[]
     })
+  /** A number from `min` to `max`, kept as its text with a point (`"1.5"`); a comma is read as one. */
+  | (OptionBase & { type: 'number'; default: string; min: number; max: number })
 
 export interface TemplateInfo {
   id: string
@@ -69,7 +71,19 @@ export function parseTemplate(
       })
     else if (raw['type'] === 'bool')
       options.push({ id: raw['id'], type: 'bool', label, default: raw['default'] === true })
-    else if (raw['type'] === 'enum' && Array.isArray(raw['values'])) {
+    else if (raw['type'] === 'number') {
+      const min = typeof raw['min'] === 'number' ? raw['min'] : 0
+      const max = typeof raw['max'] === 'number' ? raw['max'] : 100
+      const wanted = numberIn(String(raw['default'] ?? ''), min, max)
+      options.push({
+        id: raw['id'],
+        type: 'number',
+        label,
+        min,
+        max,
+        default: wanted ?? String(min),
+      })
+    } else if (raw['type'] === 'enum' && Array.isArray(raw['values'])) {
       const values = raw['values'].flatMap((v: unknown) =>
         typeof v === 'string'
           ? [{ id: v, label: { de: v, en: v } }]
@@ -99,6 +113,14 @@ export function parseTemplate(
   }
 }
 
+/** A number typed or given (a comma read as a point) as its text, when it is one from `min` to `max`. */
+export function numberIn(text: string, min: number, max: number): string | null {
+  const value = text.trim().replace(',', '.')
+  if (!/^\d+(\.\d+)?$/.test(value)) return null
+  const n = Number(value)
+  return n >= min && n <= max ? String(n) : null
+}
+
 export type OptionValues = Record<string, string | boolean>
 
 /** The options with a value each: what the profile has, as far as the template knows it, else the default. */
@@ -108,6 +130,10 @@ export function resolveOptions(info: TemplateInfo, given: OptionValues): OptionV
     // An option that is not offered cannot have been chosen: what an earlier profile says is ignored.
     const value = option.hidden ? undefined : given[option.id]
     if (option.type === 'bool') out[option.id] = typeof value === 'boolean' ? value : option.default
+    else if (option.type === 'number')
+      out[option.id] =
+        (typeof value === 'string' ? numberIn(value, option.min, option.max) : null) ??
+        option.default
     else if (option.type === 'enum')
       out[option.id] =
         typeof value === 'string' && option.values.some((v) => v.id === value)

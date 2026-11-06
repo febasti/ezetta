@@ -7,15 +7,15 @@ name = { de = "Essay", en = "Essay" }
 description = { de = "Kleines Format (A5) mit zentrierten Überschriften, Zierlinie und Einzug statt Absatzabstand.", en = "Small format (A5) with centred headings, an ornamental rule and indented paragraphs." }
 engine = 2
 
+# The line spacing of the whole document: a factor of single spacing (1.2 times the size of the
+# type), which the writer can change in "Dokument einrichten".
 [[options]]
-id = "line_spacing"
-type = "enum"
-default = "normal"
+id = "line_height"
+type = "number"
+default = 1.09
+min = 1
+max = 3
 label = { de = "Zeilenabstand", en = "Line spacing" }
-values = [
-  { id = "normal", label = { de = "Normal", en = "Normal" } },
-  { id = "wide", label = { de = "Weit (1,5-fach)", en = "Wide (1.5)" } },
-]
 
 [[options]]
 id = "title_page"

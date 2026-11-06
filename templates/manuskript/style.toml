@@ -21,8 +21,6 @@ font = "DejaVu Sans Mono"
 size = "10pt"
 justify = false
 hyphenate = false
-line_spacing = "0.85em"
-line_spacing_wide = "1.35em"
 paragraph_spacing = "0.85em"
 first_line_indent = "2em"
 

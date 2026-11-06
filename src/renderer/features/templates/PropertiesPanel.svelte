@@ -13,6 +13,7 @@
   import { elementFont, findFamily, hasItalic, hasWeight } from '@core/export/fonts'
   import type { FontProblem } from '@core/export/fonts'
   import FontPicker from './FontPicker.svelte'
+  import { numberIn } from '@core/export/template'
   import { fontProblemText } from './fontProblems'
   import type { ElementDef, PropDef } from '@core/export/elements'
   import type { StyleValue } from '@core/export/style'
@@ -339,8 +340,19 @@
                   id={control}
                   value={option.default}
                   placeholder="—"
+                  invalid={editor.refused === `option.${option.id}`}
                   disabled={readOnly}
-                  onchange={(e) => void editor.setOption(option.id, { default: field(e) })}
+                  onchange={(e) => {
+                    // A number is written as the app keeps it (a point); one that is not is refused.
+                    const text = field(e)
+                    const value =
+                      option.type === 'number' ? numberIn(text, option.min, option.max) : text
+                    if (value === null) editor.refused = `option.${option.id}`
+                    else {
+                      editor.refused = null
+                      void editor.setOption(option.id, { default: value })
+                    }
+                  }}
                 />
               {/if}
             </div>

@@ -3,6 +3,7 @@ import { parse, stringify } from 'smol-toml'
 import { isTable } from '../toml'
 import { ELEMENTS, PROPS } from './elements'
 import { checkValue, elementTables } from './style'
+import { numberIn } from './template'
 import type { TemplateOption } from './template'
 
 /**
@@ -173,6 +174,8 @@ export function optionAccepts(option: TemplateOption, value: unknown): value is 
   if (option.type === 'bool') return typeof value === 'boolean'
   if (typeof value !== 'string') return false
   if (option.type === 'enum') return option.values.some((v) => v.id === value)
+  // A number as the app writes it (a point, no spaces), within its bounds.
+  if (option.type === 'number') return numberIn(value, option.min, option.max) === value
   return value.length <= 500 && !/[\r\n]/.test(value)
 }
 

@@ -23,8 +23,6 @@ font = "New Computer Modern"
 size = "9.5pt"
 justify = true
 hyphenate = true
-line_spacing = "0.55em"
-line_spacing_wide = "0.95em"
 paragraph_spacing = "0.55em"
 first_line_indent = "1em"
 

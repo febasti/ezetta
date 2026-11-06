@@ -773,6 +773,16 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     await between.fill('0.8em')
     await between.press('Tab')
     await expect.poll(toml).toContain('note_gap = "0.8em"')
+    // The line spacing of the notes: as the document's, or one of their own.
+    const spacing = editor(page).locator('#prop-footnote-line_height')
+    await expect(spacing).toHaveValue('')
+    await spacing.fill('1')
+    await spacing.press('Tab')
+    await expect.poll(toml).toContain('line_height = "1"')
+    // A factor of single spacing from 1 to 3: anything else is refused.
+    await spacing.fill('5')
+    await spacing.press('Tab')
+    await expect(editor(page).getByRole('alert')).toContainText('kein gültiger Wert')
     await expect.poll(toml).toContain('note_indent = "2em"')
     // The number: its format, the marker in the text, the number in the note, and its colour.
     for (const title of ['Nummer', 'Trennlinie'])

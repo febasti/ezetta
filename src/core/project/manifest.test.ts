@@ -371,4 +371,13 @@ template = "monographie"
     ).toBeUndefined()
     expect(parseOk(none).manifest.exports[0]?.hyphenate).toBeUndefined()
   })
+
+  it('reads the old option "Zeilenabstand: Weit" as one and a half, and "Normal" as the template’s', () => {
+    const old = (value: string) =>
+      parseOk(
+        `[project]\nversion = 1\ntitle = "Alt"\n\n[[export]]\nname = "A"\ntemplate = "essay"\n\n  [export.options]\n  line_spacing = "${value}"\n  contents = true\n`,
+      ).manifest.exports[0]!
+    expect(old('wide').options).toEqual({ line_height: '1.5', contents: true })
+    expect(old('normal').options).toEqual({ contents: true })
+  })
 })

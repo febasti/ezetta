@@ -22,6 +22,17 @@
   args
 }
 
+// A line spacing as a factor of single spacing, which is 1.2 times the size of the type (the
+// usual setting, close to a word processor's "single"): 1.5 puts the baselines 1.8 times the size
+// apart. The line box is made exactly 1em high (the default is the font's cap height, which differs
+// from font to font), so the distance is 1em plus the leading in every font. `none` leaves the text
+// as it is (an element that follows the document).
+#let spaced(factor, body) = if factor == none { body } else {
+  set text(top-edge: 0.8em, bottom-edge: -0.2em)
+  set par(leading: (float(factor) * 1.2 - 1) * 1em)
+  body
+}
+
 #let align-of(a) = if a == "center" { center } else if a == "right" { right } else { left }
 
 #let project(meta, body) = {
@@ -33,7 +44,6 @@
   let facing = style.page.facing == "facing"
   // The binding offset of the document: added to the inside margin, for what the binding takes.
   let inside = style.page.margin_inside + meta.at("binding", default: 0pt)
-  let wide = meta.at("line_spacing", default: "normal") == "wide"
   let title-page = meta.at("title_page", default: true)
   let contents = meta.at("contents", default: true)
   let author = meta.at("author", default: "")
@@ -42,10 +52,11 @@
   set text(..text-args(bd), lang: meta.lang, hyphenate: bd.hyphenate)
   set par(
     justify: bd.justify,
-    leading: if wide { bd.line_spacing_wide } else { bd.line_spacing },
     spacing: bd.paragraph_spacing,
     first-line-indent: if bd.first_line_indent == none { 0pt } else { bd.first_line_indent },
   )
+  // The line spacing of the whole document: the template's option, which "Dokument einrichten" shows.
+  show: spaced.with(meta.at("line_height", default: none))
   // The size: a named paper, upright or turned (landscape), or a custom width and height.
   let size = if style.page.paper == "custom" {
     (width: style.page.page_width, height: style.page.page_height)
@@ -117,7 +128,7 @@
       length: c.at("line_" + side + "_width"),
       stroke: (paint: c.at("line_" + side + "_color"), thickness: c.at("line_" + side + "_thickness")),
     )
-    block(above: hs.above, below: hs.below, sticky: kind.keep_with_next, width: 100%, {
+    block(above: hs.above, below: hs.below, sticky: kind.keep_with_next, width: 100%, spaced(kind.line_height, {
       set align(align-of(c.align))
       set par(spacing: 0pt)
       set block(spacing: 0pt)
@@ -149,7 +160,7 @@
         v(c.line_below_distance)
         rule("below")
       }
-    })
+    }))
   }
 
   // Headers and footers: three places (left, centre, right), each with the page number, the title
@@ -252,7 +263,7 @@
         width: e.width,
         above: e.above,
         below: e.below,
-        {
+        spaced(e.line_height, {
           set align(left)
           set par(justify: false)
           set text(..text-args(e, italic: false))
@@ -263,15 +274,15 @@
               [— #source]
             }))
           }
-        },
+        }),
       ))
     } else {
       let q = style.quote
-      let content = {
+      let content = spaced(q.line_height, {
         set text(..text-args(q))
         if it.quotes == true { quote(it.body) } else { it.body }
         if source != none { align(right, source) }
-      }
+      })
       // A bar at the left, a background, and padding make the quote a box of its own.
       if q.bar or q.fill != none or q.padding != 0pt {
         block(
@@ -305,7 +316,7 @@
   show figure.caption: it => {
     let c = if it.kind == table { tc } else { fc }
     set text(..text-args(c))
-    if c.align != none { set align(align-of(c.align)); it } else { it }
+    spaced(c.line_height, if c.align != none { set align(align-of(c.align)); it } else { it })
   }
   // What a reference calls things where the template does not use the language's own words.
   let rf = style.references
@@ -315,6 +326,7 @@
   show figure: set block(above: style.figure.above, below: style.figure.below)
   let tb = style.table
   show table: set text(..text-args(tb))
+  show table: it => spaced(tb.line_height, it)
   // The rules of a table: between the rows (the usual), three (above, under the header, under the
   // last row), a grid, or none.
   let border = tb.border_style
@@ -387,6 +399,7 @@
     ))
   }
   show footnote.entry: set text(..text-args(fn))
+  show footnote.entry: it => spaced(fn.line_height, it)
   set footnote.entry(
     separator: fn-rule,
     gap: if fn.note_gap == none { 0.5em } else { fn.note_gap },
@@ -425,6 +438,7 @@
   show outline: set text(..text-args(style.contents))
   let bib = style.bibliography
   show bibliography: set text(..text-args(bib))
+  show bibliography: it => spaced(bib.line_height, it)
   // The entries: an indent from the second line, and the space between them.
   show bibliography: it => {
     let (hanging, gap) = (bib.hanging_indent, bib.entry_spacing)

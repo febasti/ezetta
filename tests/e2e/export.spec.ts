@@ -62,7 +62,10 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
   try {
     await openDialog(page)
     // The options come from the template.
-    await dialog(page).getByLabel('Zeilenabstand').selectOption('wide')
+    // The line spacing is the template's option, a number (a comma is read as a point).
+    const spacing = dialog(page).getByLabel('Zeilenabstand')
+    await expect(spacing).toHaveValue('1,13')
+    await spacing.fill('1,5')
     await dialog(page).getByLabel('Zitierstil').selectOption('chicago-author-date')
     // Hyphenation is the document's: on as the template has it, and switched off here.
     const hyphenation = dialog(page).getByRole('checkbox', { name: 'Silbentrennung' })
@@ -85,7 +88,7 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
     const manifest = await readFile(join(sandbox.projectDir, 'project.toml'), 'utf8')
     expect(manifest).toContain('[[export]]')
-    expect(manifest).toContain('line_spacing = "wide"')
+    expect(manifest).toContain('line_height = "1.5"')
     expect(manifest).toContain('citation_style = "chicago-author-date"')
     expect(manifest).toContain('hyphenate = false')
     expect(manifest).toContain('binding = "1cm"')
@@ -95,7 +98,7 @@ test('exports a PDF to the place asked for, from the dialog, and remembers the c
     // The dialog opens again with the same choices.
     await dialog(page).getByRole('button', { name: 'Schließen' }).click()
     await openDialog(page)
-    await expect(dialog(page).getByLabel('Zeilenabstand')).toHaveValue('wide')
+    await expect(dialog(page).getByLabel('Zeilenabstand')).toHaveValue('1,5')
     await expect(dialog(page).getByLabel('Zitierstil')).toHaveValue('chicago-author-date')
     await expect(dialog(page).getByRole('checkbox', { name: 'Silbentrennung' })).not.toBeChecked()
     await expect(dialog(page).getByLabel('Bindekorrektur')).toHaveValue('1cm')

@@ -433,6 +433,12 @@ function readProfiles(value: unknown, citationStyle: string): ExportProfile[] {
     if (isTable(raw['options']))
       for (const [key, v] of Object.entries(raw['options']))
         if (typeof v === 'string' || typeof v === 'boolean') options[key] = v
+    // The templates' option "Zeilenabstand: Normal / Weit" became the option "Zeilenabstand", a
+    // factor of single spacing: "Weit" was one and a half, "Normal" the template's.
+    const oldSpacing = options['line_spacing']
+    delete options['line_spacing']
+    if (oldSpacing === 'wide' && options['line_height'] === undefined)
+      options['line_height'] = '1.5'
     out.push({
       name: str(raw['name'], 'Export'),
       template: currentTemplateId(str(raw['template'], 'monographie')),

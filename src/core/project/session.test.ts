@@ -708,7 +708,7 @@ describe('export', () => {
         name: 'Manuskript',
         marks: 'show',
         comments: 'footnote',
-        options: { line_spacing: 'wide', title_page: false },
+        options: { line_height: '1.5', title_page: false },
       }),
     )
     expect(fs.files.get('project.toml')).toContain('[[export]]')
@@ -719,7 +719,7 @@ describe('export', () => {
       citationStyle: 'chicago-notes',
       marks: 'show',
       comments: 'footnote',
-      options: { line_spacing: 'wide', title_page: false },
+      options: { line_height: '1.5', title_page: false },
     })
   })
 })

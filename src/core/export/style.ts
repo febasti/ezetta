@@ -8,6 +8,7 @@ import {
   typstNumberingPattern,
 } from './numbering'
 import { ELEMENTS, elementById, PROPS } from './elements'
+import { numberIn } from './template'
 import type { ElementDef, PropDef } from './elements'
 
 /**
@@ -62,6 +63,8 @@ export function checkValue(
     return allowToken && isColorToken(text) ? text : null
   }
   if (def.type === 'font') return FONT.test(text) ? text : null
+  // The line spacing: a factor of single spacing from 1 to 3 (a comma is read as a point).
+  if (def.type === 'factor') return numberIn(text, 1, 3)
   if (def.type === 'text') return TEXT_VALUE.test(value) ? value : null
   return def.values?.includes(text) ? text : null
 }
@@ -101,6 +104,16 @@ export function elementTables(doc: unknown): Record<string, unknown> {
       'break_before' in rest || typeof old !== 'boolean'
         ? rest
         : { ...rest, break_before: old ? 'page' : 'none' }
+  }
+  // The body text's `line_spacing` and `line_spacing_wide` (a leading, and the one for the option
+  // "Zeilenabstand: Weit") became the template's option "Zeilenabstand", a factor the whole document
+  // follows: they are left out, quietly.
+  const body = out['body']
+  if (isTable(body) && ('line_spacing' in body || 'line_spacing_wide' in body)) {
+    const rest = { ...body }
+    delete rest['line_spacing']
+    delete rest['line_spacing_wide']
+    out['body'] = rest
   }
   // `number_suffix` was a choice of mark and became a text after the number.
   for (const id of ['heading', 'heading_1', 'heading_2', 'heading_3', 'heading_4']) {
@@ -199,6 +212,8 @@ const literal = (def: PropDef, value: StyleValue): string => {
   const text = String(value)
   if (def.type === 'length') return text === '0' ? '0pt' : text.replace(/^(-?)\./, '$10.')
   if (def.type === 'color') return `rgb(${typstString(text)})`
+  // A factor passed `checkValue` (digits and a point): a number for the compiler.
+  if (def.type === 'factor') return /^\d+(\.\d+)?$/.test(text) ? text : 'none'
   return typstString(text)
 }
 

@@ -152,7 +152,7 @@ describe('the writer’s own templates', () => {
     await store().set(id, 'body', 'size', '9pt')
     const { templates } = await loadTemplates(BUNDLED, join(dir, 'templates'))
     const template = templates.find((t) => t.info.id === id)!
-    expect(template.info.options.map((o) => o.id)).toContain('line_spacing')
+    expect(template.info.options.map((o) => o.id)).toContain('contents')
     const style = parseStyle(template.files.find((f) => f.path === 'style.toml')!.content).style
     expect(style['body']!['size']).toBe('9pt')
     expect(style['body']!['font']).toBe('Libertinus Serif')
@@ -187,28 +187,28 @@ describe('the writer’s own templates', () => {
       const { options } = await store().get(id)
       const title = options.find((o) => o.id === 'title_page')!
       expect(title).toMatchObject({ default: false, baseDefault: false, hidden: false })
-      expect((await store().get('monographie')).options.some((o) => o.id === 'line_spacing')).toBe(
-        true,
-      )
+      expect(
+        (await store().get('monographie')).options.some((o) => o.id === 'chapter_new_page'),
+      ).toBe(true)
     })
 
     it('changes a default and hides an option, in the template only', async () => {
       const id = await store().create('essay', 'Meine')
       await store().setOption(id, 'title_page', { default: true })
-      const options = await store().setOption(id, 'line_spacing', { default: 'wide', hidden: true })
+      const options = await store().setOption(id, 'contents', { default: true, hidden: true })
       expect(options.find((o) => o.id === 'title_page')).toMatchObject({
         default: true,
         baseDefault: false,
       })
-      expect(options.find((o) => o.id === 'line_spacing')).toMatchObject({
-        default: 'wide',
+      expect(options.find((o) => o.id === 'contents')).toMatchObject({
+        default: true,
         hidden: true,
       })
       const { templates } = await loadTemplates(BUNDLED, join(dir, 'templates'))
       const mine = templates.find((t) => t.info.id === id)!
-      expect(mine.info.options.find((o) => o.id === 'line_spacing')).toMatchObject({ hidden: true })
+      expect(mine.info.options.find((o) => o.id === 'contents')).toMatchObject({ hidden: true })
       const essay = templates.find((t) => t.info.id === 'essay')!
-      expect(essay.info.options.find((o) => o.id === 'line_spacing')?.hidden).toBeUndefined()
+      expect(essay.info.options.find((o) => o.id === 'contents')?.hidden).toBeUndefined()
       // Back to the base's.
       const back = await store().setOption(id, 'title_page', { default: null })
       expect(back.find((o) => o.id === 'title_page')).toMatchObject({ default: false })
@@ -216,38 +216,32 @@ describe('the writer’s own templates', () => {
 
     it('refuses a value the option does not take, and an option the base does not have', async () => {
       const id = await store().create('essay', 'Meine')
-      await expect(
-        store().setOption(id, 'line_spacing', { default: 'huge' }),
-      ).rejects.toMatchObject({
+      await expect(store().setOption(id, 'contents', { default: 'huge' })).rejects.toMatchObject({
         code: 'invalid_request',
       })
       await expect(store().setOption(id, 'nope', { hidden: true })).rejects.toMatchObject({
         code: 'invalid_request',
       })
-      await expect(
-        store().setOption('essay', 'line_spacing', { hidden: true }),
-      ).rejects.toMatchObject({
+      await expect(store().setOption('essay', 'contents', { hidden: true })).rejects.toMatchObject({
         code: 'forbidden',
       })
     })
 
     it('stay with a copy, a renamed template and a template file', async () => {
       const id = await store().create('essay', 'Meine')
-      await store().setOption(id, 'line_spacing', { default: 'wide' })
+      await store().setOption(id, 'contents', { default: true })
       const copy = await store().create(id, 'Kopie')
-      expect((await store().get(copy)).options.find((o) => o.id === 'line_spacing')).toMatchObject({
-        default: 'wide',
+      expect((await store().get(copy)).options.find((o) => o.id === 'contents')).toMatchObject({
+        default: true,
       })
       await store().rename(id, 'Umbenannt')
-      expect((await store().get(id)).options.find((o) => o.id === 'line_spacing')).toMatchObject({
-        default: 'wide',
+      expect((await store().get(id)).options.find((o) => o.id === 'contents')).toMatchObject({
+        default: true,
       })
       templateFile = (await store().exportFile(id, 't', 'f', 'x'))!
       const imported = (await store().importFile('t', 'f'))!
-      expect(
-        (await store().get(imported)).options.find((o) => o.id === 'line_spacing'),
-      ).toMatchObject({
-        default: 'wide',
+      expect((await store().get(imported)).options.find((o) => o.id === 'contents')).toMatchObject({
+        default: true,
       })
     })
 
@@ -258,7 +252,7 @@ describe('the writer’s own templates', () => {
           const path = join(dir, 'opts.toml')
           await writeFile(
             path,
-            'id = "x"\nname = "Optionen"\nbase = "essay"\n[options.line_spacing]\ndefault = "a9"\nhidden = true\n[options.nope]\nhidden = true\n[options.title_page]\ndefault = true',
+            'id = "x"\nname = "Optionen"\nbase = "essay"\n[options.contents]\ndefault = "a9"\nhidden = true\n[options.nope]\nhidden = true\n[options.title_page]\ndefault = true',
           )
           return [{ name: 'x/custom.toml', path, mtime: Date.now() }]
         })(),
@@ -266,8 +260,8 @@ describe('the writer’s own templates', () => {
       templateFile = join(dir, 'opts.ezetta-template')
       const id = (await store().importFile('t', 'f'))!
       const { options } = await store().get(id)
-      expect(options.find((o) => o.id === 'line_spacing')).toMatchObject({
-        default: 'normal',
+      expect(options.find((o) => o.id === 'contents')).toMatchObject({
+        default: false,
         hidden: true,
       })
       expect(options.find((o) => o.id === 'title_page')).toMatchObject({ default: true })

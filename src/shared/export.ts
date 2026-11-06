@@ -29,6 +29,15 @@ export const optionSchema = z.discriminatedUnion('type', [
       values: optionValues,
     })
     .strict(),
+  z
+    .object({
+      ...optionBase,
+      type: z.literal('number'),
+      default: z.string(),
+      min: z.number(),
+      max: z.number(),
+    })
+    .strict(),
 ])
 const option = optionSchema
 
