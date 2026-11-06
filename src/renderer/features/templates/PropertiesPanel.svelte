@@ -23,11 +23,19 @@
   import Select from '../../ui/kit/Select.svelte'
   import TextField from '../../ui/kit/TextField.svelte'
 
+  /**
+   * `only` draws the properties of that one element without the panel around them (no title, no
+   * other panel), for a panel that holds them among its own (the colours in "Dokument einrichten").
+   */
+  let { only }: { only?: string } = $props()
+
   const lang = $derived(i18n.locale)
   const detail = $derived(editor.detail)
   const readOnly = $derived(detail?.builtin ?? true)
   /** The entry chosen, and the elements shown below it (the source of an epigraph, the captions, the parts of the title page). */
-  const element = $derived(ELEMENTS.find((e) => e.id === editor.elementId) ?? ELEMENTS[0]!)
+  const element = $derived(
+    ELEMENTS.find((e) => e.id === (only ?? editor.elementId)) ?? ELEMENTS[0]!,
+  )
   const members = $derived<ElementDef[]>([
     element,
     ...(SUB_ELEMENTS[element.id] ?? []).flatMap((id) => elementById(id) ?? []),
@@ -66,8 +74,8 @@
     // Titles over the groups only help when there is more than one group.
     return { groups, lines, titled: groups.length + lines.length > 1 }
   }
-  const showFonts = $derived(editor.elementId === FONTS)
-  const showOptions = $derived(editor.elementId === OPTIONS)
+  const showFonts = $derived(!only && editor.elementId === FONTS)
+  const showOptions = $derived(!only && editor.elementId === OPTIONS)
   const own = (el: ElementDef, prop: string): boolean =>
     detail?.overrides[el.id]?.[prop] !== undefined
   const explicit = (el: ElementDef, prop: string): boolean =>
@@ -241,7 +249,13 @@
   {/each}
 {/snippet}
 
-{#if detail}
+{#if detail && only}
+  <div class="properties">
+    {#each members as member (member.id)}
+      {@render sections(member)}
+    {/each}
+  </div>
+{:else if detail}
   {#if showFonts}
     <section class="properties" aria-label={i18n.t('templates.fonts.files')}>
       <h3 class="title">{i18n.t('templates.fonts.files')}</h3>

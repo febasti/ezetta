@@ -27,7 +27,7 @@ export const EXPORT = '__export'
 /** The id of the panel for font files, which is shown where an element's properties are. */
 export const FONTS = '__fonts'
 
-/** The id of the panel for the options of the template, which the export panel offers. */
+/** The id of the panel for the options of the template, which the "Dokument einrichten" panel offers. */
 export const OPTIONS = '__options'
 
 /** Pause after the last change before the pages are made again. */
@@ -270,7 +270,7 @@ class ExportStore {
     notify('info', i18n.t('templates.file.added', { name: this.detail?.name ?? '' }))
   }
 
-  /** Changes the default of an option of the template shown, or whether the export panel offers it; null takes a field back to the base's. */
+  /** Changes the default of an option of the template shown, or whether the "Dokument einrichten" panel offers it; null takes a field back to the base's. */
   async setOption(
     option: string,
     patch: { default?: PropValue | null; hidden?: boolean | null },

@@ -9,6 +9,7 @@
   import Select from '../../ui/kit/Select.svelte'
   import TextField from '../../ui/kit/TextField.svelte'
   import { project } from '../sidebar/project.svelte'
+  import PropertiesPanel from '../templates/PropertiesPanel.svelte'
   import { exporting } from './export.svelte'
 
   const info = $derived(exporting.info)
@@ -66,6 +67,14 @@
         </Form>
       </Section>
     {/if}
+
+    <!-- The colours of the template, which the elements name (the accent of headings, links). -->
+    <Section title={i18n.t('export.colours')} level={4}>
+      {#if exporting.detail?.builtin}
+        <p class="quiet">{i18n.t('templates.readonly')}</p>
+      {/if}
+      <PropertiesPanel only="palette" />
+    </Section>
 
     <Section title={i18n.t('export.content')} level={4}>
       <Form stacked>

@@ -30,10 +30,10 @@ const editor = (page: Page) => page.getByRole('dialog', { name: 'Export und Vorl
 const cards = (page: Page) =>
   editor(page).getByRole('group', { name: 'Vorlagen' }).getByRole('button')
 const card = (page: Page, name: string) => editor(page).getByRole('button', { name, exact: true })
-/** Shows the export's own panel: its options, the citation style, what is open. */
+/** Shows the "Dokument einrichten" panel: the options, the colours, the citation style, what is open. */
 const showExport = (page: Page) =>
   editor(page)
-    .getByRole('button', { name: /^Export( \d+)?$/ })
+    .getByRole('button', { name: /^Dokument einrichten( \d+)?$/ })
     .click()
 /** Chooses an element in the list, opening the groups first when it is not to be seen. */
 async function choose(page: Page, name: string) {
@@ -53,7 +53,7 @@ async function openEditor(page: Page) {
   await page.getByRole('button', { name: 'Projektmenü' }).click()
   await page.getByRole('menuitem', { name: 'Als PDF exportieren …' }).click()
   await expect(editor(page)).toBeVisible()
-  // The dialog opens on the export's own panel; the properties of the text come first here.
+  // The dialog opens on the "Dokument einrichten" panel; the properties of the text come first here.
   await choose(page, 'Fließtext')
 }
 
@@ -315,7 +315,7 @@ test('the letter case of headings is chosen with radio buttons, and the properti
       await expect(editor(page).getByRole('heading', { name: title, level: 4 })).toBeVisible()
     }
     // An element with one kind of property has no group title.
-    await choose(page, 'Farben')
+    await choose(page, 'Markierung')
     await expect(editor(page).getByRole('heading', { level: 4 })).toHaveCount(0)
     await choose(page, 'Überschrift 2')
 
@@ -770,10 +770,12 @@ test('a colour can name a colour of the palette, and follows it when the palette
   const { app, page } = await open()
   try {
     await openEditor(page)
-    await makeCopy(page, 'Farben')
-    const toml = () => readFile(style('farben'), 'utf8').catch(() => '')
+    await makeCopy(page, 'Palette')
+    const toml = () => readFile(style('palette'), 'utf8').catch(() => '')
 
-    await choose(page, 'Farben')
+    // The colours are set in the "Dokument einrichten" panel, not in the list of elements.
+    await showExport(page)
+    await expect(editor(page).getByRole('heading', { name: 'Farben', level: 4 })).toBeVisible()
     await expect(editor(page).locator('#prop-palette-accent')).toHaveValue('#7a1f2b')
     // The palette's own colours are colours, not names.
     await expect(editor(page).getByRole('group', { name: 'Farbe aus der Palette' })).toHaveCount(0)
@@ -925,7 +927,7 @@ test('the elements are in groups that open and close: the headings under one ent
 
     // One flat list: the groups fold out on the same level, and a group of one is just its entry.
     await expect(nav.getByRole('button')).toHaveText([
-      /^\s*Export/,
+      /^\s*Dokument einrichten/,
       'Seite',
       'Titelseite',
       'Text',
@@ -942,7 +944,7 @@ test('the elements are in groups that open and close: the headings under one ent
       'Eigene Schriften',
     ])
     const indent = (name: string) => group(name).evaluate((el) => el.getBoundingClientRect().left)
-    // The dialog opens on the export panel: every group is closed, and says so.
+    // The dialog opens on the "Dokument einrichten" panel: every group is closed, and says so.
     await expect(group('Überschriften')).toHaveAttribute('aria-expanded', 'false')
     await expect(nav.getByRole('button', { name: 'Überschrift 1 (Kapitel)' })).toHaveCount(0)
 
@@ -982,7 +984,14 @@ test('the elements are in groups that open and close: the headings under one ent
       'rgba(0, 0, 0, 0)',
     )
     await expect(inside('Zitate').locator('svg')).toHaveCount(0)
-    for (const name of ['Export', 'Seite', 'Titelseite', 'Text', 'Überschriften', 'Aufzählungen'])
+    for (const name of [
+      'Dokument einrichten',
+      'Seite',
+      'Titelseite',
+      'Text',
+      'Überschriften',
+      'Aufzählungen',
+    ])
       await expect(
         nav
           .getByRole('button', { name: new RegExp(`^${name}`) })
@@ -1015,7 +1024,6 @@ test('the elements are in groups that open and close: the headings under one ent
       'Kopfzeile',
       'Fußzeile',
       'Seitenzahl',
-      'Farben',
     ])
     await group('Text').click()
     await expect(inside('Text').getByRole('button')).toHaveText(['Fließtext', 'Markierung'])
@@ -1053,7 +1061,7 @@ test('the size of the text is set in the body text, and the paper size in the pa
     await makeCopy(page, 'Masse')
     const toml = () => readFile(style('masse'), 'utf8').catch(() => '')
 
-    // The export panel has no size of the text or of the paper any more: they are the template's.
+    // The "Dokument einrichten" panel has no size of the text or of the paper any more: they are the template's.
     await showExport(page)
     await expect(editor(page).getByLabel('Schriftgröße')).toHaveCount(0)
     await expect(editor(page).getByLabel('Papierformat')).toHaveCount(0)

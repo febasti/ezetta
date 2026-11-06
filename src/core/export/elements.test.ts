@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { ELEMENTS, GROUPS, PROPS, SUB_ELEMENTS, elementById, isListed } from './elements'
+import {
+  ELEMENTS,
+  GROUPS,
+  PROPS,
+  SETUP_ELEMENTS,
+  SUB_ELEMENTS,
+  elementById,
+  isListed,
+} from './elements'
 import { checkValue, parseStyle, resolveStyle, styleToTypst } from './style'
 
 describe('the element registry', () => {
@@ -209,7 +217,7 @@ describe('styleToTypst', () => {
 })
 
 describe('the entries of the editor', () => {
-  it('list every element once: on its own, or below the element it belongs to', () => {
+  it('list every element once: on its own, below the element it belongs to, or in the setup panel', () => {
     const below = Object.values(SUB_ELEMENTS).flat()
     expect(new Set(below).size).toBe(below.length)
     for (const [parent, ids] of Object.entries(SUB_ELEMENTS)) {
@@ -220,7 +228,13 @@ describe('the entries of the editor', () => {
         expect(isListed(id)).toBe(false)
       }
     }
-    expect(ELEMENTS.filter((e) => isListed(e.id)).length + below.length).toBe(ELEMENTS.length)
+    for (const id of SETUP_ELEMENTS) {
+      expect(elementById(id), id).toBeDefined()
+      expect(isListed(id)).toBe(false)
+    }
+    expect(
+      ELEMENTS.filter((e) => isListed(e.id)).length + below.length + SETUP_ELEMENTS.length,
+    ).toBe(ELEMENTS.length)
   })
   it('keep the caption of a figure and of a table, the epigraph source and the title page parts below their parents', () => {
     expect(SUB_ELEMENTS['epigraph']).toEqual(['epigraph_source'])
@@ -281,7 +295,8 @@ describe('the contents, the lists and the citations', () => {
     ])
     expect(entries('references')).toEqual(['references', 'citations', 'footnote', 'link'])
     expect(entries('code')).toEqual(['code'])
-    expect(entries('page')).toContain('palette')
+    // The colours are set in the setup panel, not in the list.
+    expect(entries('page')).not.toContain('palette')
     expect(entries('lists')).toEqual(['list'])
   })
 })

@@ -430,9 +430,12 @@ export const SUB_ELEMENTS: Readonly<Record<string, readonly string[]>> = {
   title_page: ['title_page_title', 'title_page_subtitle', 'title_page_author', 'title_page_date'],
 }
 
+/** The elements set in the "Dokument einrichten" panel of the editor, not in its list: the colours. */
+export const SETUP_ELEMENTS: readonly string[] = ['palette']
+
 const SUB_IDS = new Set(Object.values(SUB_ELEMENTS).flat())
 /** The elements that have an entry of their own in the editor's list. */
-export const isListed = (id: string): boolean => !SUB_IDS.has(id)
+export const isListed = (id: string): boolean => !SUB_IDS.has(id) && !SETUP_ELEMENTS.includes(id)
 
 const el = (
   id: string,
