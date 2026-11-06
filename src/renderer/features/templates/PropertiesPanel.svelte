@@ -65,7 +65,10 @@
     const used: string[] = []
     const groups: { id: string; de: string; en: string; ids: string[] }[] = []
     for (const section of PROP_SECTIONS) {
-      const ids = plain.filter((id) => section.props.includes(id))
+      if (section.only && !section.only.includes(el.id)) continue
+      // A property is in the first section that has it, so one used by two kinds of element (the
+      // weight of a rule) is drawn once.
+      const ids = plain.filter((id) => section.props.includes(id) && !used.includes(id))
       used.push(...ids)
       if (ids.length > 0) groups.push({ ...section, ids })
     }
@@ -238,13 +241,17 @@
   {@const shape = layout(element)}
   {@const values = valuesOf(element)}
   {#each shape.groups as group (group.id)}
-    <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
-      <div class="rows">
-        {#each group.ids.filter((id) => isShown(id, values)) as id (id)}
-          {@render row(element, id)}
-        {/each}
-      </div>
-    </Section>
+    {@const shown = group.ids.filter((id) => isShown(id, values))}
+    <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
+    {#if shown.length > 0}
+      <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
+        <div class="rows">
+          {#each shown as id (id)}
+            {@render row(element, id)}
+          {/each}
+        </div>
+      </Section>
+    {/if}
   {/each}
   {#each shape.lines as section (section.toggle)}
     {@const on = values[section.toggle] === true}

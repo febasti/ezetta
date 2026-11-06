@@ -611,8 +611,9 @@ test('the options of the export dialog can get another default, or not be offere
     const contents = editor(page).getByLabel('Inhaltsverzeichnis', { exact: true })
     await expect(contents).toBeChecked()
     await contents.uncheck()
+    // Each change is written on its own: wait for both.
     await expect.poll(custom).toContain('default = false')
-    expect(await custom()).toContain('hidden = true')
+    await expect.poll(custom).toContain('hidden = true')
 
     // The export dialog shows the defaults, and not the option that is left out.
     await showExport(page)
@@ -745,6 +746,28 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     await between.press('Tab')
     await expect.poll(toml).toContain('note_gap = "0.8em"')
     expect(await toml()).toContain('note_indent = "2em"')
+    // The number: its format, the marker in the text, the number in the note, and its colour.
+    for (const title of ['Nummer', 'Trennlinie'])
+      await expect(editor(page).getByRole('heading', { name: title, level: 4 })).toBeVisible()
+    const marker = editor(page).getByLabel('Zeichen im Text')
+    await expect(marker).toHaveValue('super')
+    await marker.selectOption({ label: 'Eckige Klammern ([1])' })
+    await expect.poll(toml).toContain('marker_style = "brackets"')
+    await editor(page)
+      .getByLabel('Nummer in der Fußnote')
+      .selectOption({ label: 'Normal mit Punkt (1.)' })
+    await expect.poll(toml).toContain('entry_number = "period"')
+    await editor(page).getByLabel('Zahlenformat').selectOption({ label: '* † ‡ §' })
+    await expect.poll(toml).toContain('note_numbering = "symbols"')
+    // The rule: its style and colour; without a rule its look is not asked for.
+    const rule = editor(page).getByLabel('Linienart')
+    await rule.selectOption({ label: 'Gestrichelt' })
+    await expect.poll(toml).toContain('separator_style = "dashed"')
+    await expect(editor(page).locator('#prop-footnote-separator_color')).toBeVisible()
+    await rule.selectOption({ label: 'Keine' })
+    await expect.poll(toml).toContain('separator_style = "none"')
+    await expect(editor(page).locator('#prop-footnote-separator_color')).toHaveCount(0)
+    await expect(editor(page).getByLabel('Linienlänge')).toHaveCount(0)
 
     await choose(page, 'Formeln')
     await editor(page).getByLabel('Stellung der Nummer').selectOption({ label: 'Links' })
@@ -1246,8 +1269,12 @@ test('footnotes can be printed as margin notes, in the Tufte style', async () =>
       'Unten auf der Seite',
       'Am Rand (Tufte-Stil)',
     ])
+    await expect(panel.getByLabel('Linienart')).toBeVisible()
     await placement.selectOption({ label: 'Am Rand (Tufte-Stil)' })
     await expect.poll(toml).toContain('placement = "margin"')
+    // In the margin there is no rule above the notes, so nothing to set for it.
+    await expect(panel.getByLabel('Linienart')).toHaveCount(0)
+    await expect(panel.getByRole('heading', { name: 'Trennlinie', level: 4 })).toHaveCount(0)
     const width = panel.getByLabel('Breite der Randspalte')
     await expect(width).toHaveValue('4.5cm')
     await width.fill('5cm')

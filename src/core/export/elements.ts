@@ -80,6 +80,31 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     'us-legal': { de: 'US Legal', en: 'US Legal' },
     custom: { de: 'Eigenes Format', en: 'Custom size' },
   },
+  note_numbering: {
+    arabic: { de: '1 2 3', en: '1 2 3' },
+    roman_lower: { de: 'i ii iii', en: 'i ii iii' },
+    alpha_lower: { de: 'a b c', en: 'a b c' },
+    symbols: { de: '* † ‡ §', en: '* † ‡ §' },
+  },
+  marker_style: {
+    super: { de: 'Hochgestellt (¹)', en: 'Superscript (¹)' },
+    super_paren: { de: 'Hochgestellt mit Klammer (¹⁾)', en: 'Superscript with bracket (¹⁾)' },
+    normal: { de: 'Normal (1)', en: 'Normal (1)' },
+    sub: { de: 'Tiefgestellt (₁)', en: 'Subscript (₁)' },
+    brackets: { de: 'Eckige Klammern ([1])', en: 'Square brackets ([1])' },
+    parens: { de: 'Runde Klammern ((1))', en: 'Parentheses ((1))' },
+  },
+  entry_number: {
+    same: { de: 'Wie im Text', en: 'As in the text' },
+    period: { de: 'Normal mit Punkt (1.)', en: 'Normal with a full stop (1.)' },
+    plain: { de: 'Normal (1)', en: 'Normal (1)' },
+  },
+  separator_style: {
+    solid: { de: 'Durchgezogen', en: 'Solid' },
+    dashed: { de: 'Gestrichelt', en: 'Dashed' },
+    dotted: { de: 'Gepunktet', en: 'Dotted' },
+    none: { de: 'Keine', en: 'None' },
+  },
   orientation: {
     portrait: { de: 'Hochformat', en: 'Portrait' },
     landscape: { de: 'Querformat', en: 'Landscape' },
@@ -294,6 +319,33 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
     prop('item_spacing', 'length', 'Abstand zwischen den Punkten', 'Space between items'),
     prop('note_gap', 'length', 'Abstand zwischen den Fußnoten', 'Space between footnotes'),
     prop('note_indent', 'length', 'Einzug der Fußnoten', 'Indent of footnotes'),
+    prop('note_numbering', 'enum', 'Zahlenformat', 'Number format', [
+      'arabic',
+      'roman_lower',
+      'alpha_lower',
+      'symbols',
+    ]),
+    prop('marker_style', 'enum', 'Zeichen im Text', 'Marker in the text', [
+      'super',
+      'super_paren',
+      'normal',
+      'sub',
+      'brackets',
+      'parens',
+    ]),
+    prop('entry_number', 'enum', 'Nummer in der Fußnote', 'Number in the note', [
+      'same',
+      'period',
+      'plain',
+    ]),
+    prop('number_color', 'color', 'Farbe der Nummer', 'Colour of the number'),
+    prop('separator_color', 'color', 'Linienfarbe', 'Rule colour'),
+    prop('separator_style', 'enum', 'Linienart', 'Rule style', [
+      'solid',
+      'dashed',
+      'dotted',
+      'none',
+    ]),
     prop('number_side', 'enum', 'Stellung der Nummer', 'Place of the number', ['right', 'left']),
     prop('radius', 'length', 'Eckenradius', 'Corner radius'),
     prop('accent', 'color', 'Akzentfarbe', 'Accent colour'),
@@ -448,6 +500,11 @@ const SHOWN_WHEN: Readonly<Record<string, (values: Readonly<Record<string, unkno
     page_width: (v) => v['paper'] === 'custom',
     page_height: (v) => v['paper'] === 'custom',
     orientation: (v) => v['paper'] !== 'custom',
+    // The rule above the footnotes: none with the notes in the margin, and no look without a rule.
+    separator_style: (v) => v['placement'] !== 'margin',
+    rule_width: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
+    rule_length: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
+    separator_color: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
   }
 
 /** Whether a property is shown, given the values its element has (its own and inherited). */
@@ -510,6 +567,8 @@ export const PROP_SECTIONS: readonly {
   de: string
   en: string
   props: readonly string[]
+  /** The elements this section is for; absent: every element with one of its properties. */
+  only?: readonly string[]
 }[] = [
   {
     id: 'type',
@@ -596,6 +655,19 @@ export const PROP_SECTIONS: readonly {
     de: 'Platzierung',
     en: 'Placement',
     props: ['placement', 'margin_width', 'margin_gap'],
+  },
+  {
+    id: 'note_number',
+    de: 'Nummer',
+    en: 'Number',
+    props: ['note_numbering', 'marker_style', 'entry_number', 'number_color'],
+  },
+  {
+    id: 'separator',
+    de: 'Trennlinie',
+    en: 'Separator line',
+    props: ['separator_style', 'rule_width', 'rule_length', 'separator_color'],
+    only: ['footnote'],
   },
   { id: 'notes', de: 'Abstände', en: 'Spacing', props: ['note_gap', 'note_indent'] },
   { id: 'equation', de: 'Nummer', en: 'Number', props: ['number_side'] },
@@ -975,11 +1047,23 @@ export const ELEMENTS: readonly ElementDef[] = [
       'margin_gap',
       'note_gap',
       'note_indent',
+      'note_numbering',
+      'marker_style',
+      'entry_number',
+      'number_color',
+      'separator_style',
       'rule_width',
       'rule_length',
+      'separator_color',
     ],
     {
       placement: 'bottom',
+      note_numbering: 'arabic',
+      marker_style: 'super',
+      entry_number: 'same',
+      number_color: null,
+      separator_style: 'solid',
+      separator_color: '#000000',
       margin_width: '4.5cm',
       margin_gap: '0.7cm',
       size: '0.86em',

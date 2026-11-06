@@ -225,6 +225,34 @@ const VARIANTS: {
     sets: { page: { paper: 'b5' } },
   },
   {
+    name: 'essay-fussnoten-klammern',
+    template: 'essay',
+    options: {},
+    sets: {
+      footnote: {
+        marker_style: 'brackets',
+        entry_number: 'period',
+        number_color: 'accent',
+        separator_style: 'dashed',
+        separator_color: '#7a1f2b',
+      },
+    },
+  },
+  {
+    name: 'essay-fussnoten-symbole',
+    template: 'essay',
+    options: {},
+    sets: {
+      footnote: { note_numbering: 'symbols', marker_style: 'super_paren', separator_style: 'none' },
+    },
+  },
+  {
+    name: 'randnotizen-fussnoten-klammern',
+    template: 'randnotizen',
+    options: {},
+    sets: { footnote: { marker_style: 'parens', entry_number: 'period', number_color: '#b00020' } },
+  },
+  {
     name: 'essay-quer',
     template: 'essay',
     options: {},

@@ -351,18 +351,69 @@
     show table.cell.where(y: 0): set text(weight: if header and tb.header_bold { "bold" } else { tb.weight })
     [#table(..fields, stroke: strokes(rows-of(it)), fill: fills, ..children) <wm-table>]
   }
+  // The number of a footnote: its format, how the marker in the text is set, the number in the
+  // note, and its colour. Typst's own marker and entry stay where nothing differs from them.
+  let fn-format = (arabic: "1", roman_lower: "i", alpha_lower: "a", symbols: "*").at(fn.note_numbering)
+  let fn-paint(body) = if fn.number_color == none { body } else { text(fill: fn.number_color, body) }
+  let fn-marker(n) = fn-paint(
+    if fn.marker_style == "super" { super(n) }
+    else if fn.marker_style == "super_paren" { super[#n)] }
+    else if fn.marker_style == "sub" { sub(n) }
+    else if fn.marker_style == "brackets" { [\[#n\]] }
+    else if fn.marker_style == "parens" { [(#n)] }
+    else { n },
+  )
+  let fn-entry(n) = if fn.entry_number == "period" { fn-paint[#n.] }
+    else if fn.entry_number == "plain" { fn-paint(n) }
+    else { fn-marker(n) }
+  let own-marker = fn.marker_style != "super" or fn.number_color != none
+  let own-entry = own-marker or fn.entry_number != "same"
+  // A number set as a superscript runs into the note's text, as Typst sets it; any other has a space.
+  let runs-in = fn.entry_number == "same" and fn.marker_style in ("super", "super_paren")
+  set footnote(numbering: fn-format)
+  // The rule above the notes: its style, weight, length and colour; none with the notes in the margin.
+  let fn-rule = if notes-in-margin or fn.separator_style == "none" { none } else {
+    line(length: fn.rule_length, stroke: (
+      paint: fn.separator_color,
+      thickness: fn.rule_width,
+      dash: if fn.separator_style == "solid" { none } else { fn.separator_style },
+    ))
+  }
   show footnote.entry: set text(..text-args(fn))
   set footnote.entry(
-    separator: if notes-in-margin { none } else { line(length: fn.rule_length, stroke: fn.rule_width) },
+    separator: fn-rule,
     gap: if fn.note_gap == none { 0.5em } else { fn.note_gap },
     indent: if fn.note_indent == none { 1em } else { fn.note_indent },
   )
   // Typst lays out an entry at the foot of the page for every footnote, even one a show rule
   // replaces; with the notes in the margin the entries are hidden and take no room.
   set footnote.entry(clearance: 0pt, gap: 0pt) if notes-in-margin
-  show footnote.entry: it => if notes-in-margin { none } else { it }
+  show footnote.entry: it => if notes-in-margin { none } else if own-entry {
+    let loc = it.note.location()
+    h(it.indent)
+    link(loc, fn-entry(numbering(fn-format, ..counter(footnote).at(loc))))
+    if not runs-in [ ]
+    it.note.body
+  } else { it }
   show footnote: it => if notes-in-margin {
-    marginalia.note(numbering: n => super(str(n)), text-style: text-args(fn), it.body)
+    if own-entry {
+      marginalia.note(
+        // A space after a number that is not a superscript; the margin note would drop a plain one.
+        numbering: (..i) => [#fn-entry(numbering(fn-format, ..i))#if not runs-in { h(0.3em) }],
+        anchor-numbering: (..i) => fn-marker(numbering(fn-format, ..i)),
+        text-style: text-args(fn),
+        it.body,
+      )
+    } else {
+      marginalia.note(numbering: (..i) => super(numbering(fn-format, ..i)), text-style: text-args(fn), it.body)
+    }
+  } else if own-marker {
+    // The marker links to its note, as Typst's own does.
+    context {
+      let n = numbering(fn-format, ..counter(footnote).at(it.location()))
+      let entry = query(footnote.entry).find(e => e.note.location() == it.location())
+      link(if entry != none { entry.location() } else { it.location() }, fn-marker(n))
+    }
   } else { it }
   show outline: set text(..text-args(style.contents))
   let bib = style.bibliography

@@ -375,3 +375,33 @@ describe('the binding offset', () => {
       expect(checkBinding(bad), bad).toBeNull()
   })
 })
+
+describe('the number and the rule of footnotes', () => {
+  it('keep what Typst does by default', () => {
+    const { style } = parseStyle('')
+    const fn = style['footnote']!
+    expect(fn['note_numbering']).toBe('arabic')
+    expect(fn['marker_style']).toBe('super')
+    expect(fn['entry_number']).toBe('same')
+    expect(fn['number_color']).toBeNull()
+    expect(fn['separator_style']).toBe('solid')
+  })
+
+  it('ask for the rule only where there is one', () => {
+    for (const prop of ['separator_style', 'rule_width', 'rule_length', 'separator_color'])
+      expect(isShown(prop, { placement: 'margin', separator_style: 'solid' }), prop).toBe(false)
+    expect(isShown('separator_style', { placement: 'bottom', separator_style: 'none' })).toBe(true)
+    expect(isShown('separator_color', { placement: 'bottom', separator_style: 'none' })).toBe(false)
+    expect(isShown('rule_length', { placement: 'bottom', separator_style: 'dotted' })).toBe(true)
+    // The weight of a table's rules has nothing to do with footnotes.
+    expect(isShown('rule_width', { border_style: 'rows' })).toBe(true)
+  })
+
+  it('let the number colour name a colour of the palette', () => {
+    const typst = styleToTypst(
+      parseStyle('[element.footnote]\nnumber_color = "accent"\nmarker_style = "parens"').style,
+    )
+    expect(typst).toMatch(/footnote: \(.*marker_style: "parens"/s)
+    expect(typst).toMatch(/footnote: \(.*number_color: rgb\(/s)
+  })
+})
