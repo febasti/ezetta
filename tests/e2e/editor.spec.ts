@@ -223,6 +223,128 @@ test('the paragraph style menu in the status bar changes the style, and shows th
   }
 })
 
+test('Enter starts a paragraph, Shift+Enter breaks the line, Backspace joins two paragraphs', async () => {
+  const { app, page } = await open()
+  try {
+    // Typed on the empty last line of the sheet, the words start a paragraph of their own.
+    await toEnd(page)
+    await page.keyboard.type('Erster Absatz.')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Zweiter')
+    await page.keyboard.press('Shift+Enter')
+    await page.keyboard.type('Absatz.')
+    await expect.poll(read).toMatch(/Satz\.\n\nErster Absatz\.\n\nZweiter \\\nAbsatz\.$/)
+    // The empty line is the gap between the paragraphs; the backslash is hidden away from the caret.
+    await expect(page.locator('.cm-content .cm-line.cm-gap').last()).toBeVisible()
+    await expect(page.locator('.cm-content .cm-line', { hasText: 'Zweiter' }).last()).toHaveText(
+      'Zweiter',
+    )
+    // Backspace at the start of a paragraph joins it to the one above in one press.
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('Home')
+    await page.keyboard.press('Backspace')
+    await expect.poll(read).toMatch(/Erster Absatz\.Zweiter \\\nAbsatz\.$/)
+  } finally {
+    await app.close()
+  }
+})
+
+/** Pastes into the editor as another program would put it on the clipboard. */
+async function paste(page: Page, plain: string, html?: string): Promise<void> {
+  await page.evaluate(
+    ([text, markup]) => {
+      const data = new DataTransfer()
+      data.setData('text/plain', text!)
+      if (markup) data.setData('text/html', markup)
+      document
+        .querySelector('.cm-content')!
+        .dispatchEvent(
+          new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }),
+        )
+    },
+    [plain, html],
+  )
+}
+
+test('pasted text keeps its paragraphs and loses its other line breaks; text copied here stays', async () => {
+  const { app, page } = await open()
+  try {
+    // From a PDF: the lines break where the page did, an empty line ends the paragraph.
+    await toEnd(page)
+    await paste(page, 'Eine Zeile aus\neinem PDF.\n\nZweiter Absatz.')
+    await expect.poll(read).toMatch(/Satz\.\n\nEine Zeile aus einem PDF\.\n\nZweiter Absatz\.$/)
+    // From a word processor: the paragraphs of its HTML.
+    await page.keyboard.press('Enter')
+    await paste(
+      page,
+      'Aus Word.\nNoch einer.',
+      '<p class=MsoNormal>Aus Word.</p><p>Noch einer.</p>',
+    )
+    await expect.poll(read).toMatch(/Absatz\.\n\nAus Word\.\n\nNoch einer\.$/)
+    // What would be markup prints as it was copied: escaped in the file, drawn without the backslash.
+    await page.keyboard.press('Enter')
+    await paste(page, 'Mail an a@b.de, Preis $5 und *Sternchen*.')
+    await expect.poll(read).toMatch(/\n\nMail an a\\@b\.de, Preis \\\$5 und \\\*Sternchen\\\*\.$/)
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.cm-content .cm-line', { hasText: 'Mail an' })).toHaveText(
+      'Mail an a@b.de, Preis $5 und *Sternchen*.',
+    )
+    // Copied in the editor itself: pasted as it is, lists and all.
+    await page.keyboard.press(`${MOD}+a`)
+    const copied = await page.evaluate(() => {
+      const data = new DataTransfer()
+      document
+        .querySelector('.cm-content')!
+        .dispatchEvent(
+          new ClipboardEvent('copy', { clipboardData: data, bubbles: true, cancelable: true }),
+        )
+      return data.getData('text/plain')
+    })
+    expect(copied).toContain('- Erster Punkt\n- Zweiter Punkt')
+    await toEnd(page)
+    await page.keyboard.press('Enter')
+    await paste(page, copied)
+    await expect
+      .poll(async () => (await read()).split('- Erster Punkt\n- Zweiter Punkt').length)
+      .toBe(3)
+  } finally {
+    await app.close()
+  }
+})
+
+test('the caret goes over the empty line between two paragraphs, and a click there ends the one above', async () => {
+  const { app, page } = await open()
+  try {
+    const paragraph = page.locator('.cm-content .cm-line', { hasText: 'Das Design' })
+    await paragraph.click({ position: { x: 40, y: 8 } })
+    await page.keyboard.press('Home')
+    // Left at the start of a paragraph: the end of the heading above, in one press.
+    await page.keyboard.press('ArrowLeft')
+    await page.keyboard.type('X')
+    await expect.poll(read).toContain('= MethodenX\n\nDas Design')
+    // Right at the end of it: the start of the paragraph below.
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.type('Y')
+    await expect.poll(read).toContain('= MethodenX\n\nYDas Design')
+    // Up from the first line of the paragraph: the heading.
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('End')
+    await page.keyboard.type('Z')
+    await expect.poll(read).toContain('= MethodenXZ\n\nYDas Design')
+    // Down from the heading: the paragraph again.
+    await page.keyboard.press('ArrowDown')
+    await page.keyboard.press('Home')
+    await page.keyboard.type('W')
+    await expect.poll(read).toContain('= MethodenXZ\n\nWYDas Design')
+    // A click on the gap: the end of the paragraph above.
+    await page.locator('.cm-content .cm-line.cm-gap').first().click()
+    await page.keyboard.type('V')
+    await expect.poll(read).toContain('= MethodenXZV\n\nWYDas Design')
+  } finally {
+    await app.close()
+  }
+})
+
 test('typing ==text== becomes a comment', async () => {
   const { app, page, content } = await open()
   try {

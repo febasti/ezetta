@@ -80,6 +80,12 @@ export function build(state: EditorState): Built {
         case 'Ref':
           chips.ref(node)
           break
+        case 'Linebreak':
+          text.lineBreak(node)
+          break
+        case 'Escape':
+          text.escape(node)
+          break
         case 'CodeLine':
         case 'CodeBlock':
           b.add(mark('cm-code'), node.from, node.to)
@@ -98,7 +104,13 @@ export function build(state: EditorState): Built {
 
   ellipsis.draw()
   const { doc, ranges } = b
-  ranges.push(...lineSpacing(doc, ranges, b.headingLines, b.quoteLines))
+  ranges.push(
+    ...lineSpacing(doc, ranges, {
+      headings: b.headingLines,
+      quotes: b.quoteLines,
+      lists: b.listLines,
+    }),
+  )
   return {
     decorations: Decoration.set(ranges, true),
     together: Decoration.set(keepTogether(doc, ranges), true),

@@ -12,7 +12,7 @@ import { NodeSet, NodeType, Tree } from '@lezer/common'
  * Nodes (names are the contract with the editor):
  *   Heading(HeadingMark …)  ListItem(ListMark …)
  *   Emphasis(EmphasisMark … EmphasisMark)  Strong(StrongMark …)  Highlight(HighlightMark …)
- *   LineComment  BlockComment  Url  Math  Raw  Label  Escape
+ *   LineComment  BlockComment  Url  Math  Raw  Label  Escape  Linebreak
  *   Ref(Supplement?)
  *   Expression(Hash FuncName Args? Content*)   Content(ContentMark … ContentMark)
  *   CodeLine(Hash FuncName)  CodeBlock(Hash)
@@ -47,6 +47,7 @@ const NAMES = [
   'Ref',
   'Supplement',
   'Escape',
+  'Linebreak',
 ] as const
 
 export type NodeName = (typeof NAMES)[number]
@@ -215,10 +216,14 @@ class MarkupParser {
           continue
         }
         case '\\': {
-          if (at + 1 < end) {
+          // A backslash before a space or the end of the line is a line break, not an escape.
+          if (at + 1 >= end || /[ \t\r\n]/.test(this.text[at + 1]!)) {
+            nodes.push(node('Linebreak', at, at + 1))
+            this.pos += 1
+          } else {
             nodes.push(node('Escape', at, at + 2))
             this.pos += 2
-          } else this.pos += 1
+          }
           continue
         }
         case '/': {

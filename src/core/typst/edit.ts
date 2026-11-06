@@ -377,7 +377,8 @@ export function continueList(input: EditInput): EditResult | null {
   if (!line || input.from < line.start + line.contentOffset) return null
   if (input.from === line.end && line.end === line.start + line.contentOffset) {
     const keep = line.indent.length - outdentLength(line.indent)
-    const insert = line.indent.length > 0 ? `${line.indent.slice(0, keep)}${line.marker} ` : ''
+    // Out of the list at the top level: a paragraph of its own, behind an empty line.
+    const insert = line.indent.length > 0 ? `${line.indent.slice(0, keep)}${line.marker} ` : '\n'
     return result([{ from: line.start, to: line.end, insert }], input.from, input.to, 1, -1, 1)
   }
   const insert = `\n${line.indent}${line.marker} `

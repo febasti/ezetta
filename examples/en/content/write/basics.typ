@@ -2,6 +2,9 @@
 
 While writing, the text stays what it is: paragraphs with headings. Styling is limited to what is needed, and the tools are in the bar at the top. You can _emphasize_, make things *strong* and set #smallcaps[small caps], H#sub[2]O or E = mc#super[2]. Links show as text with a target, for example to #link("https://typst.app")[the Typst website].
 
+The Enter key starts a new paragraph. A new line in the same paragraph, as in an address or a poem, comes with Shift and Enter, \
+like here.
+
 == Headings and lists <sec-lists>
 
 Headings structure the text and appear in the outline and in the contents of the export. How they are numbered is decided by the template. Lists come with bullets and with numbers:

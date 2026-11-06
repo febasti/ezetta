@@ -88,14 +88,14 @@ test('the label of a heading stays out of sight, and Enter at the end keeps it o
   try {
     const heading = page.locator('.cm-content .cm-line', { hasText: 'Stichprobe' }).first()
     await expect(heading).toHaveText('== Stichprobe')
-    // Click to the right of the text, then press Enter: the new line starts after the label.
+    // Click to the right of the text, then press Enter: the new paragraph starts after the label.
     const box = (await heading.boundingBox())!
     await page.mouse.click(box.x + box.width - 4, box.y + box.height / 2)
     await page.keyboard.press('Enter')
     await page.keyboard.type('Neuer Absatz')
     await expect
       .poll(() => read(DESIGN))
-      .toContain('== Stichprobe <sec-stichprobe>\nNeuer Absatz\n')
+      .toContain('== Stichprobe <sec-stichprobe>\n\nNeuer Absatz\n')
     await expect(page.locator('.cm-content')).not.toContainText('<sec-')
   } finally {
     await app.close()

@@ -181,6 +181,10 @@ describe('atoms', () => {
   it('parses escapes', () => {
     expect(p('\\_kein\\_ \\#nein')).toBe('Escape[\\_] Escape[\\_] Escape[\\#]')
   })
+
+  it('parses a backslash before a space or the end of a line as a line break', () => {
+    expect(p('Eins \\\nZwei \\ drei\\')).toBe('Linebreak[\\] Linebreak[\\] Linebreak[\\]')
+  })
 })
 
 describe('expressions', () => {

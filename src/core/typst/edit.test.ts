@@ -301,10 +301,10 @@ describe('lists', () => {
     expect(enter('- ein|s')).toBe('- ein\n- |s')
   })
 
-  it('Enter in an empty item moves it out one level, and out of the list at the top level', () => {
+  it('Enter in an empty item moves it out one level, and out of the list into a paragraph at the top level', () => {
     expect(enter('- eins\n  - |')).toBe('- eins\n- |')
     expect(enter('- eins\n    - |')).toBe('- eins\n  - |')
-    expect(enter('- eins\n- |')).toBe('- eins\n|')
+    expect(enter('- eins\n- |')).toBe('- eins\n\n|')
   })
 
   it('Enter is left to the editor outside list text', () => {

@@ -54,14 +54,24 @@ export function keepTogether(doc: Text, ranges: readonly Range<Decoration>[]): R
 /** Covers the text of a short line that has space above or below it (see `lineSpacing`). */
 const unsampled = Decoration.mark({})
 
+/** The lines of the kinds of paragraph that set the space between lines, by number. */
+export interface LineKinds {
+  headings: ReadonlySet<number>
+  quotes: ReadonlySet<number>
+  lists: ReadonlySet<number>
+}
+
 /**
- * The writer's space at every line break, as classes on the lines (styled in `writingTheme`): a
- * line that is drawn with nothing on it although it has text (all of it hidden) is that tall
- * (`cm-blank`), a line that directly follows another, an empty one too, is set off by it
- * (`cm-spaced`), and a line followed by a block quote carries the space below it
- * (`cm-before-quote`), so the rule beside the quote does not reach up into it. A line follows
- * another when nothing is drawn between them: a block widget (a figure, a table, a formula on its
- * own lines, the source of an epigraph) ends the run.
+ * The writer's space between paragraphs, as classes on the lines (styled in `writingTheme`). Typst
+ * ends a paragraph at an empty line and reads a single line break as a space, and the editor shows
+ * it so: the empty line after a paragraph is the gap between it and the next (`cm-gap`, as tall as
+ * the gap), and a line that follows another with only a line break between them belongs to the same
+ * paragraph and follows without space. A heading, a list item and a block quote are paragraphs of
+ * their own however they are written, so a line next to one is set off from it (`cm-spaced`), and a
+ * heading always is. A line that is drawn with nothing on it although it has text (all of it hidden) is as
+ * tall as the gap (`cm-blank`), and a line followed by a block quote carries the space below it
+ * (`cm-before-quote`), so the rule beside the quote does not reach up into it. A block widget (a
+ * figure, a table, a formula on its own lines, the source of an epigraph) ends the run.
  *
  * This is decided from the text and the decorations, never from the lines CodeMirror happens to
  * have drawn. CodeMirror draws only the lines near the visible part and measures each one alone,
@@ -77,9 +87,9 @@ const unsampled = Decoration.mark({})
 export function lineSpacing(
   doc: Text,
   ranges: readonly Range<Decoration>[],
-  headings: ReadonlySet<number>,
-  quotes: ReadonlySet<number>,
+  kinds: LineKinds,
 ): Range<Decoration>[] {
+  const { headings, quotes, lists } = kinds
   /** Lines replaced by a block widget: not drawn as lines. */
   const replaced = new Set<number>()
   /** Lines with a block widget drawn just before them. */
@@ -114,31 +124,43 @@ export function lineSpacing(
     else classes.set(n, [className])
   }
   let span = 0
-  /** Whether line `n` is drawn with nothing on it: all of its text is hidden (or it has none). */
+  /** Whether line `n` has text but is drawn with nothing on it: all of its text is hidden. */
   const blank = (n: number): boolean => {
     const line = doc.line(n)
-    if (drawn.has(n)) return false
-    if (line.length === 0) return true
+    if (drawn.has(n) || line.length === 0) return false
     while (span < merged.length && merged[span]!.to < line.from) span += 1
     const cover = merged[span]
     return !!cover && cover.from <= line.from && cover.to >= line.to
   }
-  let previous: { n: number; blank: boolean } | null = null
+  /** Whether line `n` is empty as Typst reads it (only spaces), with nothing drawn on it. */
+  const empty = (n: number): boolean => !drawn.has(n) && doc.line(n).text.trim() === ''
+  /**
+   * Whether line `n` starts a paragraph after line `p` although only a line break is between them:
+   * a heading, a list item and a block quote are paragraphs of their own however they are written.
+   */
+  const starts = (n: number, p: number): boolean =>
+    lists.has(n) || headings.has(p) || lists.has(p) || (quotes.has(p) && !quotes.has(n))
+  let previous: { n: number; blank: boolean; empty: boolean } | null = null
   for (let n = 1; n <= doc.lines; n += 1) {
     if (replaced.has(n)) {
       previous = null
       continue
     }
-    // An empty line is a line like any other, with the space of the line break above it: the writer
-    // types into it, and it must not change when the first character is typed.
-    const isBlank = doc.line(n).length > 0 && blank(n)
+    const isBlank = blank(n)
+    const isEmpty = !isBlank && empty(n)
     if (isBlank) give(n, 'cm-blank')
     if (previous && !previous.blank && !afterWidget.has(n)) {
-      if (quotes.has(n) && !quotes.has(previous.n) && !headings.has(n))
-        give(previous.n, 'cm-before-quote')
-      else if (!isBlank) give(n, 'cm-spaced')
+      if (isEmpty) {
+        // The empty line after a paragraph is the gap to the next one. A further empty line is a
+        // line like any other (the writer types into it), so it does not change when typed into.
+        if (!previous.empty) give(n, 'cm-gap')
+      } else if (quotes.has(n) && !quotes.has(previous.n) && !headings.has(n)) {
+        if (!previous.empty) give(previous.n, 'cm-before-quote')
+      } else if (!isBlank && (headings.has(n) || (!previous.empty && starts(n, previous.n)))) {
+        give(n, 'cm-spaced')
+      }
     }
-    previous = { n, blank: isBlank }
+    previous = { n, blank: isBlank, empty: isEmpty }
   }
   for (const [n, list] of classes) {
     const line = doc.line(n)

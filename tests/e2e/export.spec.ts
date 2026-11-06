@@ -100,7 +100,8 @@ test('says which sheet and line an error is in, and a click goes there', async (
     const error = dialog(page).locator('.diagnostics li.error').first()
     await expect(error).toContainText('unknown variable')
     await expect(error).toContainText('Design')
-    await expect(error).toContainText('Zeile 4')
+    // Typed on the sheet's last, empty line, the text is a paragraph of its own, behind an empty line.
+    await expect(error).toContainText('Zeile 5')
     expect(existsSync(target())).toBe(false)
     await error.getByRole('button').click()
     await expect(dialog(page)).toHaveCount(0)

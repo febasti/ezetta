@@ -138,7 +138,7 @@ test('typing is saved to disk, and text typed just before quitting is flushed', 
   await page.keyboard.type(' Größe, Äpfel, Übung, Maß.')
   await expect
     .poll(() => read('content/methoden/auswertung.typ'))
-    .toBe('Die Auswertung folgt später.\n Größe, Äpfel, Übung, Maß.')
+    .toBe('Die Auswertung folgt später.\n\n Größe, Äpfel, Übung, Maß.')
 
   // Quit inside the autosave delay: the flush on close must still write it.
   await page.keyboard.type(' Letzter Satz.')

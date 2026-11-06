@@ -502,16 +502,16 @@ describe('leaveBlockQuote', () => {
     return out.slice(0, result.head) + '|' + out.slice(result.head)
   }
 
-  it('moves an empty last line out of the quote, with the caret on it', () => {
-    expect(enter('#quote(block: true)[Eins.\n|]\nDanach.')).toBe(
-      '#quote(block: true)[Eins.]\n|\nDanach.',
+  it('moves an empty last paragraph out of the quote, with the caret in a paragraph behind it', () => {
+    expect(enter('#quote(block: true)[Eins.\n\n|]\nDanach.')).toBe(
+      '#quote(block: true)[Eins.]\n\n|\nDanach.',
     )
-    expect(enter('#quote(block: true)[Eins.\n|]')).toBe('#quote(block: true)[Eins.]\n|')
+    expect(enter('#quote(block: true)[Eins.\n|]')).toBe('#quote(block: true)[Eins.]\n\n|')
   })
 
   it('leaves behind the label of an epigraph and keeps the source', () => {
     expect(enter('#quote(block: true, attribution: [Goethe])[Motto.\n|] <epigraph>')).toBe(
-      '#quote(block: true, attribution: [Goethe])[Motto.] <epigraph>\n|',
+      '#quote(block: true, attribution: [Goethe])[Motto.] <epigraph>\n\n|',
     )
   })
 

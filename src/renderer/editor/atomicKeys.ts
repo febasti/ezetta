@@ -204,8 +204,8 @@ function leaveQuote(atomicOf: AtomicOf, forward: boolean): Command {
 }
 
 /**
- * Enter at the end of a heading's text, in front of its hidden label, breaks the line after the
- * label: the label stays with its heading.
+ * Enter at the end of a heading's text, in front of its hidden label, starts a paragraph after the
+ * label (behind an empty line): the label stays with its heading.
  */
 const breakAfterLabel =
   (atomicOf: AtomicOf): Command =>
@@ -222,8 +222,8 @@ const breakAfterLabel =
     })
     if (end === null) return false
     view.dispatch({
-      changes: { from: end, to: end, insert: '\n' },
-      selection: EditorSelection.cursor((end as number) + 1),
+      changes: { from: end, to: end, insert: '\n\n' },
+      selection: EditorSelection.cursor((end as number) + 2),
       scrollIntoView: true,
       userEvent: 'input',
     })

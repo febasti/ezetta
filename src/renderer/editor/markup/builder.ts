@@ -47,9 +47,10 @@ export class Builder {
   readonly caret: SelectionRange
   readonly ranges: Range<Decoration>[] = []
   readonly atomic: Range<Decoration>[] = []
-  /** The lines of headings and of block quotes, by number: the space between lines depends on them. */
+  /** The lines of headings, block quotes and list items, by number: the space between lines depends on them. */
   readonly headingLines = new Set<number>()
   readonly quoteLines = new Set<number>()
+  readonly listLines = new Set<number>()
   /** The match the search bar points at. */
   private readonly found: { from: number; to: number } | undefined
 
@@ -105,6 +106,7 @@ export class Builder {
       this.ranges.push(Decoration.line({ class: className }).range(doc.line(n).from))
       if (className.startsWith('cm-heading')) this.headingLines.add(n)
       else if (className === 'cm-quote') this.quoteLines.add(n)
+      else if (className.startsWith('cm-list')) this.listLines.add(n)
     }
   }
 

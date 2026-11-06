@@ -24,6 +24,8 @@ export const writingTheme = EditorView.theme({
   // (`lineSpacing` in `markup/layout.ts`): a style that looks at the neighbouring lines in the DOM makes
   // CodeMirror's heights jump while scrolling.
   '.cm-line.cm-blank': { lineHeight: 'var(--paragraph-gap-writing)' },
+  // The empty line between two paragraphs is the gap between them.
+  '.cm-line.cm-gap': { lineHeight: 'var(--paragraph-gap-writing)' },
   '.cm-line.cm-spaced': { paddingTop: 'var(--paragraph-gap-writing)' },
   // A heading keeps its own space above and adds the gap when it directly follows a line.
   '.cm-line.cm-spaced.cm-heading': { paddingTop: 'calc(0.5em + var(--paragraph-gap-writing))' },

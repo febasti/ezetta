@@ -31,6 +31,7 @@ const FEATURES: [name: string, pattern: RegExp][] = [
   ['a heading with a label', /^= .+ <sec-[a-z-]+>$/m],
   ['a sub-heading', /^== /m],
   ['emphasis and strong', /_[^_\n]+_[\s\S]*\*[^*\n]+\*/],
+  ['a line break inside a paragraph', /\S \\\n\S/],
   ['small caps, subscript and superscript', /#smallcaps\[[\s\S]*#sub\[[\s\S]*#super\[/],
   ['a bullet list and a numbered one', /^- [\s\S]*^\+ /m],
   ['a link', /#link\("https:\/\/[^"]+"\)\[/],

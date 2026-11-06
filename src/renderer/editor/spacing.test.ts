@@ -28,7 +28,7 @@ function spacing(doc: string): string[] {
       const className = (value.spec as { class?: string }).class
       if (from !== _to || !className) return
       for (const name of className.split(' '))
-        if (['cm-blank', 'cm-spaced', 'cm-before-quote'].includes(name))
+        if (['cm-blank', 'cm-gap', 'cm-spaced', 'cm-before-quote'].includes(name))
           lines[state.doc.lineAt(from).number - 1]!.add(name)
     })
   }
@@ -36,14 +36,31 @@ function spacing(doc: string): string[] {
 }
 
 describe('the space between lines', () => {
-  it('sets off a line that follows another', () => {
-    expect(spacing('Eins.\nZwei.')).toEqual(['', 'cm-spaced'])
+  it('sets a line that follows another with a single line break close to it: one paragraph', () => {
+    expect(spacing('Eins.\nZwei.')).toEqual(['', ''])
+    expect(spacing('Eins. \\\nZwei.')).toEqual(['', ''])
   })
 
-  it('sets off an empty line like any other, so nothing moves when it is typed into', () => {
-    expect(spacing('Eins.\n\nDrei.')).toEqual(['', 'cm-spaced', 'cm-spaced'])
-    expect(spacing('== Titel\n')).toEqual(['', 'cm-spaced'])
-    expect(spacing('\nText.')).toEqual(['', 'cm-spaced'])
+  it('makes the empty line after a paragraph the gap to the next', () => {
+    expect(spacing('Eins.\n\nDrei.')).toEqual(['', 'cm-gap', ''])
+    expect(spacing('== Titel\n')).toEqual(['', 'cm-gap'])
+  })
+
+  it('draws a further empty line as a line, so nothing moves when it is typed into', () => {
+    expect(spacing('Eins.\n\n\nVier.')).toEqual(['', 'cm-gap', '', ''])
+    expect(spacing('Eins.\n\n\n')).toEqual(['', 'cm-gap', '', ''])
+    expect(spacing('Eins.\n\nX')).toEqual(['', 'cm-gap', ''])
+    expect(spacing('\nText.')).toEqual(['', ''])
+  })
+
+  it('sets off list items and the lines next to them, which are paragraphs of their own', () => {
+    expect(spacing('Text.\n- eins\n- zwei\nMehr.')).toEqual([
+      '',
+      'cm-spaced',
+      'cm-spaced',
+      'cm-spaced',
+    ])
+    expect(spacing('Text.\n\n- eins')).toEqual(['', 'cm-gap', ''])
   })
 
   it('spaces a heading that follows a line', () => {
@@ -58,9 +75,10 @@ describe('the space between lines', () => {
     ])
   })
 
-  it('spaces the lines inside a block quote from each other', () => {
-    expect(spacing('\n#quote(block: true)[Eins.\nZwei.]')).toEqual([
+  it('sets the lines of one paragraph in a block quote close, and the text after it off', () => {
+    expect(spacing('Text.\n#quote(block: true)[Eins.\nZwei.]\nDanach.')).toEqual([
       'cm-before-quote',
+      '',
       '',
       'cm-spaced',
     ])
@@ -78,6 +96,9 @@ describe('the space between lines', () => {
     const doc = Array.from({ length: 200 }, () => paragraph).join('\n')
     const classes = spacing(doc)
     expect(classes[0]).toBe('')
-    expect(new Set(classes.slice(1))).toEqual(new Set(['cm-spaced']))
+    expect(new Set(classes.slice(1))).toEqual(new Set(['']))
+    const paragraphs = spacing(Array.from({ length: 200 }, () => paragraph).join('\n\n'))
+    expect(new Set(paragraphs.filter((_, i) => i % 2 === 1))).toEqual(new Set(['cm-gap']))
+    expect(new Set(paragraphs.filter((_, i) => i % 2 === 0))).toEqual(new Set(['']))
   })
 })

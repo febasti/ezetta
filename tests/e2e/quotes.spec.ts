@@ -387,11 +387,12 @@ test('a block quote keeps its syntax hidden, and typing at its edges stays insid
     await expect.poll(read).toContain('[AEin Block.Z]')
     await expect(page.locator('.cm-content')).not.toContainText('#quote(block')
 
-    // An arrow key out of the quote leaves it in one step, to the line before.
+    // An arrow key out of the quote leaves it in one step, over the empty line before it to the
+    // end of the paragraph above.
     await page.keyboard.press('Home')
     await page.keyboard.press('ArrowLeft')
     await page.keyboard.type('Y')
-    await expect.poll(read).toMatch(/\nY\n#quote\(block: true\)\[AEin/)
+    await expect.poll(read).toMatch(/weiter\.Y\n\n#quote\(block: true\)\[AEin/)
   } finally {
     await app.close()
   }
@@ -422,13 +423,13 @@ test('Enter on an empty last line leaves a block quote, as in a list', async () 
     // Enter at the end of the text starts a paragraph in the quote.
     await page.keyboard.press('Enter')
     await page.keyboard.type('Zwei.')
-    await expect.poll(read).toContain('#quote(block: true)[Ein Block.\nZwei.]')
-    // Enter on the empty line that follows takes it out of the quote.
+    await expect.poll(read).toContain('#quote(block: true)[Ein Block.\n\nZwei.]')
+    // Enter on the empty paragraph that follows takes it out of the quote.
     await page.keyboard.press('Enter')
     await page.keyboard.press('Enter')
     await page.keyboard.type('Danach.')
-    await expect.poll(read).toMatch(/#quote\(block: true\)\[Ein Block\.\nZwei\.\]\nDanach\.\n$/)
-    await expect(page.locator('.cm-content .cm-line.cm-quote')).toHaveCount(2)
+    await expect.poll(read).toMatch(/#quote\(block: true\)\[Ein Block\.\n\nZwei\.\]\n\nDanach\.\n$/)
+    await expect(page.locator('.cm-content .cm-line.cm-quote')).toHaveCount(3)
   } finally {
     await app.close()
   }
@@ -608,14 +609,13 @@ test('the quote menu has the three kinds and changes between them', async () => 
   }
 })
 
-test('the caret stays inside a block quote after the line above is joined to it', async () => {
+test('the caret comes into a block quote from the paragraph above, behind its opening mark', async () => {
   const { app, page } = await openWith('Davor.\n\n#quote(block: true)[Der Text.]\n')
   try {
     await toggleBlockMarks(page)
     await page.locator('.cm-content').getByText('Davor.').click()
     await page.keyboard.press('End')
-    await page.keyboard.press('ArrowDown') // the blank line
-    await page.keyboard.press('Delete') // joins it to the quote's line
+    await page.keyboard.press('ArrowRight') // over the empty line, into the quote
     await page.keyboard.type('X')
     // The text went into the quote, behind the opening mark, not in front of it.
     await expect(page.locator('.cm-content .cm-line.cm-quote')).toHaveText(

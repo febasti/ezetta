@@ -2,6 +2,9 @@
 
 Beim Schreiben bleibt der Text, was er ist: Absätze mit Überschriften. Das Gestalten ist auf das Nötige begrenzt, und die Werkzeuge stehen in der Leiste oben. Du kannst _betonen_, *hervorheben* und Formatierungen wie #smallcaps[Kapitälchen], H#sub[2]O oder E = mc#super[2] setzen. Links zeigen sich als Text mit Verweis, zum Beispiel auf #link("https://typst.app")[die Seite von Typst].
 
+Die Eingabetaste beginnt einen neuen Absatz. Eine neue Zeile im selben Absatz, etwa in einer Anschrift oder einem Gedicht, entsteht mit Umschalt und Eingabe, \
+so wie hier.
+
 == Überschriften und Listen <sec-listen>
 
 Überschriften gliedern den Text und erscheinen in der Gliederung und im Inhaltsverzeichnis des Exports. Wie sie nummeriert sind, bestimmt die Vorlage. Listen gibt es mit Punkten und mit Zahlen:

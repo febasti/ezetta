@@ -119,6 +119,26 @@ export class TextMarkup {
     }
   }
 
+  /**
+   * A line break the reader sees (`\\` at the end of a line): the line after it follows without
+   * space, as in the PDF, and the backslash shows only while the caret touches it.
+   */
+  lineBreak(node: SyntaxNode): void {
+    const { b } = this
+    if (b.showSource || b.touches(node.from, node.to)) b.marker(node.from, node.to)
+    else b.ranges.push(hidden.range(node.from, node.to))
+  }
+
+  /**
+   * An escaped character (a backslash before `#` or `@`, as a paste writes them) is drawn as the
+   * character the PDF prints; the backslash shows only while the caret touches it.
+   */
+  escape(node: SyntaxNode): void {
+    const { b } = this
+    if (b.showSource || b.touches(node.from, node.to)) b.marker(node.from, node.from + 1)
+    else b.ranges.push(hidden.range(node.from, node.from + 1))
+  }
+
   /** A list item is indented by its level; its marker is a bullet or a number until the caret touches it. */
   listItem(node: SyntaxNode): void {
     const { b } = this

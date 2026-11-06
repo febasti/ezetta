@@ -1,4 +1,11 @@
-import { redo, undo } from '@codemirror/commands'
+import {
+  cursorLineDown,
+  cursorLineUp,
+  redo,
+  selectLineDown,
+  selectLineUp,
+  undo,
+} from '@codemirror/commands'
 import { syntaxTree } from '@codemirror/language'
 import { EditorSelection } from '@codemirror/state'
 import type { EditorView, KeyBinding } from '@codemirror/view'
@@ -16,6 +23,7 @@ import {
 } from '@core/typst/edit'
 import type { EditInput, EditResult, InlineKind, ParagraphStyle } from '@core/typst/edit'
 import { footnoteAt } from '@core/typst/footnotes'
+import { joinBackward, joinForward, lineBreak, newParagraph } from '@core/typst/paragraphs'
 import {
   inlineQuoteAt,
   leaveBlockQuote,
@@ -27,6 +35,7 @@ import { footnoteField, openNote } from '../../editor/footnoteState'
 import type { NoteView } from '../../editor/footnoteState'
 import { citeField } from '../../editor/citeState'
 import { quoteField } from '../../editor/quoteState'
+import { overGaps } from '../../editor/paragraphCaret'
 import { chooseCitation } from './citations'
 import { chooseCrossReference } from './crossRefCommand'
 import { insertTableCommand } from './tables'
@@ -355,6 +364,37 @@ export function listKeymap(): KeyBinding[] {
     { key: 'Enter', run: handle(continueList) },
     { key: 'Tab', run: handle((input) => indentListItems(input, 1)) },
     { key: 'Shift-Tab', run: handle((input) => indentListItems(input, -1)) },
+  ]
+}
+
+/**
+ * Paragraphs as Typst reads them (`core/typst/paragraphs.ts`): Enter writes a new paragraph, Shift+Enter
+ * a line break, Backspace and Delete join two paragraphs in one press, and Up and Down go over the
+ * empty line between them (`editor/paragraphCaret.ts`). Each falls through to the
+ * editor's own binding where it does not apply (code, math, raw text, comments).
+ */
+export function paragraphKeymap(): KeyBinding[] {
+  const handle =
+    (compute: (input: EditInput) => EditResult | null, userEvent: string) =>
+    (view: EditorView): boolean => {
+      if (view.state.selection.ranges.length !== 1) return false
+      const result = compute(inputOf(view))
+      if (!result) return false
+      view.dispatch({
+        changes: result.changes,
+        selection: EditorSelection.single(result.anchor, result.head),
+        scrollIntoView: true,
+        userEvent,
+      })
+      return true
+    }
+  return [
+    { key: 'Enter', run: handle(newParagraph, 'input'), shift: handle(lineBreak, 'input') },
+    { key: 'Backspace', run: handle(joinBackward, 'delete.backward') },
+    { key: 'Delete', run: handle(joinForward, 'delete.forward') },
+    // Up and Down go over the empty line between two paragraphs, keeping the column.
+    { key: 'ArrowUp', run: overGaps(cursorLineUp), shift: overGaps(selectLineUp) },
+    { key: 'ArrowDown', run: overGaps(cursorLineDown), shift: overGaps(selectLineDown) },
   ]
 }
 

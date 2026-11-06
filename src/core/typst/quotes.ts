@@ -216,10 +216,13 @@ export function leaveBlockQuote(
       anchor: quote.from,
       head: quote.from,
     }
-  const cut = { from: lineStart - 1, to: quote.closeFrom, insert: '' }
-  const caret = quote.end - (cut.to - cut.from) + 1
+  // The empty lines at the end of the quote go; the caret starts a paragraph behind it.
+  let textEnd = lineStart - 1
+  while (textEnd > quote.openTo && /\s/.test(doc[textEnd - 1]!)) textEnd -= 1
+  const cut = { from: textEnd, to: quote.closeFrom, insert: '' }
+  const caret = quote.end - (cut.to - cut.from) + 2
   return {
-    changes: [cut, { from: quote.end, to: quote.end, insert: '\n' }],
+    changes: [cut, { from: quote.end, to: quote.end, insert: '\n\n' }],
     anchor: caret,
     head: caret,
   }

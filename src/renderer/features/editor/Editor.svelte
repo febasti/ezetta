@@ -14,6 +14,7 @@
   import { citationOverview } from '@core/typst/citations'
   import { blockQuoteWords, inlineQuoteAt, quoteInputRule, quoteMarks } from '@core/typst/quotes'
   import { commentInputRule, formatsAt, paragraphStyleAt, urlAt } from '@core/typst/edit'
+  import { typeOnGap } from '@core/typst/paragraphs'
   import { onMount } from 'svelte'
   import { figureConfig, figureField } from '../../editor/figureState'
   import { citeConfig, citeField, missingField } from '../../editor/citeState'
@@ -35,7 +36,7 @@
   import { keybindings } from '../../lib/keybindings.svelte'
   import { proofActive, ui } from '../../lib/ui.svelte'
   import { project } from '../sidebar/project.svelte'
-  import { editorKeymap, listKeymap, quoteKeymap } from './editorCommands'
+  import { editorKeymap, listKeymap, paragraphKeymap, quoteKeymap } from './editorCommands'
   import { bibliography } from '../bibliography/bibliography.svelte'
   import { tableLabelsFacet, tableToolbar } from './tableToolbar'
   import { citeComplete } from './citeComplete'
@@ -60,6 +61,8 @@
   import { quoteLabels } from './quoteLabels'
   import { tableLabels } from './tableLabels'
   import { chooseAndReplace, imageFilesOf, importFiles } from './images'
+  import { pasteText, rememberCopies } from './pasteText'
+  import { skipGaps } from '../../editor/paragraphCaret'
   import { editor } from './editorSession.svelte'
   import type { EditorHandle } from './editorSession.svelte'
 
@@ -369,6 +372,10 @@
           Prec.high(shortcuts.of(keymap.of(editorKeymap()))),
           Prec.high(keymap.of(listKeymap())),
           Prec.high(keymap.of(quoteKeymap())),
+          // Below the markup's own keys (a heading's hidden label, atomic units), above the defaults.
+          keymap.of(paragraphKeymap()),
+          skipGaps,
+          rememberCopies,
           keymap.of([...defaultKeymap, ...historyKeymap]),
           typstLanguage.extension,
           markup.of(markupExtension({ showSource: ui.showSource, labels: markupLabels })),
@@ -491,6 +498,26 @@
             })
             return true
           }),
+          // Typing on the empty line after a paragraph starts a paragraph of its own: Typst would
+          // join a line that follows with a single line break to the one above.
+          EditorView.inputHandler.of((target, from, to, text) => {
+            const { state } = target
+            // Only an empty line can be such a line: the whole text is read for nothing else.
+            if (state.selection.ranges.length !== 1 || state.doc.lineAt(from).length > 0)
+              return false
+            if (text.includes('\n')) return false
+            const result = typeOnGap(
+              { doc: target.state.doc.toString(), tree: syntaxTree(target.state), from, to },
+              text,
+            )
+            if (!result) return false
+            target.dispatch({
+              changes: result.changes,
+              selection: { anchor: result.anchor },
+              userEvent: 'input.type',
+            })
+            return true
+          }),
           EditorView.updateListener.of((update) => {
             if (update.docChanged && !update.transactions.some((tr) => tr.annotation(external)))
               editor.edited()
@@ -502,9 +529,10 @@
           EditorView.domEventHandlers({
             blur: () => void editor.flushOnBlur(),
             // Pasted and dropped images go into the project's assets folder and become figures.
+            // Text becomes paragraphs as Typst reads them (`pasteText.ts`).
             paste: (event, target) => {
               const files = imageFilesOf(event.clipboardData)
-              if (files.length === 0) return false
+              if (files.length === 0) return pasteText(event, target)
               event.preventDefault()
               void importFiles(target, files)
               return true
