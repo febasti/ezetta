@@ -105,11 +105,16 @@ export function build(state: EditorState): Built {
   ellipsis.draw()
   const { doc, ranges } = b
   ranges.push(
-    ...lineSpacing(doc, ranges, {
-      headings: b.headingLines,
-      quotes: b.quoteLines,
-      lists: b.listLines,
-    }),
+    ...lineSpacing(
+      doc,
+      ranges,
+      {
+        headings: b.headingLines,
+        quotes: b.quoteLines,
+        lists: b.listLines,
+      },
+      b.showSource,
+    ),
   )
   return {
     decorations: Decoration.set(ranges, true),

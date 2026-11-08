@@ -3,12 +3,14 @@ import { EditorSelection, EditorState, Prec } from '@codemirror/state'
 import type { Transaction } from '@codemirror/state'
 import type { Command } from '@codemirror/view'
 import { gapAt } from '@core/typst/paragraphs'
+import { showSourceFacet } from './markup/facets'
 
 /**
  * The caret never rests on the empty line between two paragraphs (`gapAt` in
  * `core/typst/paragraphs.ts`), as in a word processor: a move that would end there goes on to the
  * paragraph in its direction, and a click there puts the caret at the end of the paragraph above.
- * Up and Down move once more themselves (`overGaps`), so the caret keeps its column.
+ * Up and Down move once more themselves (`overGaps`), so the caret keeps its column. With Quelltext
+ * on the text is lines as written, and the caret stops on an empty line like on any other.
  */
 
 /** Set while Up or Down moves the caret twice: the filter leaves those moves alone. */
@@ -34,6 +36,7 @@ function gapTarget(tr: Transaction): number | null {
 export const skipGaps = Prec.low(
   EditorState.transactionFilter.of((tr) => {
     if (vertical || tr.docChanged || !tr.selection || tr.newSelection.ranges.length !== 1) return tr
+    if (tr.startState.facet(showSourceFacet)) return tr
     if (!tr.isUserEvent('select') || tr.isUserEvent('select.search')) return tr
     const target = gapTarget(tr)
     if (target === null) return tr
@@ -49,6 +52,7 @@ export const skipGaps = Prec.low(
 export const overGaps =
   (move: Command): Command =>
   (view) => {
+    if (view.state.facet(showSourceFacet)) return move(view)
     vertical = true
     try {
       if (!move(view)) return false

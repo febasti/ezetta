@@ -71,7 +71,8 @@ export interface LineKinds {
  * heading always is. A line that is drawn with nothing on it although it has text (all of it hidden) is as
  * tall as the gap (`cm-blank`), and a line followed by a block quote carries the space below it
  * (`cm-before-quote`), so the rule beside the quote does not reach up into it. A block widget (a
- * figure, a table, a formula on its own lines, the source of an epigraph) ends the run.
+ * figure, a table, a formula on its own lines, the source of an epigraph) ends the run. With
+ * Quelltext on (`showSource`) an empty line is a line like any other: it is not drawn as a gap.
  *
  * This is decided from the text and the decorations, never from the lines CodeMirror happens to
  * have drawn. CodeMirror draws only the lines near the visible part and measures each one alone,
@@ -88,6 +89,7 @@ export function lineSpacing(
   doc: Text,
   ranges: readonly Range<Decoration>[],
   kinds: LineKinds,
+  showSource: boolean,
 ): Range<Decoration>[] {
   const { headings, quotes, lists } = kinds
   /** Lines replaced by a block widget: not drawn as lines. */
@@ -153,7 +155,7 @@ export function lineSpacing(
       if (isEmpty) {
         // The empty line after a paragraph is the gap to the next one. A further empty line is a
         // line like any other (the writer types into it), so it does not change when typed into.
-        if (!previous.empty) give(n, 'cm-gap')
+        if (!previous.empty && !showSource) give(n, 'cm-gap')
       } else if (quotes.has(n) && !quotes.has(previous.n) && !headings.has(n)) {
         if (!previous.empty) give(previous.n, 'cm-before-quote')
       } else if (!isBlank && (headings.has(n) || (!previous.empty && starts(n, previous.n)))) {

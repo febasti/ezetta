@@ -9,7 +9,7 @@ import { quoteField } from './quoteState'
 import { typstLanguage } from './typst'
 
 /** The spacing classes of each line, as CodeMirror would draw them. */
-function spacing(doc: string): string[] {
+function spacing(doc: string, showSource = false): string[] {
   const state = EditorState.create({
     doc,
     selection: { anchor: doc.length },
@@ -18,7 +18,7 @@ function spacing(doc: string): string[] {
       figureField,
       mathField,
       quoteField,
-      markupExtension({ showSource: false, labels: { comment: (text) => text } }),
+      markupExtension({ showSource, labels: { comment: (text) => text } }),
     ],
   })
   const lines = Array.from({ length: state.doc.lines }, () => new Set<string>())
@@ -39,6 +39,10 @@ describe('the space between lines', () => {
   it('sets a line that follows another with a single line break close to it: one paragraph', () => {
     expect(spacing('Eins.\nZwei.')).toEqual(['', ''])
     expect(spacing('Eins. \\\nZwei.')).toEqual(['', ''])
+  })
+
+  it('draws no gap with Quelltext on: an empty line is a line like any other', () => {
+    expect(spacing('Eins.\n\nDrei.', true)).toEqual(['', '', ''])
   })
 
   it('makes the empty line after a paragraph the gap to the next', () => {

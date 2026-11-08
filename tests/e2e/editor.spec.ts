@@ -345,6 +345,43 @@ test('the caret goes over the empty line between two paragraphs, and a click the
   }
 })
 
+test('with Quelltext on the text is lines as written: the empty line can be reached and typed on', async () => {
+  const { app, page } = await open()
+  try {
+    await page.locator('footer').getByRole('button', { name: 'Quelltext' }).click()
+    await expect(page.locator('.cm-content .cm-line.cm-gap')).toHaveCount(0)
+    await page.locator('.cm-content .cm-line', { hasText: 'Das Design' }).click({
+      position: { x: 40, y: 8 },
+    })
+    await page.keyboard.press('Home')
+    // Left at the start of a paragraph stops on the empty line, and what is typed stays there.
+    await page.keyboard.press('ArrowLeft')
+    await page.keyboard.type('X')
+    await expect.poll(read).toContain('= Methoden\nX\nDas Design')
+    // Backspace takes one character at a time, the empty line too.
+    await page.keyboard.press('Backspace')
+    await expect.poll(read).toContain('= Methoden\n\nDas Design')
+    await page.keyboard.press('Backspace')
+    await expect.poll(read).toContain('= Methoden\nDas Design')
+    // Enter and Shift+Enter write one line break each.
+    await page.keyboard.press('Enter')
+    await expect.poll(read).toContain('= Methoden\n\nDas Design')
+    await page.keyboard.press('Shift+Enter')
+    await expect.poll(read).toContain('= Methoden\n\n\nDas Design')
+    // Up stops on an empty line as well.
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.type('Y')
+    await expect.poll(read).toContain('= Methoden\nY\n\nDas Design')
+    // A paste stays as it is, markup and line breaks too.
+    await toEnd(page)
+    await paste(page, '#strong[fett]\nzweite Zeile')
+    await expect.poll(read).toMatch(/#strong\[fett\]\nzweite Zeile$/)
+    await page.locator('footer').getByRole('button', { name: 'Quelltext' }).click()
+  } finally {
+    await app.close()
+  }
+})
+
 test('typing ==text== becomes a comment', async () => {
   const { app, page, content } = await open()
   try {

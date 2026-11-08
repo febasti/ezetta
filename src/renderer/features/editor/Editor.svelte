@@ -499,11 +499,16 @@
             return true
           }),
           // Typing on the empty line after a paragraph starts a paragraph of its own: Typst would
-          // join a line that follows with a single line break to the one above.
+          // join a line that follows with a single line break to the one above. With Quelltext on,
+          // what is typed stays as typed.
           EditorView.inputHandler.of((target, from, to, text) => {
             const { state } = target
             // Only an empty line can be such a line: the whole text is read for nothing else.
-            if (state.selection.ranges.length !== 1 || state.doc.lineAt(from).length > 0)
+            if (
+              ui.showSource ||
+              state.selection.ranges.length !== 1 ||
+              state.doc.lineAt(from).length > 0
+            )
               return false
             if (text.includes('\n')) return false
             const result = typeOnGap(

@@ -36,6 +36,7 @@ import type { NoteView } from '../../editor/footnoteState'
 import { citeField } from '../../editor/citeState'
 import { quoteField } from '../../editor/quoteState'
 import { overGaps } from '../../editor/paragraphCaret'
+import { showSourceFacet } from '../../editor/markup'
 import { chooseCitation } from './citations'
 import { chooseCrossReference } from './crossRefCommand'
 import { insertTableCommand } from './tables'
@@ -361,7 +362,10 @@ export function listKeymap(): KeyBinding[] {
       return true
     }
   return [
-    { key: 'Enter', run: handle(continueList) },
+    {
+      key: 'Enter',
+      run: (view) => !view.state.facet(showSourceFacet) && handle(continueList)(view),
+    },
     { key: 'Tab', run: handle((input) => indentListItems(input, 1)) },
     { key: 'Shift-Tab', run: handle((input) => indentListItems(input, -1)) },
   ]
@@ -371,13 +375,15 @@ export function listKeymap(): KeyBinding[] {
  * Paragraphs as Typst reads them (`core/typst/paragraphs.ts`): Enter writes a new paragraph, Shift+Enter
  * a line break, Backspace and Delete join two paragraphs in one press, and Up and Down go over the
  * empty line between them (`editor/paragraphCaret.ts`). Each falls through to the
- * editor's own binding where it does not apply (code, math, raw text, comments).
+ * editor's own binding where it does not apply (code, math, raw text, comments), and everywhere
+ * with Quelltext on, where the text is lines as written.
  */
 export function paragraphKeymap(): KeyBinding[] {
   const handle =
     (compute: (input: EditInput) => EditResult | null, userEvent: string) =>
     (view: EditorView): boolean => {
-      if (view.state.selection.ranges.length !== 1) return false
+      if (view.state.selection.ranges.length !== 1 || view.state.facet(showSourceFacet))
+        return false
       const result = compute(inputOf(view))
       if (!result) return false
       view.dispatch({
@@ -404,6 +410,7 @@ export function quoteKeymap(): KeyBinding[] {
     {
       key: 'Enter',
       run: (view) => {
+        if (view.state.facet(showSourceFacet)) return false
         const { from, to } = view.state.selection.main
         const result = leaveBlockQuote(
           view.state.doc.toString(),

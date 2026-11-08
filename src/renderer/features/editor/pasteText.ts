@@ -4,14 +4,15 @@ import type { EditorState } from '@codemirror/state'
 import { insideOpaque } from '@core/typst/edit'
 import { typeOnGap } from '@core/typst/paragraphs'
 import { pastedText } from '@core/typst/paste'
+import { showSourceFacet } from '../../editor/markup'
 
 /**
  * Text pasted into the sheet, as paragraphs Typst reads the same way (`core/typst/paste.ts`): from
  * another program its paragraphs come behind empty lines, its other line breaks become spaces, and
  * what would be markup is escaped; what was copied in the editor itself is pasted as it is. Pasted
  * on the empty last line of a sheet, the text starts a paragraph of its own, as typed text does. In
- * code, math, raw text and comments, and in the fields of widgets, the editor pastes as it always
- * does.
+ * code, math, raw text and comments, in the fields of widgets, and everywhere with Quelltext on,
+ * the editor pastes as it always does.
  */
 
 /** The text the editor last put on the clipboard, to know it again when it is pasted. */
@@ -48,7 +49,7 @@ export function pasteText(event: ClipboardEvent, view: EditorView): boolean {
   if (!data) return false
   if (event.target instanceof Element && event.target.closest('textarea, input')) return false
   const { state } = view
-  if (state.selection.ranges.length !== 1) return false
+  if (state.selection.ranges.length !== 1 || state.facet(showSourceFacet)) return false
   const { from, to } = state.selection.main
   const tree = syntaxTree(state)
   if (insideOpaque(tree, from) || insideOpaque(tree, to)) return false
