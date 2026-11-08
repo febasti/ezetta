@@ -579,6 +579,40 @@ test('tables have rules, a header and stripes; a block quote can have lines on i
   }
 })
 
+test('a list has a colour, space around it, and bullets and numbers of their own look', async () => {
+  const { app, page } = await open()
+  try {
+    await openEditor(page)
+    await makeCopy(page, 'Listen')
+    const toml = () => readFile(style('listen'), 'utf8').catch(() => '')
+
+    await choose(page, 'Aufzählungen')
+    for (const [id, value] of [
+      ['color', '#333355'],
+      ['above', '1.5em'],
+      ['below', '2em'],
+      ['list_indent', '3em'],
+      ['level_indent', '1em'],
+      ['marker_color', '#b00020'],
+    ] as const) {
+      const field = editor(page).locator(`#prop-list-${id}`)
+      await field.fill(value)
+      await field.press('Tab')
+    }
+    await editor(page).locator('#prop-list-marker_weight').selectOption('bold')
+    await expect.poll(toml).toContain('marker_color = "#b00020"')
+    await expect.poll(toml).toContain('above = "1.5em"')
+    await expect.poll(toml).toContain('below = "2em"')
+    await expect.poll(toml).toContain('marker_weight = "bold"')
+    await expect.poll(toml).toContain('list_indent = "3em"')
+    await expect.poll(toml).toContain('level_indent = "1em"')
+    await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
+    await expect(editor(page).getByRole('alert')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
 test('the numbers of headings have a text before and after them and a separator, and the contents a depth', async () => {
   const { app, page } = await open()
   try {

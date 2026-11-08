@@ -75,7 +75,8 @@ above = "0.8em"
 below = "0.25em"
 
 [element.list]
-indent_left = "0.8em"
+list_indent = "0.8em"
+level_indent = "0.8em"
 item_spacing = "0.3em"
 marker = "dash"
 

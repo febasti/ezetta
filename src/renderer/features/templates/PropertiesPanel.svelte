@@ -48,6 +48,11 @@
   const families = $derived(detail?.families ?? [])
   /** The family an element is set in, as this machine has it (none when it does not). */
   const familyOf = (el: ElementDef) => findFamily(families, elementFont(editor.resolved, el.id))
+  /** The family of the bullets and numbers of a list: their own, else the list's. */
+  const markerFamilyOf = (el: ElementDef) => {
+    const own = valuesOf(el)['marker_font']
+    return typeof own === 'string' ? findFamily(families, own) : familyOf(el)
+  }
   /** The italic of an element: whether its font has one, and whether it asks for one. */
   const italicOf = (el: ElementDef): boolean => valuesOf(el)['italic'] === true
   /** What an element asks of its font that the font does not have, for the property it is about. */
@@ -55,11 +60,13 @@
     editor.fontIssues.find(
       (p) =>
         p.element === el.id &&
-        (p.kind === 'missing' || p.kind === 'emphasis' || p.kind === 'strong'
-          ? prop === 'font'
-          : p.kind === 'smallcaps'
-            ? prop === 'text_case'
-            : p.kind === prop),
+        ('marker' in p && p.marker
+          ? prop === (p.kind === 'missing' ? 'marker_font' : 'marker_weight')
+          : p.kind === 'missing' || p.kind === 'emphasis' || p.kind === 'strong'
+            ? prop === 'font'
+            : p.kind === 'smallcaps'
+              ? prop === 'text_case'
+              : p.kind === prop),
     )
   /** The properties of the lines of a heading, which are drawn as a group of their own. */
   const LINE_IDS = new Set(LINE_SECTIONS.flatMap((section) => [section.toggle, ...section.fields]))
@@ -185,7 +192,12 @@
           onchange={(v) => void editor.set(element.id, id, v)}
         />
       {:else if def.type === 'enum'}
-        {@const family = id === 'weight' ? familyOf(element) : undefined}
+        {@const family =
+          id === 'weight'
+            ? familyOf(element)
+            : id === 'marker_weight'
+              ? markerFamilyOf(element)
+              : undefined}
         <!-- A weight the font does not have is shown, greyed: Typst would print another. -->
         <Select
           id={control}
@@ -195,7 +207,11 @@
             disabled:
               family !== undefined &&
               choice.value !== '' &&
-              !hasWeight(family, choice.value, italicOf(element) && hasItalic(family)),
+              !hasWeight(
+                family,
+                choice.value,
+                id === 'weight' && italicOf(element) && hasItalic(family),
+              ),
           }))}
           disabled={readOnly}
           onchange={(v) => void editor.set(element.id, id, v)}

@@ -130,11 +130,18 @@ export function elementFont(style: ResolvedStyle, id: string): string {
 
 export type FontProblem =
   /** A style names a family this machine does not have: Typst sets another. */
-  | { kind: 'missing'; element: string; font: string }
+  | { kind: 'missing'; element: string; font: string; marker?: true }
   /** An element asks for italic in a family that has none. */
   | { kind: 'italic'; element: string; font: string }
   /** An element asks for a weight the family does not have; `printed` is the one Typst takes. */
-  | { kind: 'weight'; element: string; font: string; weight: string; printed: string }
+  | {
+      kind: 'weight'
+      element: string
+      font: string
+      weight: string
+      printed: string
+      marker?: true
+    }
   /** An element asks for small caps in a family that has none: Typst prints the letters as they are. */
   | { kind: 'smallcaps'; element: string; font: string }
   /** The body text's family has no italic, so emphasis in the sheets prints upright. */
@@ -152,7 +159,32 @@ export function fontProblems(style: ResolvedStyle, families: readonly FontFamily
   const problems: FontProblem[] = []
   const missing = new Set<string>()
   const fontOf = (id: string): string => elementFont(style, id)
+  /** The bullets and numbers of a list, which may have a typeface and a weight of their own. */
+  const markerProblems = (id: string): void => {
+    const values = style[id] ?? {}
+    const own = values['marker_font']
+    const font = typeof own === 'string' ? own : fontOf(id)
+    const family = findFamily(families, font)
+    if (!family) {
+      if (typeof own === 'string' && !missing.has(font.toLowerCase())) {
+        missing.add(font.toLowerCase())
+        problems.push({ kind: 'missing', element: id, font, marker: true })
+      }
+      return
+    }
+    const weight = values['marker_weight']
+    if (typeof weight === 'string' && !hasWeight(family, weight))
+      problems.push({
+        kind: 'weight',
+        element: id,
+        font,
+        weight,
+        printed: printedWeight(family, weight),
+        marker: true,
+      })
+  }
   for (const element of ELEMENTS) {
+    if (element.props.includes('marker_font')) markerProblems(element.id)
     if (!['font', 'italic', 'weight', 'text_case'].some((p) => element.props.includes(p))) continue
     const values = style[element.id] ?? {}
     const font = fontOf(element.id)

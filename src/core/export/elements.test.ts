@@ -194,6 +194,12 @@ describe('the break before a heading', () => {
     expect(style['heading_3']!['number_suffix']).toBe(' Teil')
   })
 
+  it('reads the old indent of a list as both the indent of the list and the one per level', () => {
+    const { style, problems } = parseStyle('[element.list]\nindent_left = "0.8em"')
+    expect(problems).toEqual([])
+    expect(style['list']).toMatchObject({ list_indent: '0.8em', level_indent: '0.8em' })
+  })
+
   it('reads the old bar of a block quote as the line at its left', () => {
     const { style, problems } = parseStyle(
       '[element.quote]\nbar = true\nbar_color = "#112233"\nbar_thickness = "3pt"\nbar_gap = "1em"',

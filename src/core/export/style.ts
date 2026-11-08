@@ -130,6 +130,13 @@ export function elementTables(doc: unknown): Record<string, unknown> {
     const { number_suffix: mark, ...rest } = table
     out[id] = mark === 'none' ? rest : { ...rest, number_suffix: mark === 'point' ? '.' : ')' }
   }
+  // The one indent of a list, which Typst applies at every level, became one for the whole list and
+  // one for each level below the first: both get its value, so the list looks as it did.
+  const list = out['list']
+  if (isTable(list) && 'indent_left' in list) {
+    const { indent_left: indent, ...rest } = list
+    out['list'] = { list_indent: indent, level_indent: indent, ...rest }
+  }
   // The bar at the left of a block quote became a line on any side, the left one among them.
   const quote = out['quote']
   if (isTable(quote) && Object.keys(BAR_NAMES).some((old) => old in quote))

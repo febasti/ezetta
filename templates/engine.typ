@@ -99,13 +99,39 @@
   } else { content }
   // Lists: the marker, the numbering, the indent, and the spacing.
   let ls = style.list
-  let indent-left = ls.indent_left
+  // Typst indents every level by the same amount: that is the indent per level, and the outermost
+  // list is moved so that its first level stands at the indent of the list.
+  let list-indent = if ls.list_indent == none { 0pt } else { ls.list_indent }
+  let level-indent = if ls.level_indent == none { 0pt } else { ls.level_indent }
   let markers = if ls.marker == "bullet" { [•] } else if ls.marker == "dash" { [–] } else if ls.marker == "circle" { [◦] } else if ls.marker == "square" { [▪] } else { ([•], [‣], [–]) }
   let enum-patterns = (arabic_dot: "1.", arabic_paren: "1)", arabic_brackets: "(1)", letter_paren: "a)", letter_dot: "a.", letter_upper_dot: "A.", roman_dot: "i.")
   let marker-gap = if ls.marker_gap == none { 0.5em } else { ls.marker_gap }
   let item-gap = if ls.item_spacing == none { auto } else { ls.item_spacing }
-  set list(indent: if indent-left == none { 0pt } else { indent-left }, marker: markers, body-indent: marker-gap, spacing: item-gap)
-  set enum(indent: if indent-left == none { 0pt } else { indent-left }, numbering: enum-patterns.at(ls.enum_format), body-indent: marker-gap, spacing: item-gap)
+  // The bullets and numbers may have a typeface, a weight and a colour of their own.
+  let marker-args = (:)
+  if ls.marker_font != none { marker-args.insert("font", ls.marker_font) }
+  if ls.marker_weight != none { marker-args.insert("weight", ls.marker_weight) }
+  if ls.marker_color != none { marker-args.insert("fill", ls.marker_color) }
+  let marked(m) = if marker-args.len() == 0 { m } else { text(..marker-args, m) }
+  let enum-pattern = enum-patterns.at(ls.enum_format)
+  set list(indent: level-indent, marker: if type(markers) == array { markers.map(marked) } else { marked(markers) }, body-indent: marker-gap, spacing: item-gap)
+  set enum(indent: level-indent, numbering: if marker-args.len() == 0 { enum-pattern } else { (..n) => marked(numbering(enum-pattern, ..n)) }, body-indent: marker-gap, spacing: item-gap)
+  show list: set text(fill: ls.color) if ls.color != none
+  show enum: set text(fill: ls.color) if ls.color != none
+  // The space before and after a list and its indent, for the outermost list only: a list inside a
+  // list is part of it. A side that is not set keeps the paragraph spacing.
+  let list-depth = state("ezetta-list-depth", 0)
+  let list-around(it) = if ls.above == none and ls.below == none and list-indent == level-indent { it } else {
+    context if list-depth.get() > 0 { it } else {
+      block(
+        above: if ls.above != none { ls.above } else { par.spacing },
+        below: if ls.below != none { ls.below } else { par.spacing },
+        pad(left: list-indent - level-indent, { list-depth.update(1); it; list-depth.update(0) }),
+      )
+    }
+  }
+  show list: list-around
+  show enum: list-around
 
   // Headings: numbered 1, 1.1, 1.1.1; a chapter may start on a new page.
   // Numbers by level (their format) down to a depth; deeper headings have none.

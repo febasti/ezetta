@@ -143,6 +143,9 @@ describe('what a style asks of its fonts', () => {
 
   it('says nothing without a list of fonts', () => {
     expect(fontProblems(parseStyle('[element.body]\nfont = "Nirgends"').style, [])).toEqual([])
+    expect(
+      fontProblems(parseStyle('[element.list]\nmarker_font = "Nirgends"').style, families),
+    ).toContainEqual({ kind: 'missing', element: 'list', font: 'Nirgends', marker: true })
   })
 })
 
