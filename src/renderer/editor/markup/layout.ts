@@ -67,8 +67,8 @@ export interface LineKinds {
  * it so: the empty line after a paragraph is the gap between it and the next (`cm-gap`, as tall as
  * the gap), and a line that follows another with only a line break between them belongs to the same
  * paragraph and follows without space. A heading, a list item and a block quote are paragraphs of
- * their own however they are written, so a line next to one is set off from it (`cm-spaced`), and a
- * heading always is. A line that is drawn with nothing on it although it has text (all of it hidden) is as
+ * their own however they are written, so a line next to one is set off from it (`cm-spaced`, but
+ * not one list item from the next), and a heading always is. A line that is drawn with nothing on it although it has text (all of it hidden) is as
  * tall as the gap (`cm-blank`), and a line followed by a block quote carries the space below it
  * (`cm-before-quote`), so the rule beside the quote does not reach up into it. A block widget (a
  * figure, a table, a formula on its own lines, the source of an epigraph) ends the run. With
@@ -139,9 +139,11 @@ export function lineSpacing(
   /**
    * Whether line `n` starts a paragraph after line `p` although only a line break is between them:
    * a heading, a list item and a block quote are paragraphs of their own however they are written.
+   * The items of one list follow each other closely.
    */
   const starts = (n: number, p: number): boolean =>
-    lists.has(n) || headings.has(p) || lists.has(p) || (quotes.has(p) && !quotes.has(n))
+    !(lists.has(n) && lists.has(p)) &&
+    (lists.has(n) || headings.has(p) || lists.has(p) || (quotes.has(p) && !quotes.has(n)))
   let previous: { n: number; blank: boolean; empty: boolean } | null = null
   for (let n = 1; n <= doc.lines; n += 1) {
     if (replaced.has(n)) {

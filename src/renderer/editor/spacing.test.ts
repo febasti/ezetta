@@ -57,13 +57,9 @@ describe('the space between lines', () => {
     expect(spacing('\nText.')).toEqual(['', ''])
   })
 
-  it('sets off list items and the lines next to them, which are paragraphs of their own', () => {
-    expect(spacing('Text.\n- eins\n- zwei\nMehr.')).toEqual([
-      '',
-      'cm-spaced',
-      'cm-spaced',
-      'cm-spaced',
-    ])
+  it('sets off a list from the lines next to it, and keeps its items close together', () => {
+    expect(spacing('Text.\n- eins\n- zwei\nMehr.')).toEqual(['', 'cm-spaced', '', 'cm-spaced'])
+    expect(spacing('- eins\n  - tiefer\n+ zwei')).toEqual(['', '', ''])
     expect(spacing('Text.\n\n- eins')).toEqual(['', 'cm-gap', ''])
   })
 
