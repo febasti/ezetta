@@ -283,8 +283,11 @@
         if it.quotes == true { quote(it.body) } else { it.body }
         if source != none { align(right, source) }
       })
-      // A bar at the left, a background, and padding make the quote a box of its own.
-      if q.bar or q.fill != none or q.padding != 0pt {
+      // Lines on any side, a background, and padding make the quote a box of its own. A side with a
+      // line keeps its distance to the text, a side without one the padding.
+      let side-line(on) = if on { (paint: q.border_color, thickness: q.border_thickness) } else { none }
+      let side-inset(on) = if on { q.border_gap } else { q.padding }
+      if q.border_top or q.border_bottom or q.border_left or q.border_right or q.fill != none or q.padding != 0pt {
         block(
           inset: (left: q.indent_left, right: q.indent_right),
           above: q.above,
@@ -292,8 +295,18 @@
           block(
             width: 100%,
             fill: q.fill,
-            stroke: if q.bar { (left: (paint: q.bar_color, thickness: q.bar_thickness)) } else { none },
-            inset: (left: if q.bar { q.bar_gap } else { q.padding }, rest: q.padding),
+            stroke: (
+              top: side-line(q.border_top),
+              bottom: side-line(q.border_bottom),
+              left: side-line(q.border_left),
+              right: side-line(q.border_right),
+            ),
+            inset: (
+              top: side-inset(q.border_top),
+              bottom: side-inset(q.border_bottom),
+              left: side-inset(q.border_left),
+              right: side-inset(q.border_right),
+            ),
             content,
           ),
         )

@@ -91,10 +91,10 @@ above = "1.1em"
 below = "1.1em"
 fill = "#f1f4f4"
 padding = "0.7em"
-bar = true
-bar_color = "accent"
-bar_thickness = "3pt"
-bar_gap = "0.9em"
+border_left = true
+border_color = "accent"
+border_thickness = "3pt"
+border_gap = "0.9em"
 
 [element.epigraph]
 width = "65%"

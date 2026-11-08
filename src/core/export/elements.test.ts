@@ -193,6 +193,25 @@ describe('the break before a heading', () => {
     expect(style['heading_2']!['number_suffix']).toBe('.')
     expect(style['heading_3']!['number_suffix']).toBe(' Teil')
   })
+
+  it('reads the old bar of a block quote as the line at its left', () => {
+    const { style, problems } = parseStyle(
+      '[element.quote]\nbar = true\nbar_color = "#112233"\nbar_thickness = "3pt"\nbar_gap = "1em"',
+    )
+    expect(problems).toEqual([])
+    expect(style['quote']).toMatchObject({
+      border_left: true,
+      border_top: false,
+      border_color: '#112233',
+      border_thickness: '3pt',
+      border_gap: '1em',
+    })
+  })
+
+  it('shows the look of the lines of a block quote only with a line on some side', () => {
+    expect(isShown('border_color', { border_top: false, border_left: false })).toBe(false)
+    expect(isShown('border_color', { border_right: true })).toBe(true)
+  })
 })
 
 describe('styleToTypst', () => {

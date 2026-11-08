@@ -80,6 +80,13 @@ export interface StyleProblem {
   message: string
 }
 
+const BAR_NAMES: Readonly<Record<string, string>> = {
+  bar: 'border_left',
+  bar_color: 'border_color',
+  bar_thickness: 'border_thickness',
+  bar_gap: 'border_gap',
+}
+
 /**
  * The `[element.<id>]` tables of a style document. A style written before headings had a number
  * format and a depth said `numbering = "none"` for no numbers (and `"1.1"` for the usual ones): that
@@ -123,6 +130,12 @@ export function elementTables(doc: unknown): Record<string, unknown> {
     const { number_suffix: mark, ...rest } = table
     out[id] = mark === 'none' ? rest : { ...rest, number_suffix: mark === 'point' ? '.' : ')' }
   }
+  // The bar at the left of a block quote became a line on any side, the left one among them.
+  const quote = out['quote']
+  if (isTable(quote) && Object.keys(BAR_NAMES).some((old) => old in quote))
+    out['quote'] = Object.fromEntries(
+      Object.entries(quote).map(([key, value]) => [BAR_NAMES[key] ?? key, value]),
+    )
   return out
 }
 

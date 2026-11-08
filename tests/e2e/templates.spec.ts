@@ -535,7 +535,7 @@ test('headers, footers and the page number are set with three places each', asyn
   }
 })
 
-test('tables have rules, a header and stripes; a block quote can have a bar and a background', async () => {
+test('tables have rules, a header and stripes; a block quote can have lines on its sides and a background', async () => {
   const { app, page } = await open()
   try {
     await openEditor(page)
@@ -559,14 +559,19 @@ test('tables have rules, a header and stripes; a block quote can have a bar and 
     await expect.poll(toml).toContain('header_bold = true')
 
     await choose(page, 'Blockzitat')
-    await editor(page).getByLabel('Balken links').check()
+    // The look of the lines is there as soon as one side has a line.
+    await expect(editor(page).locator('#prop-quote-border_thickness')).toHaveCount(0)
+    await editor(page).locator('#prop-quote-border_left').check()
+    await editor(page).locator('#prop-quote-border_top').check()
+    await expect(editor(page).locator('#prop-quote-border_thickness')).toHaveValue('2pt')
     const gap = editor(page).getByLabel('Abstand zum Text', { exact: true })
     await expect(gap).toHaveValue('0.8em')
     const padding = editor(page).getByLabel('Innenabstand')
     await padding.fill('0.5em')
     await padding.press('Tab')
     await expect.poll(toml).toContain('padding = "0.5em"')
-    await expect.poll(toml).toContain('bar = true')
+    await expect.poll(toml).toContain('border_left = true')
+    await expect.poll(toml).toContain('border_top = true')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {

@@ -66,10 +66,10 @@ indent_left = "0em"
 indent_right = "0em"
 above = "1em"
 below = "1em"
-bar = true
-bar_color = "accent"
-bar_thickness = "1.5pt"
-bar_gap = "0.9em"
+border_left = true
+border_color = "accent"
+border_thickness = "1.5pt"
+border_gap = "0.9em"
 
 [element.epigraph]
 width = "75%"

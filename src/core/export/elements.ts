@@ -301,10 +301,13 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
       'Background of every second row',
     ),
     prop('padding', 'length', 'Innenabstand', 'Padding'),
-    prop('bar', 'bool', 'Balken links', 'Bar at the left'),
-    prop('bar_color', 'color', 'Farbe', 'Colour'),
-    prop('bar_thickness', 'length', 'Stärke', 'Thickness'),
-    prop('bar_gap', 'length', 'Abstand zum Text', 'Distance to the text'),
+    prop('border_top', 'bool', 'Oben', 'Top'),
+    prop('border_bottom', 'bool', 'Unten', 'Bottom'),
+    prop('border_left', 'bool', 'Links', 'Left'),
+    prop('border_right', 'bool', 'Rechts', 'Right'),
+    prop('border_color', 'color', 'Farbe', 'Colour'),
+    prop('border_thickness', 'length', 'Stärke', 'Thickness'),
+    prop('border_gap', 'length', 'Abstand zum Text', 'Distance to the text'),
     prop('show_depth', 'enum', 'Ebenen anzeigen', 'Levels shown', ['1', '2', '3', '4', '6']),
     prop('leader', 'enum', 'Füllzeichen vor der Seitenzahl', 'Leader before the page number', [
       'dots',
@@ -510,6 +513,9 @@ export const SUB_ELEMENTS: Readonly<Record<string, readonly string[]>> = {
   title_page: ['title_page_title', 'title_page_subtitle', 'title_page_author', 'title_page_date'],
 }
 
+const hasBorder = (v: Readonly<Record<string, unknown>>): boolean =>
+  ['border_top', 'border_bottom', 'border_left', 'border_right'].some((side) => v[side] === true)
+
 /**
  * Properties shown only when the other values of their element allow them: the width and height of
  * a page only for a custom size, the orientation only for a named one (a custom size has its own).
@@ -524,6 +530,10 @@ const SHOWN_WHEN: Readonly<Record<string, (values: Readonly<Record<string, unkno
     rule_width: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
     rule_length: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
     separator_color: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
+    // The look of the lines of a block quote: only with a line on at least one side.
+    border_color: hasBorder,
+    border_thickness: hasBorder,
+    border_gap: hasBorder,
   }
 
 /** Whether a property is shown, given the values its element has (its own and inherited). */
@@ -566,15 +576,22 @@ const lineSection = (toggle: string, fields: readonly string[]): LineSection => 
 const HEADING_LINES: readonly LineSection[] = ['above', 'below'].map((side) =>
   lineSection(`line_${side}`, ['color', 'thickness', 'width', 'distance']),
 )
-/** The bar at the left of a block quote. */
-const BAR = lineSection('bar', ['color', 'thickness', 'gap'])
 /** The divider between a header or footer and the text. */
 const DIVIDER = lineSection('divider', ['color', 'thickness', 'gap'])
-export const LINE_SECTIONS: readonly LineSection[] = [...HEADING_LINES, BAR, DIVIDER]
+export const LINE_SECTIONS: readonly LineSection[] = [...HEADING_LINES, DIVIDER]
 const idsOf = (sections: readonly LineSection[]): string[] =>
   sections.flatMap((section) => [section.toggle, ...section.fields])
 const LINE_PROPS = idsOf(HEADING_LINES)
-const BAR_PROPS = idsOf([BAR])
+/** The lines around a block quote: a switch for each side, and one look for all of them. */
+const BORDER_PROPS = [
+  'border_top',
+  'border_bottom',
+  'border_left',
+  'border_right',
+  'border_color',
+  'border_thickness',
+  'border_gap',
+]
 const DIVIDER_PROPS = idsOf([DIVIDER])
 
 /**
@@ -657,6 +674,7 @@ export const PROP_SECTIONS: readonly {
     ],
   },
   { id: 'box', de: 'Fläche', en: 'Box', props: ['fill', 'padding'] },
+  { id: 'border', de: 'Linien', en: 'Lines', props: BORDER_PROPS },
   {
     id: 'words',
     de: 'Wörter',
@@ -947,7 +965,7 @@ export const ELEMENTS: readonly ElementDef[] = [
       'below',
       'fill',
       'padding',
-      ...BAR_PROPS,
+      ...BORDER_PROPS,
     ],
     {
       size: '0.95em',
@@ -956,10 +974,13 @@ export const ELEMENTS: readonly ElementDef[] = [
       above: '1em',
       below: '1em',
       padding: '0em',
-      bar: false,
-      bar_color: '#000000',
-      bar_thickness: '2pt',
-      bar_gap: '0.8em',
+      border_top: false,
+      border_bottom: false,
+      border_left: false,
+      border_right: false,
+      border_color: '#000000',
+      border_thickness: '2pt',
+      border_gap: '0.8em',
     },
   ),
   el(
