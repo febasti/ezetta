@@ -20,6 +20,7 @@ import {
   createExporter,
   listFontVariants,
   spawnCompiler,
+  stopCompilers,
 } from './services/exporter'
 import { createTemplateStore } from './services/templateStore'
 import { createMorph, launchMorph, prepareMorph } from './services/morph'
@@ -253,6 +254,7 @@ void app.whenReady().then(async () => {
       openPath(file(title, filterName, ['ezetta-template']), 'EZETTA_TEST_TEMPLATE_IMPORT'),
     families: (fontsDir) => fontVariants(fontsDir),
   })
+  app.on('will-quit', stopCompilers)
   const exporter = createExporter({
     host,
     templatesDir: bundledTemplates,

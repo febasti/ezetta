@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { readFile, rm, writeFile } from 'node:fs/promises'
+import { readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
@@ -56,6 +56,24 @@ async function openEditor(page: Page) {
   // The dialog opens on the "Dokument einrichten" panel; the properties of the text come first here.
   await choose(page, 'Fließtext')
 }
+
+test('quitting stops the compiler, which would go on writing into the project', async () => {
+  // A text long enough for the compiler to be still at work when the app quits.
+  await writeFile(
+    join(sandbox.projectDir, SHEET),
+    Array.from({ length: 6000 }, (_, i) => `Absatz ${i} mit etwas mehr Text.`).join('\n\n'),
+  )
+  const { app, page } = await open()
+  await page.getByRole('button', { name: 'Projektmenü' }).click()
+  await page.getByRole('menuitem', { name: 'Als PDF exportieren …' }).click()
+  const pages = join(sandbox.projectDir, '_build/preview')
+  // The folder is made just before the compiler starts, and the pages come when it has finished.
+  await expect.poll(() => existsSync(pages), { intervals: [10] }).toBe(true)
+  await app.close()
+  // Nothing happens from here on, so there is nothing to wait for but time.
+  await new Promise((resolve) => setTimeout(resolve, 2500))
+  expect(await readdir(pages)).toEqual([])
+})
 
 test('a bundled template is read-only; a copy of it can be changed, and the preview follows', async () => {
   const { app, page } = await open()

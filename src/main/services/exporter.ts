@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import type { ChildProcess } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -208,6 +209,14 @@ export function compilerAvailable(binary: string): Promise<boolean> {
   })
 }
 
+/** The compilers at work, so that quitting can stop them. */
+const compiling = new Set<ChildProcess>()
+
+/** Stops every compiler at work: one left running goes on writing into the project's `_build`. */
+export function stopCompilers(): void {
+  for (const child of compiling) child.kill()
+}
+
 export function spawnCompiler(binary: string): Compiler {
   return (cwd, options = {}) =>
     new Promise((resolve) => {
@@ -235,6 +244,7 @@ export function spawnCompiler(binary: string): Compiler {
           windowsHide: true,
         },
       )
+      compiling.add(child)
       let output = ''
       const take = (chunk: Buffer): void => {
         if (output.length < 2_000_000) output += chunk.toString('utf8')
@@ -244,10 +254,12 @@ export function spawnCompiler(binary: string): Compiler {
       const timer = setTimeout(() => child.kill(), 180_000)
       child.once('error', () => {
         clearTimeout(timer)
+        compiling.delete(child)
         resolve({ code: null, output })
       })
       child.once('exit', (code) => {
         clearTimeout(timer)
+        compiling.delete(child)
         resolve({ code, output })
       })
     })
