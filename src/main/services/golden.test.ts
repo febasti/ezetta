@@ -112,6 +112,8 @@ const VARIANTS: {
   sets?: Sets
   /** Sheets added to the fixture for this variant, by path under `content/`. */
   extraSheets?: Record<string, string>
+  /** The bibliography file, when it is not the usual one. */
+  bib?: string
   /** The title page fields beyond author and subtitle, and the texts of the Titelei by slot. */
   titelei?: {
     authors?: { name: string; affiliation: string }[]
@@ -384,6 +386,16 @@ const VARIANTS: {
         padding: '0.6em',
       },
     },
+  },
+  {
+    name: 'essay-literatureinzug',
+    template: 'essay',
+    options: {},
+    bib:
+      BIB +
+      '@book{lang2021, author = {Lang, Lena}, title = {Eine Studie mit einem sehr langen Titel, der ganz sicher mehr als eine einzige Zeile der Seite füllt und dann noch ein Stück weitergeht}, year = {2021}, publisher = {Verlag}}\n',
+    extraSheets: { 'zusatz/zusatz.typ': '= Zusatz\n\nSiehe @lang2021.\n' },
+    sets: { bibliography: { hanging_indent: '4em' } },
   },
   {
     name: 'essay-listeneinzug',
@@ -677,7 +689,7 @@ async function exportPages(variant: (typeof VARIANTS)[number]): Promise<string[]
     version: variant.titelei?.version ?? '',
   })
   if (!titelei.ok) throw new Error('no title page fields')
-  await writeFile(join(root, 'library.bib'), BIB)
+  await writeFile(join(root, 'library.bib'), variant.bib ?? BIB)
   await mkdir(join(root, 'assets'), { recursive: true })
   await writeFile(join(root, 'assets', 'bild.png'), PNG)
   for (const [path, text] of Object.entries({ ...SHEETS, ...variant.extraSheets })) {

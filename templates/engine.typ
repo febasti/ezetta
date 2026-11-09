@@ -478,13 +478,18 @@
   let bib = style.bibliography
   show bibliography: set text(..text-args(bib))
   show bibliography: it => spaced(bib.line_height, it)
-  // The entries: an indent from the second line, and the space between them.
+  // The entries: an indent from the second line, and the space between them. Typst sets the entries
+  // of a citation style that hangs as blocks of its own, indented by a fixed 1.5em and with the first
+  // line pulled back as far (the paragraph's hanging indent does not reach them): those are set again
+  // with the indent of the style. Numbered styles and those that do not hang keep their own layout.
   show bibliography: it => {
     let (hanging, gap) = (bib.hanging_indent, bib.entry_spacing)
-    if hanging != none and gap != none { set par(hanging-indent: hanging, spacing: gap); it }
-    else if hanging != none { set par(hanging-indent: hanging); it }
-    else if gap != none { set par(spacing: gap); it }
-    else { it }
+    let other-indent = hanging != none and hanging != 1.5em
+    show block: b => if other-indent and b.has("inset") and repr(b.inset).contains("1.5em") {
+      pad(left: hanging, { h(1.5em - hanging); b.body })
+    } else { b }
+    set par(spacing: gap) if gap != none
+    it
   }
   // A review PDF can show highlights: this is what they look like.
   show highlight: set highlight(fill: style.highlight.fill)
