@@ -438,7 +438,9 @@ test('every text element has a font, and headings a letter spacing', async () =>
     for (const name of ['Blockzitat', 'Abbildung', 'Tabelle', 'Fußnote', 'Inhaltsverzeichnis']) {
       await choose(page, name)
       // The captions are below the figure or the table: each has a font field of its own.
-      await expect(editor(page).getByLabel('Schriftart').last()).toHaveValue('Libertinus Serif')
+      await expect(editor(page).locator('input[id$="-font"]').last()).toHaveValue(
+        'Libertinus Serif',
+      )
     }
     await choose(page, 'Blockzitat')
     await editor(page).getByLabel('Schriftart').fill('DejaVu Sans Mono')
@@ -605,6 +607,12 @@ test('an image can have a border, whose other values appear with its width', asy
     const toml = () => readFile(style('rahmen'), 'utf8').catch(() => '')
 
     await choose(page, 'Abbildung')
+    await editor(page)
+      .getByRole('radiogroup', { name: 'Ausrichtung' })
+      .first()
+      .getByRole('radio', { name: 'Rechts' })
+      .click()
+    await expect.poll(toml).toContain('align = "right"')
     await expect(editor(page).locator('#prop-figure-frame_radius')).toHaveCount(0)
     for (const [id, value] of [
       ['frame_width', '1pt'],
@@ -810,9 +818,37 @@ test('captions have a position and a mark, and references can use other words th
       .selectOption({ label: 'Punkt (Abbildung 1. Text)' })
     await editor(page)
       .getByRole('radiogroup', { name: 'Ausrichtung' })
+      .last()
       .getByRole('radio', { name: 'Links' })
       .click()
     await expect.poll(toml).toContain('align = "left"')
+    // The distance to the figure, a width no wider than it, and a label of its own look.
+    const distance = editor(page).locator('#prop-figure_caption-caption_gap')
+    await distance.fill('1.5em')
+    await distance.press('Tab')
+    await expect.poll(toml).toContain('caption_gap = "1.5em"')
+    await editor(page).locator('#prop-figure_caption-caption_fit').check()
+    await expect.poll(toml).toContain('caption_fit = true')
+    await editor(page).locator('#prop-figure_caption-label_weight').selectOption('bold')
+    await expect.poll(toml).toContain('label_weight = "bold"')
+    const color = editor(page).locator('#prop-figure_caption-label_color')
+    await color.fill('#b00020')
+    await color.press('Tab')
+    await expect.poll(toml).toContain('label_color = "#b00020"')
+    await editor(page)
+      .getByRole('radiogroup', { name: 'Schriftstil' })
+      .getByRole('radio', { name: 'Aufrecht' })
+      .click()
+    await expect.poll(toml).toContain('label_style = "normal"')
+
+    // Tables have the same, and say so in their own words.
+    await choose(page, 'Tabelle')
+    await expect(editor(page).getByText('Auf Tabellenbreite begrenzen')).toBeVisible()
+    const tableDistance = editor(page).locator('#prop-table_caption-caption_gap')
+    await tableDistance.fill('0.9em')
+    await tableDistance.press('Tab')
+    await expect.poll(toml).toContain('caption_gap = "0.9em"')
+    await editor(page).locator('#prop-table_caption-caption_fit').check()
     await expect.poll(toml).toContain('caption_position = "above"')
     await expect.poll(toml).toContain('caption_separator = "period"')
 

@@ -131,6 +131,11 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     new_computer_modern: { de: 'New Computer Modern Math', en: 'New Computer Modern Math' },
     libertinus: { de: 'Libertinus Math', en: 'Libertinus Math' },
   },
+  label_style: {
+    inherit: { de: 'Wie der Text', en: 'As the text' },
+    italic: { de: 'Kursiv', en: 'Italic' },
+    normal: { de: 'Aufrecht', en: 'Upright' },
+  },
   orientation: {
     portrait: { de: 'Hochformat', en: 'Portrait' },
     landscape: { de: 'Querformat', en: 'Landscape' },
@@ -333,6 +338,12 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
       'letter_upper_dot',
       'roman_dot',
     ]),
+    prop('caption_gap', 'length', 'Abstand zur Abbildung', 'Distance to the figure'),
+    prop('caption_fit', 'bool', 'Auf Bildbreite begrenzen', 'Limit to the width of the figure'),
+    prop('label_font', 'font', 'Schriftart', 'Typeface'),
+    prop('label_weight', 'enum', 'Schnitt', 'Weight', WEIGHTS),
+    prop('label_style', 'enum', 'Schriftstil', 'Style', ['inherit', 'italic', 'normal']),
+    prop('label_color', 'color', 'Farbe', 'Colour'),
     prop('frame_width', 'length', 'Rahmenstärke', 'Border width'),
     prop('frame_color', 'color', 'Rahmenfarbe', 'Border colour'),
     prop('frame_radius', 'length', 'Eckenradius', 'Corner radius'),
@@ -552,6 +563,18 @@ const SHOWN_WHEN: Readonly<Record<string, (values: Readonly<Record<string, unkno
     border_gap: hasBorder,
   }
 
+/** What a property is called where its usual name would say the wrong thing. */
+const LABELS_FOR: Readonly<Record<string, Readonly<Record<string, { de: string; en: string }>>>> = {
+  table_caption: {
+    caption_gap: { de: 'Abstand zur Tabelle', en: 'Distance to the table' },
+    caption_fit: { de: 'Auf Tabellenbreite begrenzen', en: 'Limit to the width of the table' },
+  },
+}
+
+/** The name of a property in the editor, for one element. */
+export const propLabel = (element: string, def: PropDef, lang: 'de' | 'en'): string =>
+  LABELS_FOR[element]?.[def.id]?.[lang] ?? def[lang]
+
 /** Whether a property is shown, given the values its element has (its own and inherited). */
 export const isShown = (prop: string, values: Readonly<Record<string, unknown>>): boolean =>
   SHOWN_WHEN[prop]?.(values) ?? true
@@ -574,6 +597,16 @@ const el = (
 ): ElementDef => ({ id, parent, group, de, en, props, defaults })
 
 const TEXT = ['font', 'size', 'weight', 'italic', 'color'] as const
+
+/** What the caption of a figure and of a table have beyond their text. */
+const CAPTION_LOOK = [
+  'caption_gap',
+  'caption_fit',
+  'label_font',
+  'label_weight',
+  'label_style',
+  'label_color',
+] as const
 
 /**
  * A decorative line: a switch and the properties of the line, drawn a `distance` from the text and
@@ -741,7 +774,13 @@ export const PROP_SECTIONS: readonly {
     id: 'caption',
     de: 'Beschriftung',
     en: 'Caption',
-    props: ['caption_position', 'caption_separator'],
+    props: ['caption_position', 'caption_separator', 'caption_gap', 'caption_fit'],
+  },
+  {
+    id: 'label',
+    de: 'Bezeichnung und Nummer',
+    en: 'Label and number',
+    props: ['label_font', 'label_weight', 'label_style', 'label_color'],
   },
   {
     id: 'table',
@@ -1057,12 +1096,14 @@ export const ELEMENTS: readonly ElementDef[] = [
       'above',
       'below',
       'span_columns',
+      'align',
       'frame_width',
       'frame_color',
       'frame_radius',
       'frame_distance',
     ],
     {
+      align: 'center',
       frame_color: '#000000',
       span_columns: false,
       above: '0.8em',
@@ -1075,8 +1116,10 @@ export const ELEMENTS: readonly ElementDef[] = [
     'figures',
     'Bildunterschrift',
     'Figure caption',
-    [...TEXT, 'line_height', 'caption_position', 'caption_separator', 'align'],
+    [...TEXT, 'line_height', 'caption_position', 'caption_separator', 'align', ...CAPTION_LOOK],
     {
+      caption_fit: false,
+      label_style: 'inherit',
       size: '0.92em',
       caption_position: 'below',
       caption_separator: 'colon',
@@ -1109,13 +1152,15 @@ export const ELEMENTS: readonly ElementDef[] = [
       rule_strong_width: '0.9pt',
     },
   ),
-  el('table_caption', 'figure_caption', 'tables', 'Tabellenüberschrift', 'Table caption', [
-    ...TEXT,
-    'line_height',
-    'caption_position',
-    'caption_separator',
-    'align',
-  ]),
+  el(
+    'table_caption',
+    'figure_caption',
+    'tables',
+    'Tabellenüberschrift',
+    'Table caption',
+    [...TEXT, 'line_height', 'caption_position', 'caption_separator', 'align', ...CAPTION_LOOK],
+    { caption_fit: false },
+  ),
   // What a cross-reference looks like (a reference to a heading, a figure, a table, a formula); what
   // it leaves unset is the text around it, so it has no parent.
   el(

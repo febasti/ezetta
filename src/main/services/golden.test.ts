@@ -398,6 +398,100 @@ const VARIANTS: {
     sets: { bibliography: { hanging_indent: '4em' } },
   },
   {
+    name: 'essay-bildunterschrift',
+    template: 'essay',
+    options: {},
+    extraSheets: {
+      'zusatz/zusatz.typ': [
+        '= Zusatz',
+        '',
+        '#figure(image("assets/bild.png", width: 40%), caption: [Eine lange Bildunterschrift, die breiter wäre als das Bild und deshalb in mehrere Zeilen umbricht])',
+        '',
+      ].join('\n'),
+    },
+    sets: {
+      figure_caption: {
+        caption_gap: '2em',
+        caption_fit: true,
+        label_font: 'New Computer Modern',
+        label_weight: 'bold',
+        label_style: 'normal',
+        label_color: '#b00020',
+      },
+    },
+  },
+  {
+    name: 'essay-bildunterschrift-rahmen',
+    template: 'essay',
+    options: {},
+    extraSheets: {
+      'zusatz/zusatz.typ': [
+        '= Zusatz',
+        '',
+        '#figure(image("assets/bild.png", width: 40%), caption: [Eine lange Bildunterschrift, die breiter wäre als das Bild und deshalb in mehrere Zeilen umbricht])',
+        '',
+      ].join('\n'),
+    },
+    sets: {
+      figure: { align: 'right', frame_width: '1pt', frame_distance: '10pt' },
+      figure_caption: { caption_fit: true },
+    },
+  },
+  {
+    name: 'zeitschrift-bildunterschrift',
+    template: 'zeitschrift',
+    options: {},
+    extraSheets: {
+      'zusatz/zusatz.typ': [
+        '= Zusatz',
+        '',
+        '#figure(image("assets/bild.png", width: 40%), caption: [Eine lange Bildunterschrift, die breiter wäre als das Bild und deshalb in mehrere Zeilen umbricht])',
+        '',
+      ].join('\n'),
+    },
+    sets: { figure_caption: { caption_fit: true } },
+  },
+  {
+    name: 'essay-tabellenunterschrift',
+    template: 'essay',
+    options: {},
+    extraSheets: {
+      'zusatz/zusatz.typ': [
+        '= Zusatz',
+        '',
+        '#figure(table(columns: 3, [A], [B], [C], [1], [2], [3]), caption: [Eine lange Überschrift der Tabelle, die breiter wäre als die Tabelle selbst und umbricht])',
+        '',
+      ].join('\n'),
+    },
+    sets: {
+      table_caption: {
+        caption_gap: '2em',
+        caption_fit: true,
+        label_weight: 'bold',
+        label_style: 'normal',
+        label_color: '#0b6e4f',
+      },
+    },
+  },
+  {
+    name: 'essay-bildlinks',
+    template: 'essay',
+    options: {},
+    extraSheets: {
+      'zusatz/zusatz.typ': [
+        '= Zusatz',
+        '',
+        '#figure(image("assets/bild.png", width: 30%), caption: [Am Rand])',
+        '',
+        '#image("assets/bild.png", width: 20%)',
+        '',
+        'Im Text #box(image("assets/bild.png", height: 1em)) mitten darin.',
+        '',
+      ].join('\n'),
+    },
+    sets: { figure: { align: 'right' } },
+  },
+  {
     name: 'essay-bildrahmen',
     template: 'essay',
     options: {},

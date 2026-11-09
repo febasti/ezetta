@@ -128,11 +128,14 @@ export function elementFont(style: ResolvedStyle, id: string): string {
   return DEFAULT_FONT
 }
 
+/** A part of an element with a typeface and a weight of its own: `<part>_font`, `<part>_weight`. */
+export type FontPart = 'marker' | 'label'
+
 export type FontProblem =
   /** A style names a family this machine does not have: Typst sets another. */
-  | { kind: 'missing'; element: string; font: string; marker?: true }
+  | { kind: 'missing'; element: string; font: string; part?: FontPart }
   /** An element asks for italic in a family that has none. */
-  | { kind: 'italic'; element: string; font: string }
+  | { kind: 'italic'; element: string; font: string; part?: FontPart }
   /** An element asks for a weight the family does not have; `printed` is the one Typst takes. */
   | {
       kind: 'weight'
@@ -140,7 +143,7 @@ export type FontProblem =
       font: string
       weight: string
       printed: string
-      marker?: true
+      part?: FontPart
     }
   /** An element asks for small caps in a family that has none: Typst prints the letters as they are. */
   | { kind: 'smallcaps'; element: string; font: string }
@@ -159,20 +162,20 @@ export function fontProblems(style: ResolvedStyle, families: readonly FontFamily
   const problems: FontProblem[] = []
   const missing = new Set<string>()
   const fontOf = (id: string): string => elementFont(style, id)
-  /** The bullets and numbers of a list, which may have a typeface and a weight of their own. */
-  const markerProblems = (id: string): void => {
+  /** A part of an element (the bullets of a list, the label of a caption) with its own type. */
+  const partProblems = (id: string, part: FontPart): void => {
     const values = style[id] ?? {}
-    const own = values['marker_font']
+    const own = values[`${part}_font`]
     const font = typeof own === 'string' ? own : fontOf(id)
     const family = findFamily(families, font)
     if (!family) {
       if (typeof own === 'string' && !missing.has(font.toLowerCase())) {
         missing.add(font.toLowerCase())
-        problems.push({ kind: 'missing', element: id, font, marker: true })
+        problems.push({ kind: 'missing', element: id, font, part })
       }
       return
     }
-    const weight = values['marker_weight']
+    const weight = values[`${part}_weight`]
     if (typeof weight === 'string' && !hasWeight(family, weight))
       problems.push({
         kind: 'weight',
@@ -180,11 +183,14 @@ export function fontProblems(style: ResolvedStyle, families: readonly FontFamily
         font,
         weight,
         printed: printedWeight(family, weight),
-        marker: true,
+        part,
       })
+    if (values[`${part}_style`] === 'italic' && !hasItalic(family))
+      problems.push({ kind: 'italic', element: id, font, part })
   }
   for (const element of ELEMENTS) {
-    if (element.props.includes('marker_font')) markerProblems(element.id)
+    for (const part of ['marker', 'label'] as const)
+      if (element.props.includes(`${part}_font`)) partProblems(element.id, part)
     if (!['font', 'italic', 'weight', 'text_case'].some((p) => element.props.includes(p))) continue
     const values = style[element.id] ?? {}
     const font = fontOf(element.id)

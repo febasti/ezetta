@@ -4,6 +4,7 @@
     SUB_ELEMENTS,
     LINE_SECTIONS,
     PROP_SECTIONS,
+    propLabel,
     PROPS,
     elementById,
     isShown,
@@ -48,9 +49,9 @@
   const families = $derived(detail?.families ?? [])
   /** The family an element is set in, as this machine has it (none when it does not). */
   const familyOf = (el: ElementDef) => findFamily(families, elementFont(editor.resolved, el.id))
-  /** The family of the bullets and numbers of a list: their own, else the list's. */
-  const markerFamilyOf = (el: ElementDef) => {
-    const own = valuesOf(el)['marker_font']
+  /** The family of a part with its own type (the bullets of a list): its own, else the element's. */
+  const partFamilyOf = (el: ElementDef, prop: string) => {
+    const own = valuesOf(el)[prop]
     return typeof own === 'string' ? findFamily(families, own) : familyOf(el)
   }
   /** The italic of an element: whether its font has one, and whether it asks for one. */
@@ -60,8 +61,9 @@
     editor.fontIssues.find(
       (p) =>
         p.element === el.id &&
-        ('marker' in p && p.marker
-          ? prop === (p.kind === 'missing' ? 'marker_font' : 'marker_weight')
+        ('part' in p && p.part
+          ? prop ===
+            `${p.part}_${p.kind === 'missing' ? 'font' : p.kind === 'italic' ? 'style' : 'weight'}`
           : p.kind === 'missing' || p.kind === 'emphasis' || p.kind === 'strong'
             ? prop === 'font'
             : p.kind === 'smallcaps'
@@ -140,7 +142,7 @@
     class:refused={editor.refused === key}
   >
     <label for={control} title={!explicit(element, id) ? i18n.t('templates.inherited') : undefined}
-      >{def[lang]}</label
+      >{propLabel(element.id, def, lang)}</label
     >
     <div class="control">
       {#if def.type === 'bool'}
@@ -164,12 +166,15 @@
           disabled={readOnly}
           onchange={(v) => void editor.set(element.id, id, v)}
         />
-      {:else if def.id === 'orientation'}
+      {:else if def.id === 'orientation' || def.id === 'label_style'}
+        {@const family = id === 'label_style' ? partFamilyOf(element, 'label_font') : undefined}
+        <!-- An italic the typeface does not have cannot be chosen; one already chosen can be left. -->
         <Segmented
           label={def[lang]}
           options={(def.values ?? []).map((v) => ({
             value: v,
             label: def.valueLabels?.[v]?.[lang] ?? v,
+            disabled: v === 'italic' && family !== undefined && !hasItalic(family) && value !== v,
           }))}
           value={typeof value === 'string' ? value : null}
           disabled={readOnly}
@@ -195,8 +200,8 @@
         {@const family =
           id === 'weight'
             ? familyOf(element)
-            : id === 'marker_weight'
-              ? markerFamilyOf(element)
+            : id === 'marker_weight' || id === 'label_weight'
+              ? partFamilyOf(element, id === 'marker_weight' ? 'marker_font' : 'label_font')
               : undefined}
         <!-- A weight the font does not have is shown, greyed: Typst would print another. -->
         <Select

@@ -352,25 +352,57 @@
   let (fc, tc) = (style.figure_caption, style.table_caption)
   show figure.where(kind: image): set figure.caption(position: caption-side(fc), separator: caption-mark(fc))
   show figure.where(kind: table): set figure.caption(position: caption-side(tc), separator: caption-mark(tc))
+  show figure.where(kind: image): set figure(gap: fc.caption_gap) if fc.caption_gap != none
+  show figure.where(kind: table): set figure(gap: tc.caption_gap) if tc.caption_gap != none
+  // The label of a caption ("Abbildung 1:") may have a typeface, a weight, a style and a colour of its
+  // own: the caption is then written again from its parts.
+  let label-args(c) = text-args((
+    font: c.label_font,
+    weight: c.label_weight,
+    italic: if c.label_style == "italic" { true } else if c.label_style == "normal" { false } else { none },
+    color: c.label_color,
+  ))
+  let with-label(it, c) = if label-args(c).len() == 0 { it } else {
+    text(..label-args(c), {
+      if it.supplement != none { it.supplement; "\u{a0}" }
+      context it.counter.display(it.numbering)
+      it.separator
+    })
+    it.body
+  }
   show figure.caption: it => {
     let c = if it.kind == table { tc } else { fc }
     set text(..text-args(c))
-    spaced(c.line_height, if c.align != none { set align(align-of(c.align)); it } else { it })
+    let caption = if it.kind == image or it.kind == table { with-label(it, c) } else { it }
+    spaced(c.line_height, if c.align != none { set align(align-of(c.align)); caption } else { caption })
   }
+  // A caption may be limited to the width of what it belongs to. A width in percent is of the space there is.
+  let fitted(c) = it => if not c.caption_fit { it } else {
+    show figure.caption: cap => layout(area => block(width: measure(it.body, width: area.width).width, cap))
+    it
+  }
+  show figure.where(kind: image): fitted(fc)
+  show figure.where(kind: table): fitted(tc)
   // What a reference calls things where the template does not use the language's own words.
   let rf = style.references
   show figure.where(kind: image): set figure(supplement: if rf.supplement_figure == none { auto } else { rf.supplement_figure })
   show figure.where(kind: table): set figure(supplement: if rf.supplement_table == none { auto } else { rf.supplement_table })
   set math.equation(supplement: if rf.supplement_equation == none { auto } else { rf.supplement_equation })
   show figure: set block(above: style.figure.above, below: style.figure.below)
-  // A border around a picture, as a figure or on its own; an image in the line of the text (in a
-  // box) has none. A corner radius rounds the picture too when it touches the border.
+  // A picture, as a figure or on its own, stands where the template says, and its caption follows
+  // unless it has an alignment of its own. It may have a border. An image in the line of the text (in
+  // a box) or in a table has neither. A corner radius rounds the picture too when it touches the
+  // border.
   let fg = style.figure
+  let image-align = align-of(fg.align)
+  show figure.where(kind: image): set align(image-align)
   let framed = fg.frame_width != none and fg.frame_width != 0pt
-  let in-box = state("ezetta-in-box", false)
-  show box: it => if framed { in-box.update(true); it; in-box.update(false) } else { it }
-  show image: it => if not framed { it } else {
-    context if in-box.get() { it } else {
+  let in-line = state("ezetta-in-line", false)
+  let not-apart(it) = { in-line.update(true); it; in-line.update(false) }
+  show box: not-apart
+  show table: not-apart
+  show image: it => context if in-line.get() { it } else {
+    align(image-align, if not framed { it } else {
       layout(area => {
         // A width in percent is of the space there is: the picture is measured in that, and the
         // frame made to fit it, for inside the frame the percentage would be of the frame.
@@ -387,7 +419,7 @@
           place(top + left, dx: distance, dy: distance, block(width: inner, { set align(left); it })),
         )
       })
-    }
+    })
   }
   let tb = style.table
   show table: set text(..text-args(tb))
