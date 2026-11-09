@@ -597,6 +597,36 @@ test('tables have rules, a header and stripes; a block quote can have lines on i
   }
 })
 
+test('an image can have a border, whose other values appear with its width', async () => {
+  const { app, page } = await open()
+  try {
+    await openEditor(page)
+    await makeCopy(page, 'Rahmen')
+    const toml = () => readFile(style('rahmen'), 'utf8').catch(() => '')
+
+    await choose(page, 'Abbildung')
+    await expect(editor(page).locator('#prop-figure-frame_radius')).toHaveCount(0)
+    for (const [id, value] of [
+      ['frame_width', '1pt'],
+      ['frame_color', '#b00020'],
+      ['frame_radius', '4pt'],
+      ['frame_distance', '3pt'],
+    ] as const) {
+      const field = editor(page).locator(`#prop-figure-${id}`)
+      await field.fill(value)
+      await field.press('Tab')
+    }
+    await expect.poll(toml).toContain('frame_width = "1pt"')
+    await expect.poll(toml).toContain('frame_color = "#b00020"')
+    await expect.poll(toml).toContain('frame_radius = "4pt"')
+    await expect.poll(toml).toContain('frame_distance = "3pt"')
+    await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
+    await expect(editor(page).getByRole('alert')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
 test('a list has a colour, space around it, and bullets and numbers of their own look', async () => {
   const { app, page } = await open()
   try {

@@ -363,6 +363,32 @@
   show figure.where(kind: table): set figure(supplement: if rf.supplement_table == none { auto } else { rf.supplement_table })
   set math.equation(supplement: if rf.supplement_equation == none { auto } else { rf.supplement_equation })
   show figure: set block(above: style.figure.above, below: style.figure.below)
+  // A border around a picture, as a figure or on its own; an image in the line of the text (in a
+  // box) has none. A corner radius rounds the picture too when it touches the border.
+  let fg = style.figure
+  let framed = fg.frame_width != none and fg.frame_width != 0pt
+  let in-box = state("ezetta-in-box", false)
+  show box: it => if framed { in-box.update(true); it; in-box.update(false) } else { it }
+  show image: it => if not framed { it } else {
+    context if in-box.get() { it } else {
+      layout(area => {
+        // A width in percent is of the space there is: the picture is measured in that, and the
+        // frame made to fit it, for inside the frame the percentage would be of the frame.
+        let distance = if fg.frame_distance == none { 0pt } else { fg.frame_distance.to-absolute() }
+        let inner = area.width - 2 * distance
+        let picture = measure(it, width: inner)
+        block(
+          width: picture.width + 2 * distance,
+          height: picture.height + 2 * distance,
+          breakable: false,
+          stroke: (paint: fg.frame_color, thickness: fg.frame_width),
+          radius: if fg.frame_radius == none { 0pt } else { fg.frame_radius },
+          clip: true,
+          place(top + left, dx: distance, dy: distance, block(width: inner, { set align(left); it })),
+        )
+      })
+    }
+  }
   let tb = style.table
   show table: set text(..text-args(tb))
   show table: it => spaced(tb.line_height, it)

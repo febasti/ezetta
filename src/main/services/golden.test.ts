@@ -398,6 +398,31 @@ const VARIANTS: {
     sets: { bibliography: { hanging_indent: '4em' } },
   },
   {
+    name: 'essay-bildrahmen',
+    template: 'essay',
+    options: {},
+    extraSheets: {
+      'zusatz/zusatz.typ': [
+        '= Zusatz',
+        '',
+        '#figure(image("assets/bild.png", width: 100%), caption: [Ganz breit])',
+        '',
+        '#image("assets/bild.png", width: 30%)',
+        '',
+        'Im Text #box(image("assets/bild.png", height: 1em)) ohne Rahmen.',
+        '',
+      ].join('\n'),
+    },
+    sets: {
+      figure: {
+        frame_width: '1.5pt',
+        frame_color: '#b00020',
+        frame_radius: '8pt',
+        frame_distance: '6pt',
+      },
+    },
+  },
+  {
     name: 'essay-listeneinzug',
     template: 'essay',
     options: {},

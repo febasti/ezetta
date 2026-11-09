@@ -333,6 +333,10 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
       'letter_upper_dot',
       'roman_dot',
     ]),
+    prop('frame_width', 'length', 'Rahmenstärke', 'Border width'),
+    prop('frame_color', 'color', 'Rahmenfarbe', 'Border colour'),
+    prop('frame_radius', 'length', 'Eckenradius', 'Corner radius'),
+    prop('frame_distance', 'length', 'Abstand zum Bild', 'Distance to the image'),
     prop('list_indent', 'length', 'Einzug der Liste', 'Indent of the list'),
     prop('level_indent', 'length', 'Einzug je Ebene', 'Indent per level'),
     prop('marker_gap', 'length', 'Abstand zum Text', 'Distance to the text'),
@@ -518,6 +522,9 @@ export const SUB_ELEMENTS: Readonly<Record<string, readonly string[]>> = {
   title_page: ['title_page_title', 'title_page_subtitle', 'title_page_author', 'title_page_date'],
 }
 
+const hasFrame = (v: Readonly<Record<string, unknown>>): boolean =>
+  typeof v['frame_width'] === 'string' && !/^0*\.?0*[a-z%]*$/.test(v['frame_width'])
+
 const hasBorder = (v: Readonly<Record<string, unknown>>): boolean =>
   ['border_top', 'border_bottom', 'border_left', 'border_right'].some((side) => v[side] === true)
 
@@ -535,6 +542,10 @@ const SHOWN_WHEN: Readonly<Record<string, (values: Readonly<Record<string, unkno
     rule_width: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
     rule_length: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
     separator_color: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
+    // The border of an image: the rest only once it has a width.
+    frame_color: hasFrame,
+    frame_radius: hasFrame,
+    frame_distance: hasFrame,
     // The look of the lines of a block quote: only with a line on at least one side.
     border_color: hasBorder,
     border_thickness: hasBorder,
@@ -685,6 +696,12 @@ export const PROP_SECTIONS: readonly {
     props: ['marker_font', 'marker_weight', 'marker_color'],
   },
   { id: 'box', de: 'Fläche', en: 'Box', props: ['fill', 'padding'] },
+  {
+    id: 'frame',
+    de: 'Rahmen',
+    en: 'Border',
+    props: ['frame_width', 'frame_color', 'frame_radius', 'frame_distance'],
+  },
   { id: 'border', de: 'Linien', en: 'Lines', props: BORDER_PROPS },
   {
     id: 'words',
@@ -1030,11 +1047,28 @@ export const ELEMENTS: readonly ElementDef[] = [
     [...TEXT, 'above'],
     { size: '1em', italic: false, above: '0.5em' },
   ),
-  el('figure', null, 'figures', 'Abbildung', 'Figure', ['above', 'below', 'span_columns'], {
-    span_columns: false,
-    above: '0.8em',
-    below: '0.8em',
-  }),
+  el(
+    'figure',
+    null,
+    'figures',
+    'Abbildung',
+    'Figure',
+    [
+      'above',
+      'below',
+      'span_columns',
+      'frame_width',
+      'frame_color',
+      'frame_radius',
+      'frame_distance',
+    ],
+    {
+      frame_color: '#000000',
+      span_columns: false,
+      above: '0.8em',
+      below: '0.8em',
+    },
+  ),
   el(
     'figure_caption',
     'body',

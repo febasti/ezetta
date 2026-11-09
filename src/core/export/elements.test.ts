@@ -214,6 +214,12 @@ describe('the break before a heading', () => {
     })
   })
 
+  it('shows the rest of the border of an image only once it has a width', () => {
+    expect(isShown('frame_color', { frame_width: null })).toBe(false)
+    expect(isShown('frame_color', { frame_width: '0pt' })).toBe(false)
+    expect(isShown('frame_color', { frame_width: '0.5pt' })).toBe(true)
+  })
+
   it('shows the look of the lines of a block quote only with a line on some side', () => {
     expect(isShown('border_color', { border_top: false, border_left: false })).toBe(false)
     expect(isShown('border_color', { border_right: true })).toBe(true)
