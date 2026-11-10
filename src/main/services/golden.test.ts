@@ -398,6 +398,21 @@ const VARIANTS: {
     sets: { bibliography: { hanging_indent: '4em' } },
   },
   {
+    // Two margin notes on one line, the second with citations: the notes must settle (the gap
+    // between them is in em in Randnotizen, which the margin notes once could not work with).
+    name: 'randnotizen-belege-am-rand',
+    template: 'randnotizen',
+    options: {},
+    extraSheets: {
+      'zusatz/zusatz.typ': [
+        '= Zusatz',
+        '',
+        'Eine Fußnote.#footnote[Kurz.] Und noch eine.#footnote[Mit Belegen, etwa @smith2020 und @jones2019.]',
+        '',
+      ].join('\n'),
+    },
+  },
+  {
     name: 'essay-bildunterschrift',
     template: 'essay',
     options: {},

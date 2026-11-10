@@ -86,16 +86,22 @@
   // title page and the contents. Not with columns: the text would have no single edge to put them beside.
   let fn = style.footnote
   let notes-in-margin = fn.placement == "margin" and int(style.page.columns) == 1
+  // The margin notes are given their lengths in absolute units, as the body text resolves them: the
+  // package works out where each note goes from them, and a length in em would be read at another
+  // size where it measures a note, so the notes would never settle (and a citation in one fails).
   let notes-layout(content) = if notes-in-margin {
-    marginalia.setup(
-      inner: (far: inside, width: 0pt, sep: 0pt),
-      outer: (far: style.page.margin_outside, width: fn.margin_width, sep: fn.margin_gap),
-      top: style.page.margin_top,
-      bottom: style.page.margin_bottom,
-      book: facing,
-      clearance: if fn.note_gap == none { 12pt } else { fn.note_gap },
-      content,
-    )
+    context {
+      let abs(l) = if type(l) == length { l.to-absolute() } else { l }
+      marginalia.setup(
+        inner: (far: abs(inside), width: 0pt, sep: 0pt),
+        outer: (far: abs(style.page.margin_outside), width: abs(fn.margin_width), sep: abs(fn.margin_gap)),
+        top: abs(style.page.margin_top),
+        bottom: abs(style.page.margin_bottom),
+        book: facing,
+        clearance: if fn.note_gap == none { 12pt } else { abs(fn.note_gap) },
+        content,
+      )
+    }
   } else { content }
   // Lists: the marker, the numbering, the indent, and the spacing.
   let ls = style.list

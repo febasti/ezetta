@@ -176,6 +176,36 @@ describe('the example project', () => {
           expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
         },
       )
+
+      // Every template sets the whole example: its margin notes, columns and figures included.
+      it.skipIf(!installed).each(['zeitschrift', 'randnotizen', 'manuskript', 'essay', 'bericht'])(
+        'is exported with %s too, without an error',
+        async (id) => {
+          const root = await copyOf(language)
+          const session = await open(root)
+          const { templates, prelude } = await loadTemplates(TEMPLATES)
+          const template = templates.find((t) => t.info.id === id)!
+          const profile = { ...defaultProfile('apa-7'), options: resolveOptions(template.info, {}) }
+          const built = await session.prepareExport(profile, template, prelude, { write: true })
+          if (!built.ok) throw new Error(JSON.stringify(built.error))
+          execFileSync(
+            binary,
+            [
+              'compile',
+              '--root',
+              root,
+              '--ignore-system-fonts',
+              '--font-path',
+              resolve('templates', 'fonts'),
+              MAIN_FILE,
+              '_build/out.pdf',
+            ],
+            { cwd: root, stdio: 'pipe' },
+          )
+          const pdf = await readFile(join(root, '_build', 'out.pdf'))
+          expect(pdf.subarray(0, 5).toString()).toBe('%PDF-')
+        },
+      )
     })
   }
 
