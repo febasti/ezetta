@@ -549,6 +549,13 @@ const SHOWN_WHEN: Readonly<Record<string, (values: Readonly<Record<string, unkno
     page_height: (v) => v['paper'] === 'custom',
     orientation: (v) => v['paper'] !== 'custom',
     // The rule above the footnotes: none with the notes in the margin, and no look without a rule.
+    // The notes in the margin: how wide their column is and how far from the text, only there.
+    margin_width: (v) => v['placement'] === 'margin',
+    margin_gap: (v) => v['placement'] === 'margin',
+    // The indent before a note's number is of the notes at the foot; a note in the margin has none.
+    note_indent: (v) => v['placement'] !== 'margin',
+    // The gap between columns only when there is more than one.
+    column_gap: (v) => v['columns'] !== '1',
     separator_style: (v) => v['placement'] !== 'margin',
     rule_width: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
     rule_length: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
@@ -663,6 +670,7 @@ export const PROP_SECTIONS: readonly {
       'font',
       'math_font',
       'size',
+      'line_height',
       'weight',
       'italic',
       'color',

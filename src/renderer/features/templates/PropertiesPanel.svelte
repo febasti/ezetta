@@ -2,28 +2,38 @@
   import {
     ELEMENTS,
     SUB_ELEMENTS,
-    LINE_SECTIONS,
-    PROP_SECTIONS,
     propLabel,
     PROPS,
     elementById,
     isShown,
   } from '@core/export/elements'
-  import { COLOR_TOKENS, checkValue, isColorToken } from '@core/export/style'
+  import { checkValue } from '@core/export/style'
   import { exporting as editor, OPTIONS } from '../export/export.svelte'
   import { elementFont, findFamily, hasItalic, hasWeight } from '@core/export/fonts'
   import type { FontProblem } from '@core/export/fonts'
   import FontPicker from './FontPicker.svelte'
+  import ColorField from './ColorField.svelte'
+  import LengthField from './LengthField.svelte'
+  import ChoiceGlyph from './ChoiceGlyph.svelte'
+  import { GLYPHS } from './glyphs'
+  import SchematicDrawing from './SchematicDrawing.svelte'
+  import { panelLayout, words } from './schematics'
+  import type { Field, Schematic } from './schematics'
   import { numberIn } from '@core/export/template'
   import { fontProblemText } from './fontProblems'
   import type { ElementDef, PropDef } from '@core/export/elements'
   import type { StyleValue } from '@core/export/style'
   import { i18n } from '../../i18n/i18n.svelte'
+  import Icon from '../../ui/Icon.svelte'
+  import IconButton from '../../ui/kit/IconButton.svelte'
   import type { IconName } from '../../ui/Icon.svelte'
+  import { FIELD_ICONS, TOGGLE_ICONS, panelLines } from './panelLines'
+  import type { PanelLine } from './panelLines'
   import Callout from '../../ui/kit/Callout.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Segmented from '../../ui/kit/Segmented.svelte'
+  import Switch from '../../ui/kit/Switch.svelte'
   import Select from '../../ui/kit/Select.svelte'
   import TextField from '../../ui/kit/TextField.svelte'
 
@@ -70,31 +80,17 @@
               ? prop === 'text_case'
               : p.kind === prop),
     )
-  /** The properties of the lines of a heading, which are drawn as a group of their own. */
-  const LINE_IDS = new Set(LINE_SECTIONS.flatMap((section) => [section.toggle, ...section.fields]))
-  /** The properties of an element in groups; the lines of a heading are groups of their own. */
-  function layout(el: ElementDef): {
-    groups: { id: string; de: string; en: string; ids: string[] }[]
-    lines: (typeof LINE_SECTIONS)[number][]
-    titled: boolean
-  } {
-    const plain = el.props.filter((id) => !LINE_IDS.has(id))
-    const used: string[] = []
-    const groups: { id: string; de: string; en: string; ids: string[] }[] = []
-    for (const section of PROP_SECTIONS) {
-      if (section.only && !section.only.includes(el.id)) continue
-      // A property is in the first section that has it, so one used by two kinds of element (the
-      // weight of a rule) is drawn once.
-      const ids = plain.filter((id) => section.props.includes(id) && !used.includes(id))
-      used.push(...ids)
-      if (ids.length > 0) groups.push({ ...section, ids })
-    }
-    const rest = plain.filter((id) => !used.includes(id))
-    if (rest.length > 0) groups.push({ id: 'other', de: 'Weiteres', en: 'Other', ids: rest })
-    const lines = LINE_SECTIONS.filter((section) => el.props.includes(section.toggle))
-    // Titles over the groups only help when there is more than one group.
-    return { groups, lines, titled: groups.length + lines.length > 1 }
+  /** The value whose field is pointed at or has the focus, so its drawing marks it brighter. */
+  let hot = $state<{ element: string; prop: string } | null>(null)
+  const hotIn = (el: ElementDef): string | null => (hot?.element === el.id ? hot.prop : null)
+  /** Where a part stands on the page, for its name: left, centre or right. */
+  const partAlign = (el: ElementDef): string | undefined => {
+    const a = valuesOf(el)['align']
+    return a === 'center' || a === 'right' ? a : a === 'left' ? 'left' : undefined
   }
+  /** The fields of a drawing that the element's values let show (the size only for a custom paper). */
+  const placedIn = (s: Schematic, values: Readonly<Record<string, unknown>>) =>
+    Object.entries(s.places).filter(([, at]) => isShown(at!.prop, values)) as [string, Field][]
   const showOptions = $derived(!only && editor.elementId === OPTIONS)
   const own = (el: ElementDef, prop: string): boolean =>
     detail?.overrides[el.id]?.[prop] !== undefined
@@ -124,15 +120,179 @@
     ...(typeof value === 'string' ? [] : [{ value: '', label: '—' }]),
     ...(def.values ?? []).map((v) => ({ value: v, label: def.valueLabels?.[v]?.[lang] ?? v })),
   ]
-  const swatch = (value: unknown): string => {
-    const hex = isColorToken(value) ? palette[value] : value
-    return typeof hex === 'string' && /^#[0-9a-f]{6}/i.test(hex) ? hex.slice(0, 7) : '#000000'
-  }
 </script>
+
+{#snippet controlOf(element: ElementDef, id: string)}
+  {@const def = PROPS[id]!}
+  {@const value = valuesOf(element)[id] ?? null}
+  {@const key = `${element.id}.${id}`}
+  {@const control = `prop-${element.id}-${id}`}
+  {#if id === 'justify'}
+    <!-- How the lines are set: ragged or justified, drawn as lines. -->
+    <Segmented
+      label={propLabel(element.id, def, lang)}
+      options={[
+        { value: 'ragged', label: i18n.t('templates.setting.ragged') },
+        { value: 'justified', label: i18n.t('templates.setting.justified') },
+      ]}
+      value={value === true ? 'justified' : value === false ? 'ragged' : null}
+      disabled={readOnly}
+      onchange={(v) => void editor.set(element.id, id, v === 'justified')}
+    >
+      {#snippet glyph(v: string)}
+        <ChoiceGlyph prop="justify" value={v} />
+      {/snippet}
+    </Segmented>
+  {:else if id === 'hyphenate'}
+    <span class="switch-after">
+      <Switch
+        checked={value === true}
+        disabled={readOnly}
+        onchange={(on) => void editor.set(element.id, id, on)}
+        >{i18n.t('templates.setting.hyphens')}</Switch
+      >
+    </span>
+  {:else if def.type === 'bool' && TOGGLE_ICONS[id]}
+    {@const family = id === 'italic' ? familyOf(element) : undefined}
+    <!-- A switch of the type as its icon, as in a text editor's toolbar. Italic for a font without
+         one cannot be chosen; one already chosen can be taken off. -->
+    <IconButton
+      id={control}
+      icon={TOGGLE_ICONS[id]!}
+      label={propLabel(element.id, def, lang)}
+      pressed={value === true}
+      disabled={readOnly || (family !== undefined && !hasItalic(family) && value !== true)}
+      onclick={() => void editor.set(element.id, id, value !== true)}
+    />
+  {:else if def.type === 'bool'}
+    {@const family = id === 'italic' ? familyOf(element) : undefined}
+    <!-- Italic for a font without one cannot be chosen; one already chosen can be taken off. -->
+    <Checkbox
+      id={control}
+      label={propLabel(element.id, def, lang)}
+      checked={value === true}
+      disabled={readOnly || (family !== undefined && !hasItalic(family) && value !== true)}
+      onchange={(on) => void editor.set(element.id, id, on)}
+    />
+  {:else if def.type === 'enum' && GLYPHS[def.id]}
+    <!-- A choice drawn as small pictures: a page upright or across, the rules of a table. -->
+    <Segmented
+      label={def[lang]}
+      options={(def.values ?? []).map((v) => ({
+        value: v,
+        label: def.valueLabels?.[v]?.[lang] ?? v,
+      }))}
+      value={typeof value === 'string' ? value : null}
+      disabled={readOnly}
+      onchange={(v) => void editor.set(element.id, id, v)}
+    >
+      {#snippet glyph(v: string)}
+        <ChoiceGlyph prop={def.id} value={v} />
+      {/snippet}
+    </Segmented>
+  {:else if def.type === 'enum' && (def.id === 'align' || def.id === 'cell_align')}
+    <Segmented
+      label={def[lang]}
+      options={(def.values ?? []).map((v) => ({
+        value: v,
+        label: def.valueLabels?.[v]?.[lang] ?? v,
+        icon: `align-${v}` as IconName,
+      }))}
+      value={typeof value === 'string' ? value : null}
+      disabled={readOnly}
+      onchange={(v) => void editor.set(element.id, id, v)}
+    />
+  {:else if def.id === 'text_case'}
+    {@const family = familyOf(element)}
+    <!-- Small caps for a font without them cannot be chosen; ones already chosen can be left. -->
+    <Segmented
+      label={def[lang]}
+      options={(def.values ?? []).map((v) => ({
+        value: v,
+        label: def.valueLabels?.[v]?.[lang] ?? v,
+        sample: v === 'upper' ? 'AA' : 'Aa',
+        ...(v === 'smallcaps' ? { sampleStyle: 'smallcaps' as const } : {}),
+        disabled: v === 'smallcaps' && family?.smallCaps === 'no' && value !== 'smallcaps',
+      }))}
+      value={typeof value === 'string' ? value : null}
+      disabled={readOnly}
+      onchange={(v) => void editor.set(element.id, id, v)}
+    />
+  {:else if def.type === 'enum'}
+    {@const family =
+      id === 'weight'
+        ? familyOf(element)
+        : id === 'marker_weight' || id === 'label_weight' || id === 'label_style'
+          ? partFamilyOf(element, id === 'marker_weight' ? 'marker_font' : 'label_font')
+          : undefined}
+    <!-- A weight or an italic the font does not have is shown, greyed: Typst would print another. -->
+    <Select
+      id={control}
+      label={propLabel(element.id, def, lang)}
+      value={typeof value === 'string' ? value : ''}
+      options={choices(def, value).map((choice) => ({
+        ...choice,
+        disabled:
+          family !== undefined &&
+          choice.value !== '' &&
+          (id === 'label_style'
+            ? choice.value === 'italic' && !hasItalic(family) && value !== 'italic'
+            : !hasWeight(
+                family,
+                choice.value,
+                id === 'weight' && italicOf(element) && hasItalic(family),
+              )),
+      }))}
+      disabled={readOnly}
+      onchange={(v) => void editor.set(element.id, id, v)}
+    />
+  {:else if def.type === 'color'}
+    <ColorField
+      id={control}
+      value={typeof value === 'string' ? value : null}
+      {palette}
+      label={propLabel(element.id, def, lang)}
+      tokens={element.id !== 'palette'}
+      own={own(element, id)}
+      invalid={editor.refused === key}
+      disabled={readOnly}
+      onset={(v) => void editor.set(element.id, id, v)}
+      oncommit={(text) => commit(element, def, text)}
+    />
+  {:else if def.type === 'font'}
+    <FontPicker
+      id={control}
+      value={typeof value === 'string' ? value : ''}
+      {families}
+      placeholder="—"
+      invalid={editor.refused === key}
+      disabled={readOnly}
+      oncommit={(text) => commit(element, def, text)}
+    />
+  {:else if def.type === 'length'}
+    <LengthField
+      id={control}
+      value={typeof value === 'string' ? value : null}
+      label={propLabel(element.id, def, lang)}
+      invalid={editor.refused === key}
+      disabled={readOnly}
+      oncommit={(text) => commit(element, def, text)}
+    />
+  {:else}
+    <TextField
+      id={control}
+      label={propLabel(element.id, def, lang)}
+      value={typeof value === 'string' ? value : ''}
+      placeholder="—"
+      invalid={editor.refused === key}
+      disabled={readOnly}
+      onchange={(e) => commit(element, def, field(e))}
+    />
+  {/if}
+{/snippet}
 
 {#snippet row(element: ElementDef, id: string, stacked = false)}
   {@const def = PROPS[id]!}
-  {@const value = valuesOf(element)[id] ?? null}
   {@const key = `${element.id}.${id}`}
   {@const control = `prop-${element.id}-${id}`}
   <div
@@ -145,141 +305,7 @@
       >{propLabel(element.id, def, lang)}</label
     >
     <div class="control">
-      {#if def.type === 'bool'}
-        {@const family = id === 'italic' ? familyOf(element) : undefined}
-        <!-- Italic for a font without one cannot be chosen; one already chosen can be taken off. -->
-        <Checkbox
-          id={control}
-          checked={value === true}
-          disabled={readOnly || (family !== undefined && !hasItalic(family) && value !== true)}
-          onchange={(on) => void editor.set(element.id, id, on)}
-        />
-      {:else if def.type === 'enum' && (def.id === 'align' || def.id === 'cell_align')}
-        <Segmented
-          label={def[lang]}
-          options={(def.values ?? []).map((v) => ({
-            value: v,
-            label: def.valueLabels?.[v]?.[lang] ?? v,
-            icon: `align-${v}` as IconName,
-          }))}
-          value={typeof value === 'string' ? value : null}
-          disabled={readOnly}
-          onchange={(v) => void editor.set(element.id, id, v)}
-        />
-      {:else if def.id === 'orientation' || def.id === 'label_style'}
-        {@const family = id === 'label_style' ? partFamilyOf(element, 'label_font') : undefined}
-        <!-- An italic the typeface does not have cannot be chosen; one already chosen can be left. -->
-        <Segmented
-          label={def[lang]}
-          options={(def.values ?? []).map((v) => ({
-            value: v,
-            label: def.valueLabels?.[v]?.[lang] ?? v,
-            disabled: v === 'italic' && family !== undefined && !hasItalic(family) && value !== v,
-          }))}
-          value={typeof value === 'string' ? value : null}
-          disabled={readOnly}
-          onchange={(v) => void editor.set(element.id, id, v)}
-        />
-      {:else if def.id === 'text_case' || def.id === 'columns'}
-        {@const family = id === 'text_case' ? familyOf(element) : undefined}
-        <!-- Small caps for a font without them cannot be chosen; ones already chosen can be left. -->
-        <Segmented
-          label={def[lang]}
-          options={(def.values ?? []).map((v) => ({
-            value: v,
-            label: def.valueLabels?.[v]?.[lang] ?? v,
-            sample: def.id === 'columns' ? v : v === 'upper' ? 'AA' : 'Aa',
-            ...(v === 'smallcaps' ? { sampleStyle: 'smallcaps' as const } : {}),
-            disabled: v === 'smallcaps' && family?.smallCaps === 'no' && value !== 'smallcaps',
-          }))}
-          value={typeof value === 'string' ? value : null}
-          disabled={readOnly}
-          onchange={(v) => void editor.set(element.id, id, v)}
-        />
-      {:else if def.type === 'enum'}
-        {@const family =
-          id === 'weight'
-            ? familyOf(element)
-            : id === 'marker_weight' || id === 'label_weight'
-              ? partFamilyOf(element, id === 'marker_weight' ? 'marker_font' : 'label_font')
-              : undefined}
-        <!-- A weight the font does not have is shown, greyed: Typst would print another. -->
-        <Select
-          id={control}
-          value={typeof value === 'string' ? value : ''}
-          options={choices(def, value).map((choice) => ({
-            ...choice,
-            disabled:
-              family !== undefined &&
-              choice.value !== '' &&
-              !hasWeight(
-                family,
-                choice.value,
-                id === 'weight' && italicOf(element) && hasItalic(family),
-              ),
-          }))}
-          disabled={readOnly}
-          onchange={(v) => void editor.set(element.id, id, v)}
-        />
-      {:else if def.type === 'color'}
-        <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- the system’s colour well -->
-        <input
-          class="swatch"
-          class:unset={value === null}
-          type="color"
-          aria-label={def[lang]}
-          value={swatch(value)}
-          disabled={readOnly}
-          onchange={(e) => commit(element, def, e.currentTarget.value)}
-        />
-        <TextField
-          id={control}
-          value={typeof value === 'string' ? value : ''}
-          placeholder="—"
-          invalid={editor.refused === key}
-          disabled={readOnly}
-          onchange={(e) => commit(element, def, field(e))}
-        />
-        {#if element.id !== 'palette'}
-          <!-- The colours of the palette are small dots: one click names the colour, another takes it back to a colour of its own. -->
-          <span class="tones" role="group" aria-label={i18n.t('templates.palette')}>
-            {#each COLOR_TOKENS as token (token.id)}
-              {@const on = value === token.id}
-              <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a colour of the palette, as a dot -->
-              <button
-                type="button"
-                class="tone"
-                class:on
-                aria-pressed={on}
-                aria-label={token[lang]}
-                title={token[lang]}
-                style:background={swatch(token.id)}
-                disabled={readOnly}
-                onclick={() => void editor.set(element.id, id, on ? swatch(value) : token.id)}
-              ></button>
-            {/each}
-          </span>
-        {/if}
-      {:else if def.type === 'font'}
-        <FontPicker
-          id={control}
-          value={typeof value === 'string' ? value : ''}
-          {families}
-          placeholder="—"
-          invalid={editor.refused === key}
-          disabled={readOnly}
-          oncommit={(text) => commit(element, def, text)}
-        />
-      {:else}
-        <TextField
-          id={control}
-          value={typeof value === 'string' ? value : ''}
-          placeholder="—"
-          invalid={editor.refused === key}
-          disabled={readOnly}
-          onchange={(e) => commit(element, def, field(e))}
-        />
-      {/if}
+      {@render controlOf(element, id)}
     </div>
     {#if editor.refused === key}
       <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
@@ -291,17 +317,114 @@
   </div>
 {/snippet}
 
+{#snippet together(element: ElementDef, line: PanelLine)}
+  <!-- Values that belong together, side by side under one name (the size with the line spacing). -->
+  <div
+    class="row"
+    class:inherited={line.props.every((id) => !explicit(element, id))}
+    class:refused={line.props.some((id) => editor.refused === `${element.id}.${id}`)}
+  >
+    <label for="prop-{element.id}-{line.props[0]}">{line.shared![lang]}</label>
+    <div class="control together">
+      {#each line.props as id (id)}
+        <span
+          class="part {PROPS[id]!.type}"
+          class:own={explicit(element, id)}
+          class:end={id === 'hyphenate'}
+        >
+          {#if FIELD_ICONS[id]}
+            <span class="field-icon" title={propLabel(element.id, PROPS[id]!, lang)}>
+              <Icon name={FIELD_ICONS[id]!} size={16} />
+            </span>
+          {/if}
+          {@render controlOf(element, id)}
+        </span>
+      {/each}
+    </div>
+    {#if line.props.some((id) => editor.refused === `${element.id}.${id}`)}
+      <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
+    {/if}
+    {#each line.props as id (id)}
+      {#if problemFor(element, id)}
+        <p class="missing">{fontProblemText(problemFor(element, id)!)}</p>
+      {/if}
+    {/each}
+  </div>
+{/snippet}
+
+{#snippet drawing(element: ElementDef, schematic: Schematic)}
+  {@const values = valuesOf(element)}
+  <!-- The drawing in the middle, each field on the side its gap is on, close to it, with its short
+       name above it. A field beside the drawing is centred on it; its name stands over it. -->
+  <div class="schematic">
+    <div class="picture">
+      <!-- The page's drawing also shows the document's binding offset, which is set elsewhere. -->
+      <SchematicDrawing
+        drawing={schematic.draw(
+          element.id === 'page' ? { ...values, binding: editor.profile?.binding ?? null } : values,
+        )}
+        hot={hotIn(element)}
+      />
+    </div>
+    {#each placedIn(schematic, values) as [place, at] (place)}
+      {@const key = `${element.id}.${at.prop}`}
+      <div
+        class="place {place}"
+        class:inherited={!explicit(element, at.prop)}
+        role="group"
+        onpointerenter={() => (hot = { element: element.id, prop: at.prop })}
+        onpointerleave={() => (hot = null)}
+        onfocusin={() => (hot = { element: element.id, prop: at.prop })}
+        onfocusout={() => (hot = null)}
+      >
+        {#if words(at[lang], values) !== ''}
+          <label
+            class="short"
+            for="prop-{element.id}-{at.prop}"
+            title={propLabel(element.id, PROPS[at.prop]!, lang)}>{words(at[lang], values)}</label
+          >
+        {/if}
+        {@render controlOf(element, at.prop)}
+        {#if editor.refused === key}
+          <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
+        {/if}
+      </div>
+    {/each}
+  </div>
+{/snippet}
+
+{#snippet space(element: ElementDef, id: string)}
+  <!-- The space between two parts that stand one under another, set where that space is. -->
+  <div class="space" class:inherited={!explicit(element, id)}>
+    <svg class="span" viewBox="0 0 12 30" width="12" height="30" aria-hidden="true">
+      <path d="M2 0.5H10M6 0.5V29.5M2 29.5H10" />
+    </svg>
+    <span class="space-field">{@render controlOf(element, id)}</span>
+    <label class="short" for="prop-{element.id}-{id}"
+      >{propLabel(element.id, PROPS[id]!, lang)}</label
+    >
+  </div>
+{/snippet}
+
 {#snippet sections(element: ElementDef)}
-  {@const shape = layout(element)}
+  {@const shape = panelLayout(element)}
   {@const values = valuesOf(element)}
   {#each shape.groups as group (group.id)}
     {@const shown = group.ids.filter((id) => isShown(id, values))}
+    {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
-    {#if shown.length > 0}
+    {#if shown.length > 0 || drawn.length > 0}
       <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
+        {#each drawn as schematic, i (i)}
+          {@render drawing(element, schematic)}
+        {/each}
         <div class="rows">
-          {#each shown as id (id)}
-            {@render row(element, id)}
+          {#each panelLines(shown) as line (line.props[0])}
+            {#if line.shared}
+              {@render together(element, line)}
+            {:else}
+              {@render row(element, line.props[0]!)}
+            {/if}
           {/each}
         </div>
       </Section>
@@ -397,7 +520,21 @@
         <Callout>{i18n.t('templates.readonly')}</Callout>
       {/if}
       {#each members as member, index (member.id)}
-        {#if index > 0}<h3 class="sub">{member[lang]}</h3>{/if}
+        {@const { gap, head } = panelLayout(member)}
+        <!-- A part of the element (a caption, a part of the title page): a line above it, then the
+             space above it where there is one, then its name, standing where the part stands on the
+             page, with that place beside it. -->
+        <div class:member={index > 0}>
+          {#if gap && isShown(gap, valuesOf(member))}
+            {@render space(member, gap)}
+          {/if}
+          {#if index > 0}
+            <div class="sub-line">
+              <h3 class="sub" style:text-align={partAlign(member)}>{member[lang]}</h3>
+              {#if head}{@render controlOf(member, head)}{/if}
+            </div>
+          {/if}
+        </div>
         {@render sections(member)}
       {/each}
     </section>
@@ -419,12 +556,181 @@
     margin-bottom: var(--sp-16);
   }
   /* The part of an element shown under it (the source of an epigraph, a caption). */
-  .sub {
+  .member {
     margin: var(--sp-16) 0 var(--sp-8);
-    padding-top: var(--sp-16);
+    padding-top: var(--sp-8);
     border-top: 1px solid var(--color-separator);
+  }
+  .sub-line {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-8);
+    margin-top: var(--sp-8);
+  }
+  .sub {
+    flex: 1;
+    margin: 0;
     color: var(--color-label);
     font: var(--type-title);
+  }
+  /* The space between two parts: a span mark, the value, its name, in the middle of the panel. */
+  .space {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-8);
+    margin: var(--sp-8) 0;
+  }
+  .space .span path {
+    fill: none;
+    stroke: var(--color-accent);
+    stroke-width: 1;
+  }
+  .space-field {
+    width: 96px;
+  }
+  .space-field :global(.text-field) {
+    width: 100%;
+  }
+  .space.inherited .short {
+    color: var(--color-label-tertiary);
+  }
+  /* Values side by side in one line: the fields as wide as their numbers, a menu the rest. */
+  .together {
+    gap: var(--sp-4);
+  }
+  .part {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+  }
+  .part.length {
+    width: 72px;
+  }
+  .part.factor {
+    width: 68px;
+  }
+  .part.factor:has(.field-icon),
+  .part.length:has(.field-icon) {
+    width: 86px;
+  }
+  .part :global(.segmented button) {
+    padding: 0 var(--sp-8);
+  }
+  .part.enum {
+    flex: 1;
+  }
+  /* A switch that ends a line stands at its end, its name after it. */
+  .part.end {
+    margin-left: auto;
+  }
+  .switch-after :global(.switch) {
+    flex-direction: row-reverse;
+    gap: var(--sp-8);
+  }
+  .part :global(.text-field),
+  .part :global(.select) {
+    width: 100%;
+    min-width: 0;
+  }
+  .field-icon {
+    display: inline-flex;
+    flex: none;
+    color: var(--color-label-tertiary);
+  }
+  /* A drawing with the fields around it: three columns, the drawing in the middle. */
+  .schematic {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 128px minmax(0, 1fr);
+    gap: var(--sp-4);
+    align-items: center;
+    margin-bottom: var(--sp-12);
+  }
+  .schematic .picture {
+    grid-area: 2 / 2;
+  }
+  /* A place holds the field, as narrow as its value, against the drawing; its name stands above it,
+     aligned with its edge. */
+  .place {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    max-width: 96px;
+    min-width: 0;
+  }
+  .place.l,
+  .place.tl,
+  .place.bl {
+    justify-self: end;
+  }
+  .place.r,
+  .place.tr,
+  .place.br {
+    justify-self: start;
+  }
+  .place.t,
+  .place.b {
+    justify-self: center;
+    align-items: center;
+    max-width: 128px;
+  }
+  /* Beside the drawing the field is centred on it, so its name stands above without moving it. */
+  .place.l .short,
+  .place.r .short {
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 0;
+    white-space: nowrap;
+  }
+  .place :global(.select) {
+    width: 86px;
+  }
+  .place :global(input.text-field) {
+    width: 66px;
+  }
+  /* A choice in a place is as narrow as its pictures. */
+  .place :global(.segmented button) {
+    padding: 0 2px;
+  }
+  .place.t :global(.segmented button),
+  .place.b :global(.segmented button) {
+    padding: 0 var(--sp-8);
+  }
+  .place.t {
+    grid-area: 1 / 2;
+  }
+  .place.b {
+    grid-area: 3 / 2;
+  }
+  .place.l {
+    grid-area: 2 / 1;
+  }
+  .place.r {
+    grid-area: 2 / 3;
+  }
+  .place.tl {
+    grid-area: 1 / 1;
+  }
+  .place.tr {
+    grid-area: 1 / 3;
+  }
+  .place.bl {
+    grid-area: 3 / 1;
+  }
+  .place.br {
+    grid-area: 3 / 3;
+  }
+  .short {
+    color: var(--color-label-secondary);
+    font: var(--type-caption);
+  }
+  /* A value the template takes from the element above it: its name is quieter, as in a row. */
+  .place.inherited .short {
+    color: var(--color-label-tertiary);
   }
   .rows {
     display: flex;
@@ -459,43 +765,6 @@
   .control > :global(.select),
   .control > :global(.text-field) {
     flex: 1;
-  }
-  .tones {
-    display: inline-flex;
-    flex: none;
-    gap: var(--sp-4);
-    margin-left: var(--sp-4);
-  }
-  /* A colour of the palette, as a dot in its own colour. */
-  .tone {
-    width: 18px;
-    height: 18px;
-    padding: 0;
-    border: 1px solid var(--color-field-border);
-    border-radius: 50%;
-    cursor: default;
-  }
-  .tone.on {
-    box-shadow:
-      0 0 0 2px var(--color-window),
-      0 0 0 4px var(--color-accent);
-  }
-  .tone:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-focus);
-  }
-  .swatch {
-    flex: none;
-    width: var(--control-md);
-    height: var(--control-md);
-    padding: 0;
-    border: 0;
-    border-radius: var(--r-sm);
-    background: none;
-  }
-  /* A colour that is not set shows a faint square, not a black one. */
-  .swatch.unset {
-    opacity: 0.25;
   }
   .grid {
     display: grid;

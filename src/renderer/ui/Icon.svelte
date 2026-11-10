@@ -24,6 +24,9 @@
   import IconFolder from '@tabler/icons-svelte/icons/folder'
   import IconHighlight from '@tabler/icons-svelte/icons/highlight'
   import IconItalic from '@tabler/icons-svelte/icons/italic'
+  import IconUnderline from '@tabler/icons-svelte/icons/underline'
+  import IconLineHeight from '@tabler/icons-svelte/icons/line-height'
+  import IconLetterSpacing from '@tabler/icons-svelte/icons/letter-spacing'
   import IconLayoutSidebar from '@tabler/icons-svelte/icons/layout-sidebar'
   import IconLink from '@tabler/icons-svelte/icons/link'
   import IconList from '@tabler/icons-svelte/icons/list'
@@ -102,6 +105,9 @@
     code: IconCode,
     bold: IconBold,
     italic: IconItalic,
+    underline: IconUnderline,
+    'line-height': IconLineHeight,
+    'letter-spacing': IconLetterSpacing,
     link: IconLink,
     list: IconList,
     'list-numbers': IconListNumbers,

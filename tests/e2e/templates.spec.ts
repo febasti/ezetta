@@ -47,6 +47,13 @@ async function choose(page: Page, name: string) {
   await entry.click()
 }
 const prompt = (page: Page) => page.getByRole('dialog', { name: 'Kopie anlegen' })
+/** Sets a colour: a click on it opens the colours, and its value is typed at their foot. */
+async function setColor(page: Page, id: string, value: string) {
+  await editor(page).locator(`#${id}`).click()
+  const field = editor(page).locator(`#${id}-value`)
+  await field.fill(value)
+  await field.press('Enter')
+}
 const style = (id: string) => join(sandbox.userData, 'templates', id, 'style.toml')
 
 async function openEditor(page: Page) {
@@ -93,7 +100,7 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
     ).toBeVisible()
     await choose(page, 'Überschrift 1 (Kapitel)')
     const size = editor(page).getByLabel('Größe', { exact: true })
-    await expect(size).toHaveValue('2em')
+    await expect(size).toHaveAttribute('data-value', '2em')
     await expect(size).toBeDisabled()
     await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeDisabled()
 
@@ -115,7 +122,7 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
     await expect(card(page, 'Meine Arbeit')).toHaveAttribute('aria-current', 'true')
     await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
     await expect(size).toBeEnabled()
-    await expect(size).toHaveValue('2em')
+    await expect(size).toHaveAttribute('data-value', '2em')
     // What the copy does not set itself is shown as inherited.
     await expect(editor(page).locator('.row.inherited').first()).toBeVisible()
 
@@ -141,7 +148,7 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
     // An emptied field takes the value the element would have without it.
     await size.fill('')
     await size.press('Tab')
-    await expect(size).toHaveValue('2em')
+    await expect(size).toHaveAttribute('data-value', '2em')
     await expect.poll(() => readFile(style('meine-arbeit'), 'utf8')).not.toContain('3em')
   } finally {
     await app.close()
@@ -177,7 +184,10 @@ test('the copy is offered in the export dialog, and its settings survive a resta
     // The choice of the template was remembered with the project.
     await expect(card(again.page, 'Kurz')).toHaveAttribute('aria-current', 'true')
     await choose(again.page, 'Fließtext')
-    await expect(editor(again.page).getByLabel('Größe', { exact: true })).toHaveValue('9pt')
+    await expect(editor(again.page).getByLabel('Größe', { exact: true })).toHaveAttribute(
+      'data-value',
+      '9pt',
+    )
   } finally {
     await again.app.close()
   }
@@ -278,7 +288,10 @@ test('a template is saved as a file and loaded again, as a template of its own',
     await expect(second.page.getByText('Vorlage „Zum Teilen“ hinzugefügt')).toBeVisible()
     await expect(card(second.page, 'Zum Teilen')).toHaveAttribute('aria-current', 'true')
     await choose(second.page, 'Fließtext')
-    await expect(editor(second.page).getByLabel('Größe', { exact: true })).toHaveValue('9.5pt')
+    await expect(editor(second.page).getByLabel('Größe', { exact: true })).toHaveAttribute(
+      'data-value',
+      '9.5pt',
+    )
   } finally {
     await second.app.close()
   }
@@ -308,9 +321,9 @@ test('a heading is aligned with radio buttons and can have a line above and belo
     await expect(editor(page).getByLabel('Länge')).toHaveCount(0)
     await editor(page).getByLabel('Linie unter der Überschrift').check()
     const thickness = editor(page).getByLabel('Stärke')
-    await expect(thickness).toHaveValue('0.5pt')
-    await expect(editor(page).getByLabel('Länge')).toHaveValue('100%')
-    await expect(editor(page).getByLabel('Abstand zum Text')).toHaveValue('0.4em')
+    await expect(thickness).toHaveAttribute('data-value', '0.5pt')
+    await expect(editor(page).getByLabel('Länge')).toHaveAttribute('data-value', '100%')
+    await expect(editor(page).getByLabel('Abstand zum Text')).toHaveAttribute('data-value', '0.4em')
     await thickness.fill('2pt')
     await thickness.press('Tab')
     await editor(page).getByLabel('Länge').fill('3cm')
@@ -459,7 +472,7 @@ test('every text element has a font, and headings a letter spacing', async () =>
       .toContain('letter_spacing = "0.08em"')
     // The levels take it from all headings.
     await choose(page, 'Überschrift 2')
-    await expect(editor(page).getByLabel('Zeichenabstand')).toHaveValue('0.08em')
+    await expect(editor(page).getByLabel('Zeichenabstand')).toHaveAttribute('data-value', '0.08em')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {
@@ -477,7 +490,7 @@ test('the text can be set in columns, with a gap, and figures can span them', as
     await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
 
     await choose(page, 'Papier und Ränder')
-    for (const title of ['Ränder', 'Spalten']) {
+    for (const title of ['Format', 'Ränder']) {
       await expect(editor(page).getByRole('heading', { name: title, level: 4 })).toBeVisible()
     }
     const group = editor(page).getByRole('radiogroup', { name: 'Spalten' })
@@ -489,7 +502,7 @@ test('the text can be set in columns, with a gap, and figures can span them', as
       .poll(() => readFile(style('zweispaltig'), 'utf8').catch(() => ''))
       .toContain('columns = "2"')
     const gap = editor(page).getByLabel('Spaltenabstand')
-    await expect(gap).toHaveValue('1cm')
+    await expect(gap).toHaveAttribute('data-value', '1cm')
     await gap.fill('0.6cm')
     await gap.press('Tab')
     await expect
@@ -536,7 +549,7 @@ test('headers, footers and the page number are set with three places each', asyn
     await expect.poll(toml).toContain('slot_left = "title"')
 
     // The divider has its own fields, there while it is switched on.
-    await expect(editor(page).getByLabel('Stärke')).toHaveValue('0.4pt')
+    await expect(editor(page).getByLabel('Stärke')).toHaveAttribute('data-value', '0.4pt')
     await editor(page).getByLabel('Trennlinie').uncheck()
     await expect(editor(page).getByLabel('Abstand zum Text', { exact: true })).toHaveCount(0)
     await editor(page).getByLabel('Trennlinie').check()
@@ -563,12 +576,12 @@ test('tables have rules, a header and stripes; a block quote can have lines on i
     const toml = () => readFile(style('tabellen'), 'utf8').catch(() => '')
 
     await choose(page, 'Tabelle')
-    await expect(editor(page).getByLabel('Linien', { exact: true })).toHaveValue('booktabs')
-    await editor(page).getByLabel('Linien', { exact: true }).selectOption({ label: 'Gitter' })
+    // The rules are chosen by their pictures.
+    const rules = editor(page).getByRole('radiogroup', { name: 'Linien', exact: true })
+    await expect(rules.getByRole('radio', { name: 'Wissenschaftlich (3 Linien)' })).toBeChecked()
+    await rules.getByRole('radio', { name: 'Gitter' }).click()
     await editor(page).getByLabel('Kopfzeile fett').check()
-    const stripe = editor(page).locator('#prop-table-stripe_fill')
-    await stripe.fill('#f0f0f0')
-    await stripe.press('Tab')
+    await setColor(page, 'prop-table-stripe_fill', '#f0f0f0')
     await editor(page)
       .getByRole('radiogroup', { name: 'Ausrichtung der Zellen' })
       .getByRole('radio', { name: 'Zentriert' })
@@ -583,9 +596,12 @@ test('tables have rules, a header and stripes; a block quote can have lines on i
     await expect(editor(page).locator('#prop-quote-border_thickness')).toHaveCount(0)
     await editor(page).locator('#prop-quote-border_left').check()
     await editor(page).locator('#prop-quote-border_top').check()
-    await expect(editor(page).locator('#prop-quote-border_thickness')).toHaveValue('2pt')
+    await expect(editor(page).locator('#prop-quote-border_thickness')).toHaveAttribute(
+      'data-value',
+      '2pt',
+    )
     const gap = editor(page).getByLabel('Abstand zum Text', { exact: true })
-    await expect(gap).toHaveValue('0.8em')
+    await expect(gap).toHaveAttribute('data-value', '0.8em')
     const padding = editor(page).getByLabel('Innenabstand')
     await padding.fill('0.5em')
     await padding.press('Tab')
@@ -620,6 +636,10 @@ test('an image can have a border, whose other values appear with its width', asy
       ['frame_radius', '4pt'],
       ['frame_distance', '3pt'],
     ] as const) {
+      if (id.endsWith('color')) {
+        await setColor(page, `prop-figure-${id}`, value)
+        continue
+      }
       const field = editor(page).locator(`#prop-figure-${id}`)
       await field.fill(value)
       await field.press('Tab')
@@ -651,6 +671,10 @@ test('a list has a colour, space around it, and bullets and numbers of their own
       ['level_indent', '1em'],
       ['marker_color', '#b00020'],
     ] as const) {
+      if (id.endsWith('color')) {
+        await setColor(page, `prop-list-${id}`, value)
+        continue
+      }
       const field = editor(page).locator(`#prop-list-${id}`)
       await field.fill(value)
       await field.press('Tab')
@@ -681,7 +705,10 @@ test('the numbers of headings have a text before and after them and a separator,
     const suffix = editor(page).getByLabel('Text nach der Nummer')
     await suffix.fill('.')
     await suffix.press('Tab')
-    await editor(page).getByLabel('Umbruch langer Titel').selectOption({ label: 'Hängend' })
+    await editor(page)
+      .getByRole('radiogroup', { name: 'Umbruch langer Titel' })
+      .getByRole('radio', { name: 'Hängend' })
+      .click()
     await expect.poll(toml).toContain('number_style = "hanging"')
     await expect.poll(toml).toContain('number_separator = "dash"')
     await expect.poll(toml).toContain('number_suffix = "."')
@@ -760,14 +787,14 @@ test('a chapter can start on the next right-hand page', async () => {
     await openEditor(page)
     await makeCopy(page, 'Rechts')
     await choose(page, 'Überschrift 1 (Kapitel)')
-    const select = editor(page).getByLabel('Umbruch davor')
-    await expect(select).toHaveValue('page')
-    await select.selectOption({ label: 'Neue rechte Seite (mit Leerseite)' })
+    const breaks = editor(page).getByRole('radiogroup', { name: 'Umbruch davor' })
+    await expect(breaks.getByRole('radio', { name: 'Neue Seite', exact: true })).toBeChecked()
+    await breaks.getByRole('radio', { name: 'Neue rechte Seite (mit Leerseite)' }).click()
     await expect
       .poll(() => readFile(style('rechts'), 'utf8').catch(() => ''))
       .toContain('break_before = "odd"')
     await choose(page, 'Überschrift 2')
-    await expect(editor(page).getByLabel('Umbruch davor')).toHaveValue('none')
+    await expect(breaks.getByRole('radio', { name: 'Kein Umbruch' })).toBeChecked()
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {
@@ -811,8 +838,9 @@ test('captions have a position and a mark, and references can use other words th
     const toml = () => readFile(style('beschriftung'), 'utf8').catch(() => '')
 
     await choose(page, 'Abbildung')
-    await expect(editor(page).getByLabel('Stellung')).toHaveValue('below')
-    await editor(page).getByLabel('Stellung').selectOption({ label: 'Über dem Objekt' })
+    const position = editor(page).getByRole('radiogroup', { name: 'Stellung' }).first()
+    await expect(position.getByRole('radio', { name: 'Unter dem Objekt' })).toBeChecked()
+    await position.getByRole('radio', { name: 'Über dem Objekt' }).click()
     await editor(page)
       .getByLabel('Zeichen nach der Nummer')
       .selectOption({ label: 'Punkt (Abbildung 1. Text)' })
@@ -831,19 +859,14 @@ test('captions have a position and a mark, and references can use other words th
     await expect.poll(toml).toContain('caption_fit = true')
     await editor(page).locator('#prop-figure_caption-label_weight').selectOption('bold')
     await expect.poll(toml).toContain('label_weight = "bold"')
-    const color = editor(page).locator('#prop-figure_caption-label_color')
-    await color.fill('#b00020')
-    await color.press('Tab')
+    await setColor(page, 'prop-figure_caption-label_color', '#b00020')
     await expect.poll(toml).toContain('label_color = "#b00020"')
-    await editor(page)
-      .getByRole('radiogroup', { name: 'Schriftstil' })
-      .getByRole('radio', { name: 'Aufrecht' })
-      .click()
+    await editor(page).getByLabel('Schriftstil').first().selectOption({ label: 'Aufrecht' })
     await expect.poll(toml).toContain('label_style = "normal"')
 
     // Tables have the same, and say so in their own words.
     await choose(page, 'Tabelle')
-    await expect(editor(page).getByText('Auf Tabellenbreite begrenzen')).toBeVisible()
+    await expect(editor(page).getByLabel('Auf Tabellenbreite begrenzen')).toBeVisible()
     const tableDistance = editor(page).locator('#prop-table_caption-caption_gap')
     await tableDistance.fill('0.9em')
     await tableDistance.press('Tab')
@@ -879,7 +902,10 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     const toml = () => readFile(style('mehr'), 'utf8').catch(() => '')
 
     await choose(page, 'Aufzählungen')
-    await editor(page).getByLabel('Aufzählungszeichen').selectOption({ label: 'Strich (–)' })
+    await editor(page)
+      .getByRole('radiogroup', { name: 'Aufzählungszeichen' })
+      .getByRole('radio', { name: 'Strich (–)' })
+      .click()
     await editor(page).getByLabel('Nummerierte Listen').selectOption({ label: 'a) b) c)' })
     const gap = editor(page).getByLabel('Abstand zwischen den Punkten')
     await gap.fill('0.8em')
@@ -921,11 +947,11 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     await editor(page).getByLabel('Zahlenformat').selectOption({ label: '* † ‡ §' })
     await expect.poll(toml).toContain('note_numbering = "symbols"')
     // The rule: its style and colour; without a rule its look is not asked for.
-    const rule = editor(page).getByLabel('Linienart')
-    await rule.selectOption({ label: 'Gestrichelt' })
+    const rule = editor(page).getByRole('radiogroup', { name: 'Linienart' })
+    await rule.getByRole('radio', { name: 'Gestrichelt' }).click()
     await expect.poll(toml).toContain('separator_style = "dashed"')
     await expect(editor(page).locator('#prop-footnote-separator_color')).toBeVisible()
-    await rule.selectOption({ label: 'Keine' })
+    await rule.getByRole('radio', { name: 'Keine' }).click()
     await expect.poll(toml).toContain('separator_style = "none"')
     await expect(editor(page).locator('#prop-footnote-separator_color')).toHaveCount(0)
     await expect(editor(page).getByLabel('Linienlänge')).toHaveCount(0)
@@ -946,16 +972,12 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     await above.fill('1.5em')
     await above.press('Tab')
     await expect.poll(toml).toContain('above = "1.5em"')
-    const numberColor = editor(page).locator('#prop-equation-number_color')
-    await numberColor.fill('#b00020')
-    await numberColor.press('Tab')
+    await setColor(page, 'prop-equation-number_color', '#b00020')
     await expect.poll(toml).toContain('number_color = "#b00020"')
     await expect(editor(page).getByRole('heading', { name: 'Nummer', level: 4 })).toHaveCount(1)
 
     await choose(page, 'Code')
-    const fill = editor(page).locator('#prop-code-fill')
-    await fill.fill('#eeeeee')
-    await fill.press('Tab')
+    await setColor(page, 'prop-code-fill', '#eeeeee')
     const radius = editor(page).getByLabel('Eckenradius')
     await radius.fill('4pt')
     await radius.press('Tab')
@@ -978,29 +1000,37 @@ test('a colour can name a colour of the palette, and follows it when the palette
     // The colours are set in the "Dokument einrichten" panel, not in the list of elements.
     await showExport(page)
     await expect(editor(page).getByRole('heading', { name: 'Farben', level: 4 })).toBeVisible()
-    await expect(editor(page).locator('#prop-palette-accent')).toHaveValue('#7a1f2b')
+    await expect(editor(page).locator('#prop-palette-accent')).toHaveAttribute(
+      'data-value',
+      '#7a1f2b',
+    )
     // The palette's own colours are colours, not names.
     await expect(editor(page).getByRole('group', { name: 'Farbe aus der Palette' })).toHaveCount(0)
-    await editor(page).locator('#prop-palette-accent').fill('#b00020')
-    await editor(page).locator('#prop-palette-accent').press('Tab')
+    await setColor(page, 'prop-palette-accent', '#b00020')
     await expect.poll(toml).toContain('accent = "#b00020"')
 
     await choose(page, 'Überschrift 2')
+    // The colours of the palette are in the swatch's popover, by name.
+    const swatch = editor(page).locator('#prop-heading_2-color')
     const tone = (name: string) =>
       editor(page)
         .getByRole('group', { name: 'Farbe aus der Palette' })
         .getByRole('button', { name })
+    await swatch.click()
     await tone('Akzentfarbe').click()
-    await expect(tone('Akzentfarbe')).toHaveAttribute('aria-pressed', 'true')
     await expect.poll(toml).toContain('color = "accent"')
-    await expect(editor(page).locator('#prop-heading_2-color')).toHaveValue('accent')
+    await expect(swatch).toHaveText('Akzentfarbe')
+    await expect(swatch).toHaveAttribute('data-value', 'accent')
+    await swatch.click()
+    await expect(tone('Akzentfarbe')).toHaveAttribute('aria-pressed', 'true')
+    await page.keyboard.press('Escape')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
 
     // Back to a colour of its own: the colour it had.
+    await swatch.click()
     await tone('Akzentfarbe').click()
-    await expect(tone('Akzentfarbe')).toHaveAttribute('aria-pressed', 'false')
-    await expect(editor(page).locator('#prop-heading_2-color')).toHaveValue('#b00020')
+    await expect(swatch).toHaveAttribute('data-value', '#b00020')
   } finally {
     await app.close()
   }
@@ -1244,9 +1274,10 @@ test('a quote in the text can have a style of its own, and the pages follow', as
     await choose(page, 'Zitat im Text')
     const toml = () => readFile(style('im-text'), 'utf8').catch(() => '')
     // What it leaves unset is the text around it.
-    await expect(editor(page).locator('#prop-quote_inline-color')).toHaveValue('')
+    await expect(editor(page).locator('#prop-quote_inline-color')).toHaveAttribute('data-value', '')
     const italic = editor(page).locator('#prop-quote_inline-italic')
-    await italic.check()
+    await italic.click()
+    await expect(italic).toHaveAttribute('aria-pressed', 'true')
     await expect.poll(toml).toContain('[element.quote_inline]')
     await expect.poll(toml).toContain('italic = true')
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
@@ -1302,7 +1333,7 @@ test('the size of the text is set in the body text, and the paper size in the pa
     await expect.poll(toml).toContain('paper = "custom"')
     await expect(orientation).toHaveCount(0)
     const width = editor(page).getByLabel('Breite', { exact: true })
-    await expect(width).toHaveValue('21cm')
+    await expect(width).toHaveAttribute('data-value', '21cm')
     // Too small for a page: refused.
     await width.fill('4cm')
     await width.press('Tab')
@@ -1314,10 +1345,10 @@ test('the size of the text is set in the body text, and the paper size in the pa
     await paper.selectOption({ label: 'A4' })
     await expect.poll(toml).toContain('paper = "a4"')
     // Facing pages or single pages is chosen beside it.
-    const layout = editor(page).getByLabel('Seitenanordnung')
-    await expect(layout).toHaveValue('facing')
-    await expect(layout.locator('option')).toHaveText(['Doppelseiten (Buchsatz)', 'Einzelseiten'])
-    await layout.selectOption({ label: 'Einzelseiten' })
+    const layout = editor(page).getByRole('radiogroup', { name: 'Seitenanordnung' })
+    await expect(layout.getByRole('radio', { name: 'Doppelseiten (Buchsatz)' })).toBeChecked()
+    await expect(layout.getByRole('radio')).toHaveCount(2)
+    await layout.getByRole('radio', { name: 'Einzelseiten' }).click()
     await expect.poll(toml).toContain('facing = "single"')
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
     const afterSize = await stamp()
@@ -1341,44 +1372,46 @@ test('links and cross-references have a colour, a weight, italics and a backgrou
     await choose(page, 'Links')
     for (const label of ['Farbe', 'Schnitt', 'Kursiv', 'Hintergrund', 'Unterstrichen'])
       await expect(panel.getByLabel(label, { exact: true }).first()).toBeVisible()
-    await panel.locator('#prop-link-italic').check()
+    await panel.locator('#prop-link-italic').click()
     await panel.locator('#prop-link-weight').selectOption({ label: 'Fett (700)' })
-    const fill = panel.locator('#prop-link-fill')
-    await fill.fill('#e8f0fe')
-    await fill.press('Tab')
+    await setColor(page, 'prop-link-fill', '#e8f0fe')
     await expect.poll(toml).toContain('fill = "#e8f0fe"')
     await expect.poll(toml).toContain('italic = true')
     await expect.poll(toml).toContain('weight = "bold"')
 
-    // A colour is one row: the colour field, the text, and the two colours of the palette as dots.
+    // A colour is one control: a round swatch with the colour's name or value.
     const row = panel.locator('.row', { has: page.locator('#prop-link-color') })
-    const boxes = await row.locator('input, button').evaluateAll((els) =>
-      els.map((el) => {
-        const box = el.getBoundingClientRect()
-        return Math.round(box.top + box.height / 2)
-      }),
-    )
-    expect(new Set(boxes).size).toBe(1)
-    expect(boxes.length).toBe(4)
+    await expect(row.locator('input, button')).toHaveCount(1)
+    // It opens the colours: the palette's by name, plain ones, any colour, and its value.
+    const swatch = panel.locator('#prop-link-color')
     const dot = (name: string) =>
       row.getByRole('group', { name: 'Farbe aus der Palette' }).getByRole('button', { name })
+    await swatch.click()
+    await expect(row.getByRole('slider', { name: 'Farbton' })).toBeVisible()
     await dot('Zweitfarbe').click()
-    await expect(panel.locator('#prop-link-color')).toHaveValue('accent_secondary')
-    await expect(dot('Zweitfarbe')).toHaveAttribute('aria-pressed', 'true')
-    await dot('Akzentfarbe').click()
-    await expect(panel.locator('#prop-link-color')).toHaveValue('accent')
+    await expect(swatch).toHaveText('Zweitfarbe')
+    await expect.poll(toml).toContain('color = "accent_secondary"')
+    // The name of a colour of the palette can be typed too.
+    await setColor(page, 'prop-link-color', 'Akzentfarbe')
+    await expect.poll(toml).toContain('color = "accent"')
+    await swatch.click()
+    await expect(dot('Akzentfarbe')).toHaveAttribute('aria-pressed', 'true')
     await expect(dot('Zweitfarbe')).toHaveAttribute('aria-pressed', 'false')
+    // Any colour, in the same popover: a click in the field of shades sets it.
+    await row
+      .getByRole('slider', { name: 'Sättigung und Helligkeit' })
+      .click({ position: { x: 180, y: 20 } })
+    await expect.poll(toml).toMatch(/\[element\.link\][^[]*color = "#[0-9a-f]{6}"/)
+    await expect(swatch).toHaveAttribute('data-value', /^#[0-9a-f]{6}$/)
+    await page.keyboard.press('Escape')
 
     // Cross-references: the same, with a colour of the text.
     await choose(page, 'Querverweise')
     for (const label of ['Farbe', 'Schnitt', 'Kursiv', 'Hintergrund', 'Unterstrichen'])
       await expect(panel.getByLabel(label, { exact: true }).first()).toBeVisible()
-    const color = panel.locator('#prop-references-color')
-    await color.fill('#b00020')
-    await color.press('Tab')
-    await panel.locator('#prop-references-fill').fill('#fff2a8')
-    await panel.locator('#prop-references-fill').press('Tab')
-    await panel.locator('#prop-references-italic').check()
+    await setColor(page, 'prop-references-color', '#b00020')
+    await setColor(page, 'prop-references-fill', '#fff2a8')
+    await panel.locator('#prop-references-italic').click()
     await expect.poll(toml).toContain('[element.references]')
     await expect.poll(toml).toContain('color = "#b00020"')
     await expect.poll(toml).toContain('fill = "#fff2a8"')
@@ -1401,10 +1434,8 @@ test('citations have a style, and so has each list of contents: of figures, of t
     await choose(page, 'Belege')
     for (const label of ['Farbe', 'Schnitt', 'Kursiv', 'Hintergrund', 'Unterstrichen'])
       await expect(panel.getByLabel(label, { exact: true }).first()).toBeVisible()
-    await panel.locator('#prop-citations-italic').check()
-    const fill = panel.locator('#prop-citations-fill')
-    await fill.fill('#e8f0fe')
-    await fill.press('Tab')
+    await panel.locator('#prop-citations-italic').click()
+    await setColor(page, 'prop-citations-fill', '#e8f0fe')
     await expect.poll(toml).toContain('fill = "#e8f0fe"')
     await expect.poll(toml).toContain('[element.citations]')
     await expect.poll(toml).toContain('italic = true')
@@ -1441,20 +1472,16 @@ test('footnotes can be printed as margin notes, in the Tufte style', async () =>
     const panel = editor(page)
 
     await choose(page, 'Fußnote')
-    const placement = panel.getByLabel('Platzierung')
-    await expect(placement).toHaveValue('bottom')
-    await expect(placement.locator('option')).toHaveText([
-      'Unten auf der Seite',
-      'Am Rand (Tufte-Stil)',
-    ])
+    const placement = panel.getByRole('radiogroup', { name: 'Platzierung' })
+    await expect(placement.getByRole('radio', { name: 'Unten auf der Seite' })).toBeChecked()
     await expect(panel.getByLabel('Linienart')).toBeVisible()
-    await placement.selectOption({ label: 'Am Rand (Tufte-Stil)' })
+    await placement.getByRole('radio', { name: 'Am Rand (Tufte-Stil)' }).click()
     await expect.poll(toml).toContain('placement = "margin"')
     // In the margin there is no rule above the notes, so nothing to set for it.
     await expect(panel.getByLabel('Linienart')).toHaveCount(0)
     await expect(panel.getByRole('heading', { name: 'Trennlinie', level: 4 })).toHaveCount(0)
     const width = panel.getByLabel('Breite der Randspalte')
-    await expect(width).toHaveValue('4.5cm')
+    await expect(width).toHaveAttribute('data-value', '4.5cm')
     await width.fill('5cm')
     await width.press('Tab')
     await expect.poll(toml).toContain('margin_width = "5cm"')

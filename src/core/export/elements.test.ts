@@ -214,6 +214,13 @@ describe('the break before a heading', () => {
     })
   })
 
+  it('shows the width of the margin notes only with notes in the margin, and a column gap only with columns', () => {
+    expect(isShown('margin_width', { placement: 'bottom' })).toBe(false)
+    expect(isShown('margin_gap', { placement: 'margin' })).toBe(true)
+    expect(isShown('column_gap', { columns: '1' })).toBe(false)
+    expect(isShown('column_gap', { columns: '2' })).toBe(true)
+  })
+
   it('shows the rest of the border of an image only once it has a width', () => {
     expect(isShown('frame_color', { frame_width: null })).toBe(false)
     expect(isShown('frame_color', { frame_width: '0pt' })).toBe(false)

@@ -1,12 +1,14 @@
 <script lang="ts" generics="T extends string">
+  import type { Snippet } from 'svelte'
   import Icon from '../Icon.svelte'
   import type { IconName } from '../Icon.svelte'
 
   /**
    * A choice among two to five short, equal options shown side by side (as the system's segmented
    * control): a quiet track, the chosen segment raised on it. The arrow keys move the choice. A
-   * segment shows its name, or an icon or a short sample ("Aa") that stands for it; the name is then
-   * its tooltip and its name for screen readers. `value` is null when nothing is chosen yet.
+   * segment shows its name, or an icon, a short sample ("Aa") or a small picture (`glyph`) that stands
+   * for it; the name is then its tooltip and its name for screen readers. `value` is null when nothing
+   * is chosen yet.
    */
   interface Option {
     value: T
@@ -25,6 +27,8 @@
     size?: 'sm' | 'md'
     /** As wide as its place, the segments sharing it. */
     stretch?: boolean
+    /** A small picture for each option, drawn in the colour of the text, in place of its name. */
+    glyph?: Snippet<[T]>
     disabled?: boolean
     onchange: (value: T) => void
   }
@@ -34,6 +38,7 @@
     label,
     size = 'md',
     stretch = false,
+    glyph,
     disabled = false,
     onchange,
   }: Props = $props()
@@ -58,13 +63,14 @@
 <div
   class="segmented {size}"
   class:stretch
+  class:pictures={glyph !== undefined}
   role="radiogroup"
   aria-label={label}
   tabindex="-1"
   onkeydown={onKeydown}
 >
   {#each options as option, index (option.value)}
-    {@const shown = option.icon !== undefined || option.sample !== undefined}
+    {@const shown = glyph !== undefined || option.icon !== undefined || option.sample !== undefined}
     <button
       type="button"
       role="radio"
@@ -75,7 +81,9 @@
       disabled={disabled || option.disabled}
       onclick={() => onchange(option.value)}
     >
-      {#if option.icon}
+      {#if glyph}
+        {@render glyph(option.value)}
+      {:else if option.icon}
         <Icon name={option.icon} size={16} />
       {:else if option.sample !== undefined}
         <span class:smallcaps={option.sampleStyle === 'smallcaps'}>{option.sample}</span>
@@ -117,7 +125,8 @@
     cursor: default;
     transition: background var(--duration);
   }
-  .sm button {
+  .sm button,
+  .pictures button {
     padding: 0 var(--sp-8);
   }
   button:hover:not([aria-checked='true'], :disabled) {

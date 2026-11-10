@@ -9,6 +9,8 @@
   interface Props {
     icon: IconName
     label: string
+    /** For a label elsewhere (`for`), or for tests to find it. */
+    id?: string
     size?: 'sm' | 'md'
     pressed?: boolean
     /** For a button that shows or hides something (a disclosure): whether it is shown. */
@@ -16,12 +18,22 @@
     disabled?: boolean
     onclick: (event: MouseEvent) => void
   }
-  let { icon, label, size = 'md', pressed, expanded, disabled = false, onclick }: Props = $props()
+  let {
+    icon,
+    label,
+    id,
+    size = 'md',
+    pressed,
+    expanded,
+    disabled = false,
+    onclick,
+  }: Props = $props()
 </script>
 
 <button
   class="icon-button {size}"
   type="button"
+  {id}
   aria-label={label}
   aria-pressed={pressed}
   aria-expanded={expanded}
