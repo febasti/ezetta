@@ -34,6 +34,7 @@
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run check:boundaries && npm run check:design && npm run check:notices && npm test",
     "fetch:dev-data": "sh scripts/fetch-dev-data.sh",
     "bench:core": "vitest run --config vitest.perf.config.mts",
+    "bench:history": "vitest run --config vitest.history.config.mts",
     "bench:app": "playwright test --config playwright.perf.config.ts",
     "package:resources": "node scripts/package-resources.mjs",
     "package": "electron-vite build && node scripts/package-resources.mjs && electron-builder --mac --arm64 --publish never",

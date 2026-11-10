@@ -17,6 +17,7 @@ import {
   sheetTitle,
 } from '@core/history/versions'
 import type { VersionKind } from '@core/history/versions'
+import { mergePacks, packLoose } from './packs'
 import { renameRetrying } from './rootedFs'
 
 export interface VersionEntry {
@@ -57,19 +58,29 @@ export class ProjectHistory {
   private readonly gitdir: string
   private queue: Promise<unknown> = Promise.resolve()
   private ready = false
+  /**
+   * What `isomorphic-git` keeps between calls: the packs it has read. Without it each call would
+   * read every pack again. Replaced when the packs change.
+   */
+  private cache: object = {}
+  /** While above zero, nothing in the store is removed (a backup is reading it). */
+  private holds = 0
 
   constructor(
     private readonly root: string,
     private readonly options: {
       now?: () => number
       log?: (message: string, cause?: unknown) => void
+      /** When loose objects are packed and packs merged (see `packs.ts`); for tests. */
+      packAfter?: number
+      mergeAfter?: number
     } = {},
   ) {
     this.gitdir = join(root, ...HISTORY_DIR.split('/'))
   }
 
-  private base(): { fs: typeof fs; dir: string; gitdir: string } {
-    return { fs, dir: this.root, gitdir: this.gitdir }
+  private base(): { fs: typeof fs; dir: string; gitdir: string; cache: object } {
+    return { fs, dir: this.root, gitdir: this.gitdir, cache: this.cache }
   }
 
   private serial<T>(work: () => Promise<T>): Promise<T> {
@@ -95,8 +106,13 @@ export class ProjectHistory {
   snapshot(kind: VersionKind, name: string | null = null): Promise<VersionEntry | null> {
     return this.serial(async () => {
       await this.init()
-      const head = await this.headTree()
+      const { files: head, trees } = await this.headTree()
       const files = new Map<string, string>() // path -> blob id
+      const dirty = new Set<string>() // the folders with a change somewhere inside
+      const touch = (path: string): void => {
+        const parts = path.split('/')
+        for (let i = 0; i < parts.length; i += 1) dirty.add(parts.slice(0, i).join('/'))
+      }
       let changed = 0
       for (const path of await this.projectFiles()) {
         const bytes = await readFile(join(this.root, ...path.split('/'))).catch(() => null)
@@ -106,13 +122,20 @@ export class ProjectHistory {
         if (head.get(path) !== oid) {
           await this.writeBlob(oid, bytes, path)
           changed += 1
+          touch(path)
         }
       }
-      for (const path of head.keys()) if (!files.has(path)) changed += 1
+      for (const path of head.keys())
+        if (!files.has(path)) {
+          changed += 1
+          touch(path)
+        }
       // A version the writer names is kept even when nothing changed since the last one: the name is the point.
       if (changed === 0 && (kind !== 'named' || head.size === 0)) return null
       if (files.size === 0) return null
-      const tree = await this.writeTree(files)
+      const tree = await this.writeTree(files, (dir) =>
+        dirty.has(dir) ? undefined : trees.get(dir),
+      )
       const time = this.options.now?.() ?? Date.now()
       const id = await git.commit({
         ...this.base(),
@@ -120,6 +143,7 @@ export class ProjectHistory {
         message: encodeMessage(kind, name),
         author: { ...AUTHOR, timestamp: Math.floor(time / 1000) },
       })
+      await this.tidy()
       return { id, time: Math.floor(time / 1000) * 1000, kind, name: name?.trim() || null }
     })
   }
@@ -149,6 +173,37 @@ export class ProjectHistory {
     await renameRetrying(temp, file)
   }
 
+  /**
+   * Moves the loose objects into packs once there are enough, and merges the packs once there are
+   * many (see `packs.ts`). Not while something holds the store. A failure is logged and changes
+   * nothing: the objects stay where they were.
+   */
+  private async tidy(): Promise<void> {
+    if (this.holds > 0) return
+    try {
+      const packed = await packLoose(this.gitdir, this.options.packAfter)
+      const merged = await mergePacks(this.gitdir, this.options.mergeAfter)
+      if (packed || merged) this.cache = {}
+    } catch (cause) {
+      this.cache = {}
+      this.options.log?.('packing the versions failed', cause)
+    }
+  }
+
+  /**
+   * Keeps the store's files where they are while `work` runs (a backup copying them): no packing
+   * removes any. Waits for a packing that is already running.
+   */
+  async hold<T>(work: () => Promise<T>): Promise<T> {
+    this.holds += 1
+    try {
+      await this.serial(async () => undefined)
+      return await work()
+    } finally {
+      this.holds -= 1
+    }
+  }
+
   /** The paths of the project's files that belong in the versions, by walking the folder. */
   private async projectFiles(dir = ''): Promise<string[]> {
     const out: string[] = []
@@ -171,24 +226,36 @@ export class ProjectHistory {
     return out
   }
 
-  /** The files of the newest version, as path -> blob id (empty before the first one). */
-  private async headTree(): Promise<Map<string, string>> {
-    const map = new Map<string, string>()
-    if (!(await this.hasHead())) return map
+  /**
+   * The newest version: its files as path -> blob id, and its folders as path -> tree id (the top
+   * one as ''). Both empty before the first version.
+   */
+  private async headTree(): Promise<{ files: Map<string, string>; trees: Map<string, string> }> {
+    const files = new Map<string, string>()
+    const trees = new Map<string, string>()
+    if (!(await this.hasHead())) return { files, trees }
     await git.walk({
       ...this.base(),
       trees: [git.TREE({ ref: 'HEAD' })],
       map: async (filepath, [entry]) => {
-        if (filepath !== '.' && (await entry?.type()) === 'blob')
-          map.set(filepath, (await entry!.oid())!)
+        const type = await entry?.type()
+        if (type === 'blob') files.set(filepath, (await entry!.oid())!)
+        else if (type === 'tree') trees.set(filepath === '.' ? '' : filepath, (await entry!.oid())!)
         return undefined
       },
     })
-    return map
+    return { files, trees }
   }
 
-  /** Writes the folders of a set of files as git trees, from the bottom up, and returns the top one. */
-  private async writeTree(files: Map<string, string>): Promise<string> {
+  /**
+   * Writes the folders of a set of files as git trees, from the bottom up, and returns the top one.
+   * A folder in which nothing changed keeps the tree it has in the newest version (`unchanged`
+   * gives it), which is not written again: once packed, `isomorphic-git` would write it loose.
+   */
+  private async writeTree(
+    files: Map<string, string>,
+    unchanged: (dir: string) => string | undefined,
+  ): Promise<string> {
     interface Dir {
       files: Map<string, string>
       dirs: Map<string, Dir>
@@ -204,14 +271,21 @@ export class ProjectHistory {
       }
       dir.files.set(parts[parts.length - 1]!, oid)
     }
-    const write = async (dir: Dir): Promise<string> => {
+    const write = async (dir: Dir, at: string): Promise<string> => {
+      const kept = unchanged(at)
+      if (kept) return kept
       const tree: TreeEntry[] = []
       for (const [path, oid] of dir.files) tree.push({ mode: '100644', path, oid, type: 'blob' })
       for (const [path, sub] of dir.dirs)
-        tree.push({ mode: '040000', path, oid: await write(sub), type: 'tree' })
+        tree.push({
+          mode: '040000',
+          path,
+          oid: await write(sub, at ? `${at}/${path}` : path),
+          type: 'tree',
+        })
       return git.writeTree({ ...this.base(), tree })
     }
-    return write(root)
+    return write(root, '')
   }
 
   private async hasHead(): Promise<boolean> {
@@ -221,8 +295,8 @@ export class ProjectHistory {
     )
   }
 
-  /** The newest versions first. */
-  list(limit = 200): Promise<VersionEntry[]> {
+  /** The newest versions first: all of them, or the newest `limit`. */
+  list(limit?: number): Promise<VersionEntry[]> {
     return this.serial(async () => {
       await this.init()
       const log = await git

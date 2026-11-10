@@ -4,6 +4,7 @@
   import { isMaterial } from '@core/project/paths'
   import { i18n } from '../../i18n/i18n.svelte'
   import Button from '../../ui/kit/Button.svelte'
+  import Icon from '../../ui/Icon.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Dialog from '../../ui/kit/Dialog.svelte'
   import EmptyState from '../../ui/kit/EmptyState.svelte'
@@ -37,6 +38,20 @@
     }
     return out
   })
+
+  /**
+   * Which days are open. A year of writing holds thousands of versions, so a day shows all of its
+   * versions only when open: the newest day and the day of the chosen version are, until the writer
+   * closes them. A closed day still shows its named versions (and the chosen one).
+   */
+  let toggled = $state<Record<string, boolean>>({})
+  const isOpen = (day: { key: string; versions: VersionDto[] }, index: number): boolean =>
+    toggled[day.key] ??
+    (index === 0 || day.versions.some((version) => version.id === history.selectedId))
+  const shownOf = (day: { versions: VersionDto[] }, open: boolean): VersionDto[] =>
+    open
+      ? day.versions
+      : day.versions.filter((v) => v.kind === 'named' || v.id === history.selectedId)
 
   const clock = (time: number): string =>
     new Intl.DateTimeFormat(i18n.locale, { timeStyle: 'short' }).format(time)
@@ -144,10 +159,28 @@
         {:else}
           <div class="body">
             <nav class="versions" aria-label={i18n.t('history.versions')}>
-              {#each days as day (day.key)}
-                <h3>{day.label}</h3>
+              {#each days as day, index (day.key)}
+                {@const open = isOpen(day, index)}
+                {@const shown = shownOf(day, open)}
+                <h3>
+                  <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a day's heading in the list of versions, which opens and closes the day -->
+                  <button
+                    type="button"
+                    class="day"
+                    aria-expanded={open}
+                    onclick={() => (toggled = { ...toggled, [day.key]: !open })}
+                  >
+                    <span class="chevron"
+                      ><Icon name={open ? 'chevron-down' : 'chevron-right'} size={12} /></span
+                    >
+                    <span class="label">{day.label}</span>
+                    <span class="count"
+                      >{i18n.t('history.dayCount', { count: day.versions.length })}</span
+                    >
+                  </button>
+                </h3>
                 <ul>
-                  {#each day.versions as version (version.id)}
+                  {#each shown as version (version.id)}
                     <li class="version">
                       <ListRow
                         role="button"
@@ -369,6 +402,36 @@
   }
   .versions h3:first-child {
     margin-top: 0;
+  }
+  /* A day's heading opens and closes its versions. */
+  .day {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    width: 100%;
+    padding: 0;
+    border: none;
+    border-radius: var(--r-md);
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+  }
+  .day:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-focus);
+  }
+  .day .chevron {
+    display: inline-flex;
+    flex: none;
+  }
+  .day .label {
+    flex: 1;
+    min-width: 0;
+  }
+  .day .count {
+    flex: none;
+    font-variant-numeric: tabular-nums;
   }
   ul {
     margin: 0;

@@ -79,6 +79,7 @@ The stack, the architecture and the design system are settled; a change to one o
 | `npm run gallery`                                     | The component gallery in the browser (`gallery:app` in the app's own Electron)                                                       |
 | `npm run test:gallery`                                | Screenshot tests of the gallery in every theme (`-- -u` writes new pictures)                                                         |
 | `npm run bench:core`, `npm run bench:app`             | Timings and memory on a large generated project (`bench:app` needs `npm run build` first)                                            |
+| `npm run bench:history`                               | A simulated year of versions: the files and size of the version store (about 4 minutes)                                              |
 | `npm run fetch:dev-data`                              | Download LanguageTool and the thesaurus files into `.dev/`                                                                           |
 
 ## Releases

@@ -9,6 +9,7 @@ of the last full run and the budgets we hold ourselves to. Measured on an M-seri
 ```
 npm run build && npm run bench:app     # the running app: start, memory, typing, scrolling (about 4 min)
 npm run bench:core                     # the core and the main-process services (about 10 s)
+npm run bench:history                  # a simulated year of versions (about 4 min)
 ```
 
 Both generate their project (`tests/perf/fixture.ts`): 160 sheets and about 95,000 words in 8
@@ -33,6 +34,8 @@ the resident size of every process of the app (`ps`), the Java processes include
 | 60 sheets changed on disk at once                    | settled in under 1.5 s                                               | under 3 s                     |
 | A version of the project (unchanged / one file)      | 26 / 26 ms; first one 120 ms                                         | under 100 ms, first under 1 s |
 | The same with 300 MB of images                       | unchanged 0.2 s; first one 0.6 s                                     | under 1 s                     |
+| A year of versions (5,259), the store                | 126 files, 26 MB (before packing: 29,560 files, 124 MB on disk)      | a few hundred files           |
+| Listing all versions after a year                    | 0.47 s                                                               | under 1 s                     |
 | A backup of the project (zip)                        | 0.15 s; with 300 MB of images 1.0 s                                  | under 5 s                     |
 | Memory, project open, no sheet                       | 510 MB in total                                                      | under 600 MB                  |
 | Memory, a sheet open                                 | 540 MB                                                               | under 600 MB                  |
@@ -61,6 +64,19 @@ big thing is the Java process of LanguageTool.
   held the main process (git objects were compressed in JavaScript): now 0.6 s (native zlib off the
   main thread, and an image is not compressed again). A backup of them took 11.4 s: now 1.0 s, as
   images and stored git objects go into the zip as they are.
+- **A year of versions** (`bench:history`: 44 weeks of drafting and revising, four hours a day, a
+  version every ten minutes, exports, a photo every other week) left 29,560 loose git objects:
+  25 MB of data but 124 MB on disk, as each small file takes a block, and tens of thousands of files
+  are slow to sync, copy and back up. The store is now **packed** as versions are taken: loose
+  objects go into a pack once there are 256, and the packs are merged into one once there are more
+  than eight. The store stays under a few hundred files all year (26 MB). The packs are written
+  with Node's zlib and SHA-1, not by `isomorphic-git`, whose packing compresses in JavaScript and
+  would hold the main process; each pack is read back object by object before anything is removed.
+  Objects over 512 KB (photos) stay loose, because `isomorphic-git` reads a whole pack into memory
+  to read one object of it; the packs it has read are kept between calls. A store from before
+  packing (30,000 files) is packed by its next version in about 2 to 10 s. A backup holds the store,
+  so no packing removes files while one runs. The version dialog showed only the newest 200 versions
+  (about a week); it now lists all of them, with each day opening and closing.
 - **Typing, scrolling and switching are at the display's limit** and were left alone. The per-key
   cost is mostly the parser (0.6 ms of 6 ms in the dense sheet) and the decorations; the cost grows
   with the size of the one sheet being edited, not with the project.
@@ -78,6 +94,9 @@ big thing is the Java process of LanguageTool.
   of several thousand sheets would want it.
 - The decorations are rebuilt for the whole sheet on a key press, not only the visible part. A
   single sheet of 20,000 dense words costs about 15 ms a key; the usual sheet is 1 to 3 ms.
+- Packs have no deltas: git's own `git repack` would make a year's store 12 MB instead of 26 MB,
+  but `isomorphic-git` cannot write deltas. Old automatic versions are not thinned out either: it
+  would halve the store and is not worth losing versions for.
 - The backup includes the version history, so a project with 300 MB of images backs up 600 MB.
   Leaving the images' versions out of the zip would halve it but make a restore from a backup lose
   the history of the images.

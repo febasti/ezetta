@@ -1,9 +1,10 @@
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import fs, { existsSync } from 'node:fs'
 import { promisify } from 'node:util'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
+import git from 'isomorphic-git'
 import type { Page } from '@playwright/test'
 import { createSandbox, launch, launchAt, MOD, openSheet } from './helpers'
 import type { Sandbox } from './helpers'
@@ -117,6 +118,67 @@ test('a named version, a change, and a restore that can itself be undone', async
     await expect(dialog(page).locator('.text .back')).toContainText('Und noch ein Satz.')
     await dialog(page).getByRole('button', { name: 'Diese Fassung wiederherstellen' }).click()
     await expect.poll(read).toContain('Und noch ein Satz.')
+  } finally {
+    await app.close()
+  }
+})
+
+test('versions of several days: the newest day open, an earlier one closed but for its named versions', async () => {
+  // Three versions from three days ago, one of them named, as the app writes them.
+  const dir = sandbox.projectDir
+  const gitdir = join(dir, '.ezetta', 'history.git')
+  await git.init({ fs, dir, gitdir, defaultBranch: 'main' })
+  const earlier = new Date()
+  earlier.setDate(earlier.getDate() - 3)
+  earlier.setHours(10, 0, 0, 0)
+  const messages = [
+    'Erste Fassung\n\nEzetta-Kind: named\n',
+    '\n\nEzetta-Kind: auto\n',
+    '\n\nEzetta-Kind: auto\n',
+  ]
+  for (const [i, message] of messages.entries()) {
+    await writeFile(join(dir, SHEET), `= Design\n\nFassung ${i + 1}.\n`)
+    await git.add({ fs, dir, gitdir, filepath: SHEET })
+    const timestamp = Math.floor(earlier.getTime() / 1000) + i * 600
+    await git.commit({
+      fs,
+      dir,
+      gitdir,
+      message,
+      author: { name: 'Ezetta', email: 'versions@ezetta.invalid', timestamp },
+    })
+  }
+  await writeFile(join(dir, SHEET), START)
+
+  const { app, page } = await open()
+  try {
+    // The version taken when the project opens is today's.
+    await expect
+      .poll(() =>
+        page.evaluate(async () => {
+          const result = await window.api.history.list({})
+          return result.ok ? result.value.versions.length : 0
+        }),
+      )
+      .toBe(4)
+    await openDialog(page)
+    const days = dialog(page).locator('button.day')
+    await expect(days).toHaveCount(2)
+    await expect(days.first()).toContainText('Heute')
+    await expect(days.first()).toHaveAttribute('aria-expanded', 'true')
+    await expect(days.nth(1)).toContainText('3 Versionen')
+    await expect(days.nth(1)).toHaveAttribute('aria-expanded', 'false')
+    // Closed, the earlier day still shows its named version.
+    await expect(versions(page)).toHaveCount(2)
+    await expect(versions(page).nth(1)).toContainText('Erste Fassung')
+    await days.nth(1).click()
+    await expect(days.nth(1)).toHaveAttribute('aria-expanded', 'true')
+    await expect(versions(page)).toHaveCount(4)
+    // A closed day keeps showing the chosen version: today's is hidden only once another is chosen.
+    await versions(page).nth(1).click()
+    await days.first().click()
+    await expect(days.first()).toHaveAttribute('aria-expanded', 'false')
+    await expect(versions(page)).toHaveCount(3)
   } finally {
     await app.close()
   }

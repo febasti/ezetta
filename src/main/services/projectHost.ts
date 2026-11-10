@@ -436,7 +436,7 @@ export class ProjectHost {
     if (!config || open.backupRunning) return
     try {
       if ((await open.backup.fingerprint()) === config.lastFingerprint) return
-      await open.backup.run({ signal: AbortSignal.timeout(8000) })
+      await open.history.hold(() => open.backup.run({ signal: AbortSignal.timeout(8000) }))
     } catch (cause) {
       this.deps.log('backup at close failed', cause)
     }
@@ -485,7 +485,8 @@ export class ProjectHost {
     await this.emitBackup()
     let status: BackupOutcome['status']
     try {
-      status = (await open.backup.run({ force })).status
+      // The store's files stay where they are while the backup copies them (no packing).
+      status = (await open.history.hold(() => open.backup.run({ force }))).status
       if (status === 'unreachable') open.backupError = 'unreachable'
     } catch (cause) {
       this.deps.log('backup failed', cause)

@@ -227,6 +227,7 @@
   "history.close": "Close",
   "history.today": "Today",
   "history.yesterday": "Yesterday",
+  "history.dayCount": "{count, plural, one {# version} other {# versions}}",
   "history.kind.auto": "Saved automatically",
   "history.kind.named": "Version",
   "history.kind.export": "Before the PDF export",

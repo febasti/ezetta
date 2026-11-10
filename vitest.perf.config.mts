@@ -7,6 +7,8 @@ export default defineConfig({
   resolve: { alias: { '@core': resolve('src/core'), '@shared': resolve('src/shared') } },
   test: {
     include: ['tests/perf/**/*.perf.ts'],
+    // A simulated year of versions takes minutes: `npm run bench:history` (vitest.history.config.mts).
+    exclude: ['tests/perf/history.perf.ts'],
     environment: 'node',
     testTimeout: 300_000,
     fileParallelism: false,
