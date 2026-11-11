@@ -713,6 +713,7 @@
   "templates.quote.lines": "Linien des Zitats",
   "templates.quote.look": "Aussehen der Linien",
   "templates.list.indent": "Liste",
+  "templates.figure.caption": "Beschriftung",
   "templates.list.level": "je Ebene",
   "templates.quote.padding": "Innenabstand an Seiten ohne Linie",
   "templates.paragraphs.options": "Satz",

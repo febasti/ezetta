@@ -20,6 +20,7 @@
   import SchematicDrawing from './SchematicDrawing.svelte'
   import {
     EPIGRAPHS,
+    FIGURES,
     HEADINGS,
     LISTS,
     PARAGRAPHS,
@@ -49,6 +50,8 @@
   import HeadingPage from './HeadingPage.svelte'
   import QuotePage from './QuotePage.svelte'
   import ListPage from './ListPage.svelte'
+  import FigurePage from './FigurePage.svelte'
+  import FramePage from './FramePage.svelte'
   import EpigraphPage from './EpigraphPage.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Section from '../../ui/kit/Section.svelte'
@@ -599,8 +602,11 @@
     {@const quotes = (QUOTES[element.id] ?? []).length > 0 && group.id === 'arrangement'}
     {@const epigraphs = (EPIGRAPHS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
     {@const lists = (LISTS[element.id] ?? []).length > 0 && group.id === 'list'}
+    {@const figurePage = element.id === 'figure' && group.id === 'arrangement'}
+    {@const framePage = element.id === 'figure' && group.id === 'frame'}
     {@const custom = [
       ...(RUNNING[element.id] ?? []),
+      ...(FIGURES[element.id] ?? []),
       ...(LISTS[element.id] ?? []),
       ...(EPIGRAPHS[element.id] ?? []),
       ...(PARAGRAPHS[element.id] ?? []),
@@ -611,7 +617,7 @@
     {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
-    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists}
+    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists || figurePage || framePage}
       <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
         <!-- A drawing that is what a group is about (the page) comes first; one that only shows what
              a choice above it leads to (a paper of its own size) comes after the choice. -->
@@ -619,6 +625,22 @@
           {#each drawn as schematic, i (i)}
             {@render drawing(element, schematic)}
           {/each}
+        {/if}
+        {#if figurePage}
+          <!-- A figure: a page with the figure and its caption between two pieces of text. -->
+          {@const caption = elementById('figure_caption')!}
+          <FigurePage
+            {element}
+            {caption}
+            {values}
+            captionValues={valuesOf(caption)}
+            control={controlOf}
+            emCm={bodyCm()}
+          />
+        {/if}
+        {#if framePage}
+          <!-- The border of an image, around the picture, each value on its side. -->
+          <FramePage {element} {values} control={controlOf} emCm={bodyCm()} />
         {/if}
         {#if lists}
           <!-- A list: three items between two pieces of text, each value where it is set. -->

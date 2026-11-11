@@ -301,92 +301,6 @@ const PAPER_SIZE: Schematic = {
   places: { t: at('page_width', 'Breite', 'width'), l: at('page_height', 'Höhe', 'height') },
 }
 
-/** A figure between text: the space around it, where it stands, its frame when it has one. */
-const FIGURE_SPACE: Schematic = {
-  draw(v) {
-    const h = 80
-    const [pw, ph, py] = [42, 27, 27]
-    const px = align(v['align'], pw, TW, TL)
-    const framed = some(v['frame_width'])
-    const shapes: Shape[] = [sheet(h), ...lines(TL, 11, TW, [1, 0.75])]
-    const d = framed ? 3 : 0
-    if (framed)
-      shapes.push({
-        kind: 'box',
-        x: px - d,
-        y: py - d,
-        w: pw + 2 * d,
-        h: ph + 2 * d,
-        r: some(v['frame_radius']) ? 3 : 0,
-      })
-    shapes.push({ kind: 'picture', x: px, y: py, w: pw, h: ph }, ...lines(TL, 64, TW, [1, 0.55]))
-    const [top, bottom] = [py - d, py + ph + d]
-    return {
-      h,
-      shapes,
-      marks: [
-        {
-          prop: 'above',
-          kind: 'v',
-          x: 113,
-          y: 18,
-          len: top - 18,
-          band: band(TL, 18, TW, top - 18),
-        },
-        {
-          prop: 'below',
-          kind: 'v',
-          x: 113,
-          y: bottom,
-          len: 64 - bottom,
-          band: band(TL, bottom, TW, 64 - bottom),
-        },
-      ],
-    }
-  },
-  places: {
-    tr: at('above', 'davor', 'above'),
-    br: at('below', 'danach', 'below'),
-    l: at('align', 'Ausrichtung', 'alignment'),
-    bl: at('span_columns', 'alle Spalten', 'all columns'),
-  },
-}
-
-/** The frame of a picture: its weight, its corners, its distance from the picture. */
-const FRAME: Schematic = {
-  draw(v) {
-    const h = 68
-    const framed = some(v['frame_width'])
-    const r = some(v['frame_radius']) ? 7 : 0
-    const d = some(v['frame_distance']) ? 6 : 0
-    const [x1, y1, w, hh] = [34, 8, 60, 52]
-    return {
-      h,
-      shapes: [
-        { kind: 'picture', x: x1 + d, y: y1 + d, w: w - 2 * d, h: hh - 2 * d },
-        { kind: 'box', x: x1, y: y1, w, h: hh, r, dashed: !framed, faint: !framed },
-      ],
-      marks: [
-        { prop: 'frame_width', kind: 'line', x1: x1 + 14, y1, x2: x1 + w - 14, y2: y1 },
-        { prop: 'frame_radius', kind: 'corner', x: x1 + w, y: y1, r: 7 },
-        {
-          prop: 'frame_distance',
-          kind: 'h',
-          x: x1,
-          y: y1 + hh / 2,
-          len: Math.max(d, 4),
-          band: band(x1, y1, Math.max(d, 4), hh),
-        },
-      ],
-    }
-  },
-  places: {
-    t: at('frame_width', 'Stärke', 'weight'),
-    tr: at('frame_radius', 'Ecken', 'corners'),
-    l: at('frame_distance', 'Abstand', 'distance'),
-  },
-}
-
 /** A caption with what it belongs to: above or below it, how wide, how set, how far from it. */
 const caption = (table: boolean): Schematic => ({
   draw(v) {
@@ -600,8 +514,6 @@ const FOOTNOTES: Schematic = {
 /** The drawings of each element, in the order they come. */
 export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
   page: [PAPER_SIZE, PAGE],
-  figure: [FIGURE_SPACE, FRAME],
-  figure_caption: [caption(false)],
   table: [TABLE],
   table_caption: [caption(true)],
   footnote: [FOOTNOTES],
@@ -667,6 +579,27 @@ export const EPIGRAPHS: Readonly<Record<string, readonly string[]>> = {
 export const LISTS: Readonly<Record<string, readonly string[]>> = {
   list: ['above', 'below', 'list_indent', 'level_indent'],
 }
+
+/**
+ * The values of a figure and of its caption that their own editors set (`FigurePage.svelte`: the space
+ * around the figure, where it stands, where its caption stands and its distance to it; `FramePage.svelte`:
+ * the border), so the panel's rows leave them out.
+ */
+export const FIGURES: Readonly<Record<string, readonly string[]>> = {
+  figure: [
+    'above',
+    'below',
+    'align',
+    'frame_width',
+    'frame_color',
+    'frame_radius',
+    'frame_distance',
+  ],
+  figure_caption: ['caption_position', 'caption_gap'],
+}
+
+/** Whether a length is more than nothing (a border that has a weight). */
+export const hasLength = (v: unknown): boolean => some(v)
 
 export const placedProps = (s: Schematic): string[] => Object.values(s.places).map((p) => p!.prop)
 
