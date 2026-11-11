@@ -301,100 +301,6 @@ const PAPER_SIZE: Schematic = {
   places: { t: at('page_width', 'Breite', 'width'), l: at('page_height', 'Höhe', 'height') },
 }
 
-/** A block quote between text: its indents and the space around it, with its lines and ground. */
-const QUOTE_SPACE: Schematic = {
-  draw(v) {
-    const h = 80
-    const [x1, x2, y1, y2] = [32, 96, 29, 52]
-    const shapes: Shape[] = [sheet(h), ...lines(TL, 12, TW, [1, 0.8])]
-    if (filled(v['fill']))
-      shapes.push({ kind: 'bar', tone: 'tint', ...band(x1, y1, x2 - x1, y2 - y1) })
-    shapes.push(...lines(x1 + 6, y1 + 5, x2 - x1 - 12, [1, 1, 0.6]))
-    for (const [side, [a, b, c, d]] of [
-      ['border_top', [x1, y1, x2, y1]],
-      ['border_bottom', [x1, y2, x2, y2]],
-      ['border_left', [x1, y1, x1, y2]],
-      ['border_right', [x2, y1, x2, y2]],
-    ] as const)
-      if (v[side] === true) shapes.push({ kind: 'line', x1: a, y1: b, x2: c, y2: d, weight: 1.5 })
-    shapes.push(...lines(TL, 61, TW, [1, 0.5]))
-    return {
-      h,
-      shapes,
-      marks: [
-        {
-          prop: 'indent_left',
-          kind: 'h',
-          x: TL,
-          y: 40,
-          len: x1 - TL,
-          band: band(TL, y1, x1 - TL, y2 - y1),
-        },
-        {
-          prop: 'indent_right',
-          kind: 'h',
-          x: x2,
-          y: 40,
-          len: TR - x2,
-          band: band(x2, y1, TR - x2, y2 - y1),
-        },
-        { prop: 'above', kind: 'v', x: 64, y: 22, len: y1 - 22, band: band(TL, 22, TW, y1 - 22) },
-        { prop: 'below', kind: 'v', x: 64, y: y2, len: 61 - y2, band: band(TL, y2, TW, 61 - y2) },
-      ],
-    }
-  },
-  places: {
-    t: at('above', 'davor', 'above'),
-    b: at('below', 'danach', 'below'),
-    l: at('indent_left', 'links', 'left'),
-    r: at('indent_right', 'rechts', 'right'),
-  },
-}
-
-/** The lines around a block quote: a switch for each side, their weight, the room inside. */
-const QUOTE_LINES: Schematic = {
-  draw(v) {
-    const h = 70
-    const [x1, x2, y1, y2] = [32, 96, 12, 58]
-    return {
-      h,
-      shapes: [
-        sheet(h),
-        ...(filled(v['fill'])
-          ? [{ kind: 'bar' as const, tone: 'tint' as const, ...band(x1, y1, x2 - x1, y2 - y1) }]
-          : []),
-        ...lines(x1 + 9, y1 + 10, x2 - x1 - 18, [1, 1, 1, 0.6]),
-      ],
-      marks: [
-        { prop: 'border_top', kind: 'edge', x1, y1, x2, y2: y1, on: v['border_top'] === true },
-        {
-          prop: 'border_bottom',
-          kind: 'edge',
-          x1,
-          y1: y2,
-          x2,
-          y2,
-          on: v['border_bottom'] === true,
-        },
-        { prop: 'border_left', kind: 'edge', x1, y1, x2: x1, y2, on: v['border_left'] === true },
-        { prop: 'border_right', kind: 'edge', x1: x2, y1, x2, y2, on: v['border_right'] === true },
-        { prop: 'border_thickness', kind: 'line', x1: x1 + 16, y1, x2: x2 - 16, y2: y1 },
-        { prop: 'border_gap', kind: 'h', x: x1, y: 35, len: 9, band: band(x1, y1, 9, y2 - y1) },
-        { prop: 'padding', kind: 'v', x: 86, y: y1, len: 10, band: band(x1, y1, x2 - x1, 10) },
-      ],
-    }
-  },
-  places: {
-    t: at('border_top', 'oben', 'top'),
-    b: at('border_bottom', 'unten', 'bottom'),
-    l: at('border_left', 'links', 'left'),
-    r: at('border_right', 'rechts', 'right'),
-    tr: at('border_thickness', 'Stärke', 'weight'),
-    bl: at('border_gap', 'zum Text', 'to the text'),
-    br: at('padding', 'innen', 'inside'),
-  },
-}
-
 /** A list: its indents, the gap after a bullet, the space between items and around the list. */
 const LIST: Schematic = {
   draw(v) {
@@ -773,7 +679,6 @@ const FOOTNOTES: Schematic = {
 /** The drawings of each element, in the order they come. */
 export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
   page: [PAPER_SIZE, PAGE],
-  quote: [QUOTE_SPACE, QUOTE_LINES],
   list: [LIST],
   figure: [FIGURE_SPACE, FRAME],
   figure_caption: [caption(false)],
@@ -810,6 +715,33 @@ export const HEADINGS: Readonly<Record<string, readonly string[]>> = Object.from
     ['align', 'above', 'below', 'break_before', 'number_prefix', 'number_suffix'],
   ]),
 )
+
+/**
+ * The values of a block quote that its own editor sets (`QuotePage.svelte`): the space around it, its
+ * indents, its padding, its ground and its lines, so the panel's rows leave them out.
+ */
+export const QUOTES: Readonly<Record<string, readonly string[]>> = {
+  quote: [
+    'indent_left',
+    'indent_right',
+    'above',
+    'below',
+    'fill',
+    'padding',
+    'border_top',
+    'border_bottom',
+    'border_left',
+    'border_right',
+    'border_color',
+    'border_thickness',
+    'border_gap',
+  ],
+}
+
+/** The values of an epigraph that its own editor sets (`EpigraphPage.svelte`): its width and the space around it. */
+export const EPIGRAPHS: Readonly<Record<string, readonly string[]>> = {
+  epigraph: ['width', 'above', 'below'],
+}
 
 export const placedProps = (s: Schematic): string[] => Object.values(s.places).map((p) => p!.prop)
 

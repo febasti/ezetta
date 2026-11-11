@@ -19,8 +19,10 @@
   import { GLYPHS } from './glyphs'
   import SchematicDrawing from './SchematicDrawing.svelte'
   import {
+    EPIGRAPHS,
     HEADINGS,
     PARAGRAPHS,
+    QUOTES,
     RUNNING,
     isAbove,
     lengthCm,
@@ -44,6 +46,8 @@
   import RunningLine from './RunningLine.svelte'
   import ParagraphSetup from './ParagraphSetup.svelte'
   import HeadingPage from './HeadingPage.svelte'
+  import QuotePage from './QuotePage.svelte'
+  import EpigraphPage from './EpigraphPage.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Segmented from '../../ui/kit/Segmented.svelte'
@@ -540,22 +544,70 @@
   {/each}
 {/snippet}
 
+{#snippet quoteLooks(element: ElementDef, values: Readonly<Record<string, unknown>>)}
+  <!-- The ground of the quote, the sides that have a line, and what the lines look like. -->
+  {@render row(element, 'fill')}
+  <p class="short caption">{i18n.t('templates.quote.lines')}</p>
+  <ToggleCards
+    label={i18n.t('templates.quote.lines')}
+    disabled={readOnly}
+    options={[
+      { key: 'border_top', icon: 'border-top' },
+      { key: 'border_bottom', icon: 'border-bottom' },
+      { key: 'border_left', icon: 'border-left' },
+      { key: 'border_right', icon: 'border-right' },
+    ].map((option) => ({
+      ...option,
+      icon: option.icon as IconName,
+      label: propLabel(element.id, PROPS[option.key]!, lang),
+      name: propLabel(element.id, PROPS[option.key]!, lang),
+      checked: values[option.key] === true,
+    }))}
+    onchange={(key, on) => void editor.set(element.id, key, on)}
+  />
+  {#if ['border_top', 'border_bottom', 'border_left', 'border_right'].some((side) => values[side] === true)}
+    <div class="look" role="group" aria-label={i18n.t('templates.quote.look')}>
+      {#each ['border_color', 'border_thickness', 'border_gap'] as id (id)}
+        <div class="cell">
+          <label class="short" for="prop-{element.id}-{id}"
+            >{propLabel(element.id, PROPS[id]!, lang)}</label
+          >
+          <span class="part {PROPS[id]!.type}">{@render controlOf(element, id)}</span>
+        </div>
+      {/each}
+    </div>
+  {/if}
+  <!-- The space inside the quote, on the sides that have no line (a side with a line has its own distance). -->
+  <div class="look">
+    <div class="cell">
+      <label class="short" for="prop-{element.id}-padding"
+        >{i18n.t('templates.quote.padding')}</label
+      >
+      <span class="part length">{@render controlOf(element, 'padding')}</span>
+    </div>
+  </div>
+{/snippet}
+
 {#snippet sections(element: ElementDef)}
   {@const shape = panelLayout(element)}
   {@const values = valuesOf(element)}
   {#each shape.groups as group (group.id)}
     {@const paragraphs = (PARAGRAPHS[element.id] ?? []).some((id) => group.ids.includes(id))}
     {@const headings = (HEADINGS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
+    {@const quotes = (QUOTES[element.id] ?? []).length > 0 && group.id === 'arrangement'}
+    {@const epigraphs = (EPIGRAPHS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
     {@const custom = [
       ...(RUNNING[element.id] ?? []),
+      ...(EPIGRAPHS[element.id] ?? []),
       ...(PARAGRAPHS[element.id] ?? []),
       ...(HEADINGS[element.id] ?? []),
+      ...(QUOTES[element.id] ?? []),
     ]}
     {@const shown = group.ids.filter((id) => isShown(id, values) && !custom.includes(id))}
     {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
-    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings}
+    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs}
       <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
         <!-- A drawing that is what a group is about (the page) comes first; one that only shows what
              a choice above it leads to (a paper of its own size) comes after the choice. -->
@@ -563,6 +615,26 @@
           {#each drawn as schematic, i (i)}
             {@render drawing(element, schematic)}
           {/each}
+        {/if}
+        {#if epigraphs}
+          <!-- An epigraph: set apart at the right under a chapter's title, each value where it is set. -->
+          <EpigraphPage
+            {element}
+            {values}
+            control={controlOf}
+            measure={measureCm(editor.resolved['page'] ?? {})}
+            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
+          />
+        {/if}
+        {#if quotes}
+          <!-- A block quote: a page with the quote between two pieces of text, each value where it is set. -->
+          <QuotePage
+            {element}
+            {values}
+            control={controlOf}
+            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
+          />
+          {@render quoteLooks(element, values)}
         {/if}
         {#if headings}
           <!-- A heading: a page with the heading between two pieces of text, each value where it is set. -->
@@ -979,7 +1051,8 @@
     flex-direction: column;
     gap: var(--sp-8);
   }
-  .line-look .short {
+  .line-look .short,
+  .caption {
     margin: 0;
   }
   .look {

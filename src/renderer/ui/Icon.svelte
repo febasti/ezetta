@@ -22,6 +22,10 @@
   import IconEyeOff from '@tabler/icons-svelte/icons/eye-off'
   import IconFlipHorizontal from '@tabler/icons-svelte/icons/flip-horizontal'
   import IconHash from '@tabler/icons-svelte/icons/hash'
+  import IconBorderTop from '@tabler/icons-svelte/icons/border-top'
+  import IconBorderBottom from '@tabler/icons-svelte/icons/border-bottom'
+  import IconBorderLeft from '@tabler/icons-svelte/icons/border-left'
+  import IconBorderRight from '@tabler/icons-svelte/icons/border-right'
   import IconAlignJustified from '@tabler/icons-svelte/icons/align-justified'
   import IconArrowsSplit from '@tabler/icons-svelte/icons/arrows-split'
   import IconFileText from '@tabler/icons-svelte/icons/file-text'
@@ -165,6 +169,10 @@
     pages: IconPages,
     mirror: IconFlipHorizontal,
     'number-sign': IconHash,
+    'border-top': IconBorderTop,
+    'border-bottom': IconBorderBottom,
+    'border-left': IconBorderLeft,
+    'border-right': IconBorderRight,
     'align-justify': IconAlignJustified,
     hyphenation: IconArrowsSplit,
     'columns-1': IconColumns1,

@@ -599,8 +599,8 @@ test('tables have rules, a header and stripes; a block quote can have lines on i
     await choose(page, 'Blockzitat')
     // The look of the lines is there as soon as one side has a line.
     await expect(editor(page).locator('#prop-quote-border_thickness')).toHaveCount(0)
-    await editor(page).locator('#prop-quote-border_left').check()
-    await editor(page).locator('#prop-quote-border_top').check()
+    await editor(page).getByLabel('Links', { exact: true }).check()
+    await editor(page).getByLabel('Oben', { exact: true }).check()
     await expect(editor(page).locator('#prop-quote-border_thickness')).toHaveAttribute(
       'data-value',
       '2pt',
