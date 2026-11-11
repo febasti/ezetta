@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PageSheet from './PageSheet.svelte'
   import type { Snippet } from 'svelte'
   import { PROPS, propLabel } from '@core/export/elements'
   import type { ElementDef } from '@core/export/elements'
@@ -70,7 +71,7 @@
 {/snippet}
 
 {#snippet sheet(editable: boolean)}
-  <div class="sheet" class:footer>
+  <PageSheet top={footer ? 'torn' : 'edge'} bottom={footer ? 'edge' : 'torn'} gap="small">
     {#if footer}
       {@render text()}
       {#if editable}{@render space(element, 'distance')}{:else}<div class="gap"></div>{/if}
@@ -84,7 +85,7 @@
       {#if editable}{@render space(element, 'distance')}{:else}<div class="gap"></div>{/if}
       {@render text()}
     {/if}
-  </div>
+  </PageSheet>
 {/snippet}
 
 <div class="desk">
@@ -113,22 +114,6 @@
   }
   .caption:first-child {
     margin-top: 0;
-  }
-  /* A piece of a page: its edge towards the text is the page's, the other is cut. */
-  .sheet {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-8);
-    padding: var(--sp-12);
-    border: 1px solid var(--color-field-border);
-    border-bottom: 0;
-    border-radius: var(--r-md) var(--r-md) 0 0;
-    background: var(--color-window);
-  }
-  .sheet.footer {
-    border-top: 0;
-    border-bottom: 1px solid var(--color-field-border);
-    border-radius: 0 0 var(--r-md) var(--r-md);
   }
   /* The three places in a row, each where its text stands: at the left, in the middle, at the right. */
   .band {

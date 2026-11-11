@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PageSheet from './PageSheet.svelte'
   import type { Snippet } from 'svelte'
   import type { ElementDef } from '@core/export/elements'
   import { i18n } from '../../i18n/i18n.svelte'
@@ -38,7 +39,7 @@
 {/snippet}
 
 <div class="desk">
-  <div class="sheet">
+  <PageSheet top="torn" bottom="torn">
     <div class="paragraph" aria-hidden="true">
       {@render line(97, false, false)}
       {@render line(86, false, hyphens)}
@@ -71,7 +72,7 @@
       {@render line(92, false, hyphens)}
       {@render line(60, true, false)}
     </div>
-  </div>
+  </PageSheet>
 </div>
 
 <style>
@@ -80,14 +81,6 @@
     padding: var(--sp-12);
     border-radius: var(--r-lg);
     background: var(--color-panel);
-  }
-  .sheet {
-    display: flex;
-    flex-direction: column;
-    padding: var(--sp-12);
-    border: 1px solid var(--color-field-border);
-    border-radius: var(--r-md);
-    background: var(--color-window);
   }
   .paragraph {
     display: flex;

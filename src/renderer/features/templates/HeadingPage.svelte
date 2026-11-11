@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PageSheet from './PageSheet.svelte'
   import type { Snippet } from 'svelte'
   import { PROPS, propLabel } from '@core/export/elements'
   import type { ElementDef } from '@core/export/elements'
@@ -130,19 +131,21 @@
 <div class="desk">
   {#if breaks}
     <!-- A break: the text above ends with its page and the heading starts another one. To the next right-hand page the page before may stay empty, so it is drawn without text. -->
-    <div class="sheet" class:empty={values['break_before'] === 'odd'} aria-hidden="true">
-      {@render text([100, 64])}
-    </div>
+    <PageSheet top="torn" bottom="edge">
+      <div class="holder" class:empty={values['break_before'] === 'odd'} aria-hidden="true">
+        {@render text([100, 64])}
+      </div>
+    </PageSheet>
     <div class="pagebreak" aria-hidden="true">
       <Icon name={values['break_before'] === 'odd' ? 'pages' : 'page'} size={16} />
       <span>{breakName}</span>
     </div>
-    <div class="sheet">{@render inside()}</div>
+    <PageSheet top="edge" bottom="torn">{@render inside()}</PageSheet>
   {:else}
-    <div class="sheet">
+    <PageSheet top="torn" bottom="torn">
       {@render text([100, 64])}
       {@render inside()}
-    </div>
+    </PageSheet>
   {/if}
 </div>
 
@@ -165,16 +168,8 @@
     border-radius: var(--r-lg);
     background: var(--color-panel);
   }
-  .sheet {
-    display: flex;
-    flex-direction: column;
-    padding: var(--sp-12);
-    border: 1px solid var(--color-field-border);
-    border-radius: var(--r-md);
-    background: var(--color-window);
-  }
   /* The page before a break to the next right-hand page, which may be empty: its text is there only to keep its height. */
-  .sheet.empty .text {
+  .holder.empty .text {
     visibility: hidden;
   }
   .text {

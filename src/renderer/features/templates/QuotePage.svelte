@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PageSheet from './PageSheet.svelte'
   import type { Snippet } from 'svelte'
   import { PROPS, propLabel } from '@core/export/elements'
   import type { ElementDef } from '@core/export/elements'
@@ -50,7 +51,7 @@
 {/snippet}
 
 <div class="desk">
-  <div class="sheet">
+  <PageSheet top="torn" bottom="torn">
     {@render text([100, 64])}
     {@render between('above')}
 
@@ -80,7 +81,7 @@
 
     {@render between('below')}
     {@render text([100, 100, 58])}
-  </div>
+  </PageSheet>
 </div>
 
 <style>
@@ -89,14 +90,6 @@
     padding: var(--sp-12);
     border-radius: var(--r-lg);
     background: var(--color-panel);
-  }
-  .sheet {
-    display: flex;
-    flex-direction: column;
-    padding: var(--sp-12);
-    border: 1px solid var(--color-field-border);
-    border-radius: var(--r-md);
-    background: var(--color-window);
   }
   .text {
     display: flex;
