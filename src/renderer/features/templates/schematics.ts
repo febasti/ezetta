@@ -11,8 +11,15 @@ import type { ElementDef } from '@core/export/elements'
  * sizes: a margin of 5 cm is drawn as wide as one of 2 cm.
  */
 
-/** Where a field stands around the drawing: above, below, left, right, or at a corner. */
-export type Place = 't' | 'b' | 'l' | 'r' | 'tl' | 'tr' | 'bl' | 'br'
+/**
+ * Where a field stands around the drawing: above, below, left, right, or at a corner; or in a row
+ * of its own over all of it (`a1`, `a2`, `a3`, standing over the left side, the drawing, and the
+ * right side), for choices that change the whole drawing.
+ */
+export type Place = 't' | 'b' | 'l' | 'r' | 'tl' | 'tr' | 'bl' | 'br' | 'a1' | 'a2' | 'a3'
+
+/** Whether a place is in the row over the drawing. */
+export const isAbove = (place: string): boolean => place.startsWith('a')
 
 /** The values of an element, as the style resolves them. */
 export type Values = Readonly<Record<string, unknown>>
@@ -64,8 +71,10 @@ export type Mark =
   | ({ prop: string; kind: 'area' } & Rect)
 
 export interface Drawing {
-  /** The height of the drawing (it is 128 wide). */
+  /** The height of the drawing. */
   h: number
+  /** Its width; 128 unless it says (the page has more room, since it is the main thing of its panel). */
+  w?: number
   shapes: Shape[]
   marks: Mark[]
 }
@@ -141,14 +150,19 @@ const band = (x: number, y: number, w: number, h: number): Rect => ({ x, y, w, h
  */
 const PAGE: Schematic = {
   draw(v) {
-    const h = 84
+    // The page is the main thing of its panel, so it is drawn larger than the other drawings.
+    const w = 176
+    const h = 128
     const facing = v['facing'] !== 'single'
     const n = facing ? 2 : 1
     const r = ratio(v)
-    const ph = Math.round(Math.min(68, 108 / (n * r)))
+    const ph = Math.round(Math.min(112, (w - 16) / (n * r)))
     const pw = Math.round(ph * r)
-    const x0 = Math.round((W - n * pw) / 2)
+    const x0 = Math.round((w - n * pw) / 2)
     const y = Math.round((h - ph) / 2)
+    // The lines of text, as many as the page's height allows.
+    const lineGap = Math.max(4, Math.round(ph / 20))
+    const lineHeight = Math.max(1.5, lineGap * 0.4)
     const top = Math.max(4, Math.round(ph * 0.13))
     const bottom = Math.max(4, Math.round(ph * 0.15))
     const inside = Math.max(4, Math.round(pw * 0.17))
@@ -179,8 +193,8 @@ const PAGE: Schematic = {
           h: ph - 2,
         })
       for (let c = 0; c < columns; c += 1)
-        for (let ly = y + top; ly + 1.5 <= y + ph - bottom; ly += 4)
-          shapes.push({ kind: 'bar', x: x + left + c * (cw + gap), y: ly, w: cw, h: 1.5 })
+        for (let ly = y + top; ly + lineHeight <= y + ph - bottom; ly += lineGap)
+          shapes.push({ kind: 'bar', x: x + left + c * (cw + gap), y: ly, w: cw, h: lineHeight })
       if (i < n - 1) continue
       // The marks are on the right page (or the only one): its inner margin is at its left, after
       // the binding.
@@ -223,7 +237,7 @@ const PAGE: Schematic = {
           band: band(x + left + cw, y + top, gap, ph - top - bottom),
         })
     }
-    return { h, shapes, marks }
+    return { h, w, shapes, marks }
   },
   places: {
     t: at('margin_top', 'oben', 'top'),
@@ -238,9 +252,9 @@ const PAGE: Schematic = {
       (v) => (v['facing'] === 'single' ? 'rechts' : 'außen'),
       (v) => (v['facing'] === 'single' ? 'right' : 'outside'),
     ),
-    tl: at('orientation', 'Lage', 'orientation'),
-    tr: at('facing', 'Seiten', 'pages'),
-    bl: at('columns', 'Spalten', 'columns'),
+    // The choices that change the whole page in a row over it.
+    a1: at('facing', 'Seiten', 'pages'),
+    a3: at('columns', 'Spalten', 'columns'),
     br: at('column_gap', 'Spaltenabstand', 'column gap'),
   },
 }
@@ -264,66 +278,6 @@ const PAPER_SIZE: Schematic = {
     }
   },
   places: { t: at('page_width', 'Breite', 'width'), l: at('page_height', 'Höhe', 'height') },
-}
-
-/** Two paragraphs: the indent of a first line, the space between them, the setting of the lines. */
-const PARAGRAPHS: Schematic = {
-  draw(v) {
-    const h = 66
-    const justify = v['justify'] === true
-    const set = (fs: number[]) => (justify ? fs.map((f, i) => (i === fs.length - 1 ? f : 1)) : fs)
-    const p1 = set([0.93, 0.84, 0.55])
-    const p2 = set([0.9, 0.6])
-    const shapes: Shape[] = [
-      sheet(h),
-      ...lines(TL, 13, TW, p1),
-      { kind: 'bar', x: TL + 10, y: 37, w: justify ? TW - 10 : TW - 16, h: 3 },
-      ...lines(TL, 44, TW, p2),
-    ]
-    // Hyphenation: a word divided at the end of a line.
-    if (v['hyphenate'] === true)
-      for (const [f, y] of [
-        [p1[1]!, 20],
-        [p2[0]!, 44],
-      ] as const)
-        shapes.push({
-          kind: 'bar',
-          x: TL + Math.round(TW * f) + 1.5,
-          y: y + 1,
-          w: 2.5,
-          h: 1.2,
-          tone: 'strong',
-        })
-    return {
-      h,
-      shapes,
-      marks: [
-        {
-          prop: 'first_line_indent',
-          kind: 'h',
-          x: TL,
-          y: 38,
-          len: 10,
-          band: band(TL, 36, 10, 5),
-        },
-        {
-          prop: 'paragraph_spacing',
-          kind: 'v',
-          x: 113,
-          y: 30,
-          len: 7,
-          band: band(TL, 30, TW, 7),
-        },
-      ],
-    }
-  },
-  places: {
-    l: at('first_line_indent', 'Einzug', 'indent'),
-    r: at('paragraph_spacing', 'Absätze', 'paragraphs'),
-    // The setting of the lines above the drawing and hyphenation under it, each saying what it is.
-    t: at('justify', '', ''),
-    b: at('hyphenate', '', ''),
-  },
 }
 
 /** The number of a heading: the text before and after it, the gap to the title, a long title. */
@@ -883,129 +837,9 @@ const FOOTNOTES: Schematic = {
   },
 }
 
-/** What a place of a header or footer holds, drawn as a bar as long as such a text would be. */
-function slotShape(
-  kind: unknown,
-  x: number,
-  y: number,
-  side: 'l' | 'c' | 'r',
-  scale: number,
-): Shape {
-  const w = Math.round(
-    (kind === 'page'
-      ? 5
-      : kind === 'title'
-        ? 30
-        : kind === 'chapter'
-          ? 24
-          : kind === 'author'
-            ? 18
-            : kind === 'section'
-              ? 20
-              : 14) * scale,
-  )
-  const at = side === 'l' ? x : side === 'c' ? x - w / 2 : x - w
-  return kind === 'none' || kind == null
-    ? { kind: 'box', x: Math.round(at), y: y - 1, w, h: 5, dashed: true, faint: true }
-    : { kind: 'bar', x: Math.round(at), y, w, h: kind === 'page' ? 4 : 3, tone: 'strong' }
-}
-
-/**
- * A header or a footer: its three places on the page (on two facing pages when it is mirrored, the
- * left page with its places the other way round), the line between it and the text, its distance
- * from the text.
- */
-const running =
-  (footer: boolean): Schematic['draw'] =>
-  (v) => {
-    const h = 64
-    const mirror = v['mirror'] === true
-    const pages = mirror ? 2 : 1
-    const pw = mirror ? 52 : 92
-    const x0 = Math.round((W - pages * pw) / 2)
-    const [top, bottom] = [6, h - 6]
-    const band = footer ? bottom - 9 : top + 7
-    const text = footer ? [top + 6, band - 15] : [band + 15, bottom - 4]
-    const shapes: Shape[] = []
-    for (let i = 0; i < pages; i += 1) {
-      const x = x0 + i * pw
-      const [l, r] = [x + 7, x + pw - 7]
-      shapes.push({ kind: 'sheet', x, y: top, w: pw, h: bottom - top })
-      for (let y = text[0]!; y + 3 <= text[1]!; y += 6)
-        shapes.push({ kind: 'bar', x: l, y, w: r - l, h: 2 })
-      const flip = mirror && i === 0
-      const scale = mirror ? 0.55 : 1
-      const [left, right] = flip
-        ? [v['slot_right'], v['slot_left']]
-        : [v['slot_left'], v['slot_right']]
-      shapes.push(
-        slotShape(left, l, band, 'l', scale),
-        slotShape(v['slot_center'], (l + r) / 2, band, 'c', scale),
-        slotShape(right, r, band, 'r', scale),
-      )
-      if (v['divider'] === true) {
-        const y = footer ? band - 4.5 : band + 7.5
-        shapes.push({ kind: 'line', x1: l, y1: y, x2: r, y2: y })
-      }
-    }
-    const x = x0 + (pages - 1) * pw
-    const [gapFrom, gapTo] = footer ? [text[1]! + 1, band - 1] : [band + 4, text[0]!]
-    const zone = (prop: string, cx: number): Mark => ({
-      prop,
-      kind: 'h',
-      x: cx,
-      y: band,
-      len: 0,
-      band: band_(cx - 15, band - 3, 30, 9),
-    })
-    return {
-      h,
-      shapes,
-      marks: [
-        zone('slot_left', x + 15),
-        zone('slot_center', x + pw / 2),
-        zone('slot_right', x + pw - 15),
-        {
-          prop: 'distance',
-          kind: 'v',
-          x: x + pw + 4,
-          y: gapFrom,
-          len: gapTo - gapFrom,
-          band: band_(x, gapFrom, pw, gapTo - gapFrom),
-        },
-      ],
-    }
-  }
-const band_ = band
-const HEADER: Schematic = {
-  draw: running(false),
-  places: {
-    tl: at('slot_left', 'links', 'left'),
-    t: at('slot_center', 'Mitte', 'centre'),
-    tr: at('slot_right', 'rechts', 'right'),
-    r: at('distance', 'Abstand', 'distance'),
-    l: at('mirror', 'gespiegelt', 'mirrored'),
-    bl: at('skip_chapter_start', 'nicht auf Kapitelseiten', 'not on chapter pages'),
-    br: at('show_number', 'Kapitelnummer', 'chapter number'),
-  },
-}
-const FOOTER: Schematic = {
-  draw: running(true),
-  places: {
-    bl: at('slot_left', 'links', 'left'),
-    b: at('slot_center', 'Mitte', 'centre'),
-    br: at('slot_right', 'rechts', 'right'),
-    r: at('distance', 'Abstand', 'distance'),
-    l: at('mirror', 'gespiegelt', 'mirrored'),
-    tl: at('skip_chapter_start', 'nicht auf Kapitelseiten', 'not on chapter pages'),
-    tr: at('show_number', 'Kapitelnummer', 'chapter number'),
-  },
-}
-
 /** The drawings of each element, in the order they come. */
 export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
   page: [PAPER_SIZE, PAGE],
-  body: [PARAGRAPHS],
   heading: [NUMBER_ALL],
   ...Object.fromEntries([1, 2, 3, 4].map((n) => [`heading_${n}`, [HEADING_SPACE, NUMBER_LEVEL]])),
   quote: [QUOTE_SPACE, QUOTE_LINES],
@@ -1015,8 +849,23 @@ export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
   table: [TABLE],
   table_caption: [caption(true)],
   footnote: [FOOTNOTES],
-  header: [HEADER],
-  footer: [FOOTER],
+}
+
+/**
+ * The values of a header and of a footer that their own editor sets (`RunningLine.svelte`: a page
+ * with the three places where the text stands on it, and the distance to the text), so the panel's
+ * rows leave them out.
+ */
+export const RUNNING: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
+  ['header', 'footer'].map((id) => [
+    id,
+    ['slot_left', 'slot_center', 'slot_right', 'distance', 'mirror', 'skip_chapter_start'],
+  ]),
+)
+
+/** The values of the body text that its own editor sets (`ParagraphSetup.svelte`), so the panel's rows leave them out. */
+export const PARAGRAPHS: Readonly<Record<string, readonly string[]>> = {
+  body: ['justify', 'hyphenate', 'paragraph_spacing', 'first_line_indent'],
 }
 
 export const placedProps = (s: Schematic): string[] => Object.values(s.places).map((p) => p!.prop)
@@ -1091,6 +940,8 @@ export function panelLayout(el: ElementDef): {
     if (ids.length > 0 || schematics.length > 0)
       groups.push({ id: section.id, de: section.de, en: section.en, ids, schematics })
   }
+  // What a header or footer holds is the main thing in its panel: it comes first.
+  if (RUNNING[el.id]) groups.sort((a, b) => Number(b.id === 'running') - Number(a.id === 'running'))
   const lines = LINE_SECTIONS.filter((section) => el.props.includes(section.toggle))
   // Titles over the groups only help when there is more than one group.
   return {

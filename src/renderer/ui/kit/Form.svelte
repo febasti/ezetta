@@ -4,18 +4,22 @@
   /**
    * A form as in the system's settings: rows of a label on the left (right-aligned, in a column of
    * its own) and the control on the right. `stacked` puts each label above its control instead, for
-   * a narrow dialog or a single field. `FormRow` is one row.
+   * a narrow dialog or a single field. `FormRow` is one row. `labels="start"` sets the labels flush
+   * left, as in a panel of properties; the system's settings set them at the end.
    */
   interface Props {
     /** The width of the label column. */
     labelWidth?: 'narrow' | 'wide'
     stacked?: boolean
+    labels?: 'start' | 'end'
     children: Snippet
   }
-  let { labelWidth = 'narrow', stacked = false, children }: Props = $props()
+  let { labelWidth = 'narrow', stacked = false, labels = 'end', children }: Props = $props()
 </script>
 
-<div class="form {labelWidth}" class:stacked>{@render children()}</div>
+<div class="form {labelWidth}" class:stacked class:start={labels === 'start'}>
+  {@render children()}
+</div>
 
 <style>
   .form {
@@ -30,6 +34,9 @@
   .stacked {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--sp-4);
+  }
+  .start > :global(label) {
+    text-align: left;
   }
   .stacked > :global(label) {
     padding-top: 0;

@@ -14,7 +14,18 @@ describe('the lines of the template editor', () => {
   })
 
   it('leave a value alone when what it shares a line with is not there', () => {
-    expect(panelLines(['size', 'color'])).toEqual([{ props: ['size'] }, { props: ['color'] }])
+    expect(panelLines(['size', 'weight'])).toEqual([{ props: ['size'] }, { props: ['weight'] }])
+  })
+
+  it('put the size with the colour where there is no line spacing or alignment to share with', () => {
+    expect(panelLines(['font', 'size', 'color'])).toEqual([
+      { props: ['font'] },
+      expect.objectContaining({ props: ['size', 'color'] }),
+    ])
+    expect(panelLines(['size', 'color', 'align'])).toEqual([
+      { props: ['size'] },
+      expect.objectContaining({ props: ['color', 'align'] }),
+    ])
   })
 
   it('show every value of every group exactly once', () => {

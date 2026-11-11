@@ -22,8 +22,8 @@
 
 <svg
   class="drawing"
-  viewBox="0 0 128 {drawing.h}"
-  width="128"
+  viewBox="0 0 {drawing.w ?? 128} {drawing.h}"
+  width={drawing.w ?? 128}
   height={drawing.h}
   aria-hidden="true"
 >
@@ -34,7 +34,7 @@
       </pattern>
     </defs>
   {/if}
-  <rect class="tile" width="128" height={drawing.h} rx="6" />
+  <rect class="tile" width={drawing.w ?? 128} height={drawing.h} rx="6" />
   {#each drawing.shapes as s, i (i)}
     {#if s.kind === 'sheet'}
       <rect class="sheet" x={px(s.x)} y={px(s.y)} width={s.w - 1} height={s.h - 1} rx="1" />

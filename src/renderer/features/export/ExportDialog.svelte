@@ -1,10 +1,12 @@
 <script lang="ts">
   import { ELEMENTS, GROUPS, isListed } from '@core/export/elements'
+  import { tick } from 'svelte'
   import { i18n } from '../../i18n/i18n.svelte'
   import Icon from '../../ui/Icon.svelte'
   import type { IconName } from '../../ui/Icon.svelte'
   import Button from '../../ui/kit/Button.svelte'
   import Dialog from '../../ui/kit/Dialog.svelte'
+  import Link from '../../ui/kit/Link.svelte'
   import ListRow from '../../ui/kit/ListRow.svelte'
   import { preview } from './preview.svelte'
   import { project } from '../sidebar/project.svelte'
@@ -55,6 +57,15 @@
       action()
     }
 
+  /** The summary in the footer leads to the list of what is open, in the panel of the export. */
+  async function showOpen(): Promise<void> {
+    exporting.elementId = EXPORT
+    await tick()
+    document
+      .querySelector(`.properties section[aria-label="${i18n.t('export.warnings')}"]`)
+      ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+
   const src = (n: number): string =>
     `project-asset://project/_build/preview/p-${n}.png?v=${preview.stamp}`
 </script>
@@ -78,7 +89,9 @@
     onkeydown={press(onclick)}
   >
     {#snippet accessory()}
-      {#if extra !== null}<span class="count">{extra}</span>{/if}
+      {#if extra !== null}
+        <span class="count" title={i18n.t('export.open', { count: Number(extra) })}>{extra}</span>
+      {/if}
     {/snippet}
   </ListRow>
 {/snippet}
@@ -92,9 +105,29 @@
     position="center"
     onclose={() => void exporting.close()}
   >
-    {#snippet headerAction()}
+    {#snippet footer()}
+      <!-- What the writer needs to know before pressing the button, in view on every panel. -->
+      <div class="status">
+        {#if exporting.info?.warnings}
+          {#if exporting.openCount > 0}
+            <span class="mark open"><Icon name="warning" size={16} /></span>
+            <Link onclick={() => void showOpen()}>
+              {i18n.t('export.open', { count: exporting.openCount })}
+            </Link>
+          {:else}
+            <span class="mark"><Icon name="circle-check" size={16} /></span>
+            <span>{i18n.t('export.none')}</span>
+          {/if}
+        {/if}
+        {#if preview.busy}
+          <span class="quiet">· {i18n.t('preview.loading')}</span>
+        {:else if preview.status === 'ready'}
+          <span class="quiet">· {i18n.t('export.pages', { count: preview.pages })}</span>
+        {/if}
+      </div>
       <Button
         variant="primary"
+        size="lg"
         disabled={exporting.busy || !exporting.info?.compiler}
         onclick={() => void exporting.run()}
       >
@@ -229,11 +262,35 @@
   h3:first-child {
     margin-top: 0;
   }
-  .count,
+  .status {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: var(--sp-8);
+    min-width: 0;
+    color: var(--color-label);
+    font: var(--type-body);
+  }
+  .mark {
+    display: inline-flex;
+    color: var(--color-success);
+  }
+  .mark.open {
+    color: var(--color-warning);
+  }
+  .quiet {
+    color: var(--color-label-secondary);
+  }
   .chevron {
     display: inline-flex;
     color: var(--color-label-tertiary);
     font: var(--type-caption);
+  }
+  /* What is still open in the export: a number the eye is drawn to, not one among the others. */
+  .count {
+    display: inline-flex;
+    color: var(--color-warning);
+    font: var(--type-emphasis);
   }
   /* The entries of the open group lie on the panel's ground, so they are seen to belong to it. */
   .entries {
@@ -244,7 +301,7 @@
   }
   .properties {
     flex: none;
-    width: 340px;
+    width: 380px;
     min-height: 0;
     overflow-y: auto;
     padding-right: var(--sp-8);

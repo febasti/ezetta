@@ -46,6 +46,11 @@ async function choose(page: Page, name: string) {
     if ((await groups.nth(i).getAttribute('aria-expanded')) === 'false') await groups.nth(i).click()
   await entry.click()
 }
+/** The button of the templates column; a built-in template's note offers the same one. */
+const copyButton = (page: Page) =>
+  editor(page)
+    .getByRole('complementary', { name: 'Vorlagen' })
+    .getByRole('button', { name: 'Kopie anlegen …' })
 const prompt = (page: Page) => page.getByRole('dialog', { name: 'Kopie anlegen' })
 /** Sets a colour: a click on it opens the colours, and its value is typed at their foot. */
 async function setColor(page: Page, id: string, value: string) {
@@ -115,7 +120,7 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
     const before = await stamp()
 
     // A copy has a name of its own and can be changed.
-    await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+    await copyButton(page).click()
     await expect(prompt(page)).toBeVisible()
     await prompt(page).getByLabel('Name der Vorlage').fill('Meine Arbeit')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
@@ -159,7 +164,7 @@ test('the copy is offered in the export dialog, and its settings survive a resta
   const { app, page } = await open()
   try {
     await openEditor(page)
-    await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+    await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Kurz')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await choose(page, 'Fließtext')
@@ -261,7 +266,7 @@ test('a template is saved as a file and loaded again, as a template of its own',
     await expect(
       editor(first.page).getByRole('button', { name: 'Als Datei speichern …' }),
     ).toBeDisabled()
-    await editor(first.page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+    await copyButton(first.page).click()
     await prompt(first.page).getByLabel('Name der Vorlage').fill('Zum Teilen')
     await prompt(first.page).getByRole('button', { name: 'OK' }).click()
     await choose(first.page, 'Fließtext')
@@ -301,7 +306,7 @@ test('a heading is aligned with radio buttons and can have a line above and belo
   const { app, page } = await open()
   try {
     await openEditor(page)
-    await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+    await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Mit Linien')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
@@ -347,7 +352,7 @@ test('the letter case of headings is chosen with radio buttons, and the properti
   const { app, page } = await open()
   try {
     await openEditor(page)
-    await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+    await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Versalien')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
@@ -409,7 +414,7 @@ test('headings are numbered in the format and to the depth of the template, and 
     await expect(chips).toHaveText(['Abschnitt 2', 'Abschnitt 2.1'])
 
     await openEditor(page)
-    await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+    await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Römisch')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
@@ -442,7 +447,7 @@ test('every text element has a font, and headings a letter spacing', async () =>
   const { app, page } = await open()
   try {
     await openEditor(page)
-    await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+    await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Schriften')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
@@ -484,7 +489,7 @@ test('the text can be set in columns, with a gap, and figures can span them', as
   const { app, page } = await open()
   try {
     await openEditor(page)
-    await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+    await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Zweispaltig')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
@@ -521,7 +526,7 @@ test('the text can be set in columns, with a gap, and figures can span them', as
 
 /** Makes a copy of a template with this name and waits until it is the one shown. */
 async function makeCopy(page: Page, name: string) {
-  await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+  await copyButton(page).click()
   await prompt(page).getByLabel('Name der Vorlage').fill(name)
   await prompt(page).getByRole('button', { name: 'OK' }).click()
   await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
@@ -538,9 +543,9 @@ test('headers, footers and the page number are set with three places each', asyn
     await choose(page, 'Fußzeile')
     await expect(editor(page).getByLabel('Mitte', { exact: true })).toHaveValue('page')
     await choose(page, 'Kopfzeile')
-    await expect(editor(page).getByLabel('Links', { exact: true })).toHaveValue('chapter')
+    await expect(editor(page).getByLabel('Links', { exact: true })).toHaveValue('chapter_number')
     await expect(editor(page).getByLabel('Mitte', { exact: true })).toHaveValue('none')
-    await expect(editor(page).getByLabel('Rechts', { exact: true })).toHaveValue('section')
+    await expect(editor(page).getByLabel('Rechts', { exact: true })).toHaveValue('section_number')
     await editor(page)
       .getByLabel('Links', { exact: true })
       .selectOption({ label: 'Titel der Arbeit' })
@@ -1070,7 +1075,7 @@ test('the templates are a narrow column with a picture each; choosing one makes 
     // A change of the template changes its picture, too.
     await openEditor(page)
     await expect(card(page, 'Essay')).toHaveAttribute('aria-current', 'true')
-    await editor(page).getByRole('button', { name: 'Kopie anlegen …' }).click()
+    await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Groß')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await expect(card(page, 'Groß').locator('img')).toBeVisible({ timeout: 30_000 })

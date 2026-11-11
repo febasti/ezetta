@@ -9,6 +9,7 @@
 </script>
 
 <div class="templates">
+  <h3>{i18n.t('templates.title')}</h3>
   <div class="grid" role="group" aria-label={i18n.t('templates.list')}>
     {#each exporting.list as t (t.id)}
       {@const selected = t.id === exporting.selectedId}
@@ -81,6 +82,12 @@
     flex-direction: column;
     min-height: 0;
     height: 100%;
+  }
+  h3 {
+    margin: 0 0 var(--sp-4);
+    padding: 0 var(--sp-8);
+    color: var(--color-label-tertiary);
+    font: var(--type-caption);
   }
   .grid {
     display: grid;

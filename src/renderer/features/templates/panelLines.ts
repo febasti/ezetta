@@ -6,16 +6,25 @@
  */
 export interface SharedLine {
   props: readonly string[]
+  /** Not shared while one of these is there, which has a line of its own with the same values. */
+  unless?: readonly string[]
   de: string
   en: string
 }
 
 export const SHARED_LINES: readonly SharedLine[] = [
+  { props: ['paper', 'orientation'], de: 'Papierformat', en: 'Paper size' },
   { props: ['size', 'line_height'], de: 'Größe', en: 'Size' },
   { props: ['weight', 'italic', 'underline'], de: 'Schnitt', en: 'Weight' },
   { props: ['text_case', 'letter_spacing'], de: 'Schreibweise', en: 'Letter case' },
   { props: ['label_weight', 'label_style'], de: 'Schnitt', en: 'Weight' },
   { props: ['color', 'align'], de: 'Farbe', en: 'Colour' },
+  {
+    props: ['size', 'color'],
+    unless: ['line_height', 'align'],
+    de: 'Größe und Farbe',
+    en: 'Size and colour',
+  },
 ]
 
 /** A switch drawn as an icon, by the property it sets. */
@@ -46,7 +55,10 @@ export function panelLines(ids: readonly string[]): PanelLine[] {
   for (const id of ids) {
     if (done.has(id)) continue
     const shared = SHARED_LINES.find(
-      (l) => l.props.includes(id) && l.props.filter((p) => ids.includes(p)).length > 1,
+      (l) =>
+        l.props.includes(id) &&
+        !l.unless?.some((p) => ids.includes(p)) &&
+        l.props.filter((p) => ids.includes(p)).length > 1,
     )
     const props = shared ? shared.props.filter((p) => ids.includes(p)) : [id]
     props.forEach((p) => done.add(p))

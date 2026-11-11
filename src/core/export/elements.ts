@@ -26,7 +26,16 @@ export interface PropDef {
   valueLabels?: Readonly<Record<string, { de: string; en: string }>>
 }
 
-const SLOTS = ['none', 'page', 'chapter', 'section', 'title', 'author'] as const
+const SLOTS = [
+  'none',
+  'page',
+  'chapter',
+  'chapter_number',
+  'section',
+  'section_number',
+  'title',
+  'author',
+] as const
 /** The weights Typst names, from 100 to 900. */
 export const WEIGHTS = [
   'thin',
@@ -60,7 +69,9 @@ const SLOT_LABELS: Record<string, { de: string; en: string }> = {
   none: { de: 'Leer', en: 'Empty' },
   page: { de: 'Seitenzahl', en: 'Page number' },
   chapter: { de: 'Kapitel', en: 'Chapter' },
+  chapter_number: { de: '1 Kapitel', en: '1 Chapter' },
   section: { de: 'Abschnitt', en: 'Section' },
+  section_number: { de: '1.1 Abschnitt', en: '1.1 Section' },
   title: { de: 'Titel der Arbeit', en: 'Title of the work' },
   author: { de: 'Autorin oder Autor', en: 'Author' },
 }
@@ -406,7 +417,6 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
     prop('slot_right', 'enum', 'Rechts', 'Right', SLOTS),
     prop('mirror', 'bool', 'Auf geraden Seiten spiegeln', 'Mirror on even pages'),
     prop('skip_chapter_start', 'bool', 'Nicht auf Kapitelseiten', 'Not on chapter pages'),
-    prop('show_number', 'bool', 'Nummer des Kapitels zeigen', 'Show the chapter number'),
     prop('distance', 'length', 'Abstand zum Textbereich', 'Distance to the text area'),
     prop('divider', 'bool', 'Trennlinie', 'Divider line'),
     prop('divider_color', 'color', 'Farbe', 'Colour'),
@@ -570,8 +580,17 @@ const SHOWN_WHEN: Readonly<Record<string, (values: Readonly<Record<string, unkno
     border_gap: hasBorder,
   }
 
+/** The values of the divider line of a header or a footer, set apart from the switch that is on the page. */
+const DIVIDER_LABELS = {
+  divider_color: { de: 'Farbe der Linie', en: 'Colour of the line' },
+  divider_thickness: { de: 'Stärke der Linie', en: 'Weight of the line' },
+  divider_gap: { de: 'Abstand der Linie zum Text', en: 'Distance of the line to the text' },
+}
+
 /** What a property is called where its usual name would say the wrong thing. */
 const LABELS_FOR: Readonly<Record<string, Readonly<Record<string, { de: string; en: string }>>>> = {
+  header: DIVIDER_LABELS,
+  footer: DIVIDER_LABELS,
   table_caption: {
     caption_gap: { de: 'Abstand zur Tabelle', en: 'Distance to the table' },
     caption_fit: { de: 'Auf Tabellenbreite begrenzen', en: 'Limit to the width of the table' },
@@ -720,15 +739,7 @@ export const PROP_SECTIONS: readonly {
     id: 'running',
     de: 'Inhalt',
     en: 'Content',
-    props: [
-      'slot_left',
-      'slot_center',
-      'slot_right',
-      'mirror',
-      'skip_chapter_start',
-      'show_number',
-      'distance',
-    ],
+    props: ['slot_left', 'slot_center', 'slot_right', 'mirror', 'skip_chapter_start', 'distance'],
   },
   {
     id: 'marker',
@@ -928,7 +939,6 @@ export const ELEMENTS: readonly ElementDef[] = [
         'slot_right',
         'mirror',
         'skip_chapter_start',
-        'show_number',
         'distance',
         ...DIVIDER_PROPS,
       ],
@@ -939,7 +949,6 @@ export const ELEMENTS: readonly ElementDef[] = [
         slot_right: 'none',
         mirror: false,
         skip_chapter_start: false,
-        show_number: true,
         distance: '30%',
         divider: false,
         divider_color: '#000000',

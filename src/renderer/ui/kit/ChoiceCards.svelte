@@ -17,9 +17,11 @@
     options: readonly Option[]
     label: string
     disabled?: boolean
+    /** The cards share the width of the row equally, instead of being as wide as their names. */
+    fill?: boolean
     onchange: (value: T) => void
   }
-  let { value, options, label, disabled = false, onchange }: Props = $props()
+  let { value, options, label, disabled = false, fill = false, onchange }: Props = $props()
 
   function onKeydown(event: KeyboardEvent): void {
     const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
@@ -32,7 +34,14 @@
   }
 </script>
 
-<div class="cards" role="radiogroup" aria-label={label} tabindex="-1" onkeydown={onKeydown}>
+<div
+  class="cards"
+  class:fill
+  role="radiogroup"
+  aria-label={label}
+  tabindex="-1"
+  onkeydown={onKeydown}
+>
   {#each options as option, index (option.value)}
     <button
       type="button"
@@ -52,6 +61,9 @@
   .cards {
     display: flex;
     gap: var(--sp-8);
+  }
+  .fill button {
+    flex: 1;
   }
   button {
     display: flex;

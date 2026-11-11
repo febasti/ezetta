@@ -610,7 +610,7 @@ const VARIANTS: {
     sets: {
       header: {
         slot_left: 'title',
-        slot_right: 'chapter',
+        slot_right: 'chapter_number',
         mirror: true,
         divider: true,
         divider_thickness: '0.4pt',
@@ -631,7 +631,6 @@ const VARIANTS: {
         slot_center: 'section',
         slot_right: 'author',
         text_case: 'smallcaps',
-        show_number: false,
       },
       footer: { slot_left: 'title', slot_center: 'none', slot_right: 'page', divider: true },
       page_number: { page_style: 'prefix', number_format: 'roman_lower' },
@@ -641,7 +640,7 @@ const VARIANTS: {
     name: 'monographie-kopfzeile-standard',
     template: 'monographie',
     options: { author: 'A. Autor' },
-    sets: { header: { slot_left: 'title', slot_right: 'chapter' } },
+    sets: { header: { slot_left: 'title', slot_right: 'chapter_number' } },
   },
   {
     name: 'monographie-rechts',
@@ -658,7 +657,7 @@ const VARIANTS: {
       heading_1: { break_before: 'odd' },
       header: {
         slot_left: 'title',
-        slot_right: 'chapter',
+        slot_right: 'chapter_number',
         mirror: true,
         skip_chapter_start: false,
       },
@@ -673,7 +672,7 @@ const VARIANTS: {
       heading_1: { break_before: 'odd' },
       header: {
         slot_left: 'title',
-        slot_right: 'chapter',
+        slot_right: 'chapter_number',
         mirror: true,
         skip_chapter_start: false,
       },

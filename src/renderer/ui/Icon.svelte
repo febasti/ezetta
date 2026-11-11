@@ -20,7 +20,17 @@
   import IconChevronRight from '@tabler/icons-svelte/icons/chevron-right'
   import IconCode from '@tabler/icons-svelte/icons/code'
   import IconEyeOff from '@tabler/icons-svelte/icons/eye-off'
+  import IconFlipHorizontal from '@tabler/icons-svelte/icons/flip-horizontal'
+  import IconHash from '@tabler/icons-svelte/icons/hash'
+  import IconAlignJustified from '@tabler/icons-svelte/icons/align-justified'
+  import IconArrowsSplit from '@tabler/icons-svelte/icons/arrows-split'
   import IconFileText from '@tabler/icons-svelte/icons/file-text'
+  import IconFile from '@tabler/icons-svelte/icons/file'
+  import IconFileHorizontal from '@tabler/icons-svelte/icons/file-horizontal'
+  import IconColumns1 from '@tabler/icons-svelte/icons/columns-1'
+  import IconColumns2 from '@tabler/icons-svelte/icons/columns-2'
+  import IconColumns3 from '@tabler/icons-svelte/icons/columns-3'
+  import IconPages from './IconPages.svelte'
   import IconFolder from '@tabler/icons-svelte/icons/folder'
   import IconHighlight from '@tabler/icons-svelte/icons/highlight'
   import IconItalic from '@tabler/icons-svelte/icons/italic'
@@ -150,6 +160,16 @@
     sun: IconSun,
     moon: IconMoon,
     'device-desktop': IconDeviceDesktop,
+    page: IconFile,
+    'page-horizontal': IconFileHorizontal,
+    pages: IconPages,
+    mirror: IconFlipHorizontal,
+    'number-sign': IconHash,
+    'align-justify': IconAlignJustified,
+    hyphenation: IconArrowsSplit,
+    'columns-1': IconColumns1,
+    'columns-2': IconColumns2,
+    'columns-3': IconColumns3,
   } as const
   export type IconName = keyof typeof ICONS
   export const ICON_NAMES = Object.keys(ICONS) as IconName[]

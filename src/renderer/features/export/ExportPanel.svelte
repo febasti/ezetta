@@ -1,5 +1,6 @@
 <script lang="ts">
   import { i18n } from '../../i18n/i18n.svelte'
+  import Icon from '../../ui/Icon.svelte'
   import Callout from '../../ui/kit/Callout.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Form from '../../ui/kit/Form.svelte'
@@ -10,6 +11,7 @@
   import TextField from '../../ui/kit/TextField.svelte'
   import { project } from '../sidebar/project.svelte'
   import PropertiesPanel from '../templates/PropertiesPanel.svelte'
+  import ReadonlyNote from '../templates/ReadonlyNote.svelte'
   import { fontProblemText } from '../templates/fontProblems'
   import { elementById } from '@core/export/elements'
   import { exporting } from './export.svelte'
@@ -24,6 +26,8 @@
   const result = $derived(exporting.result)
 
   const anyOpen = $derived(exporting.openCount > 0)
+  /** What the template offers, as the document's own settings. */
+  const offered = $derived(template?.options.filter((o) => !o.hidden) ?? [])
   /** Hyphenation: the document's own choice, else what the template's body text says. */
   const hyphenate = $derived(
     profile?.hyphenate ?? exporting.resolved['body']?.['hyphenate'] === true,
@@ -43,24 +47,61 @@
   }
 </script>
 
+{#snippet flag()}
+  <span class="mark"><Icon name="warning" size={16} /></span>
+{/snippet}
+
 {#if info && profile}
   <section class="panel" aria-label={i18n.t('export.panel')}>
-    <h3 class="title">{i18n.t('export.panel')}</h3>
+    <header class="head">
+      <h3 class="title">{i18n.t('export.panel')}</h3>
+      {#if template}
+        <p class="sub">{i18n.t('export.withTemplate', { name: template.name[lang] })}</p>
+      {/if}
+    </header>
 
     {#if !info.compiler}
       <Callout tone="danger">{i18n.t('export.noCompiler')}</Callout>
     {/if}
 
+    <!-- What the last export did comes first: it is what the writer is waiting for. -->
+    {#if result}
+      <div class="result" role="status" aria-live="polite">
+        {#if result.ok}
+          <p class="done">
+            <span class="mark ok"><Icon name="circle-check" size={16} /></span>
+            <span>
+              {i18n.t('export.done', { path: result.path })}
+              {#if result.pages !== null}· {i18n.t('export.pages', { count: result.pages })}{/if}
+            </span>
+          </p>
+        {:else if result.reason === 'no_compiler'}
+          <Callout tone="danger">{i18n.t('export.noCompiler')}</Callout>
+        {:else if result.reason === 'failed'}
+          <Callout tone="danger">{i18n.t('export.failed')}</Callout>
+        {/if}
+        {#if result.diagnostics.length > 0}
+          <ul class="diagnostics">
+            {#each result.diagnostics as d, index (index)}
+              <li class={d.severity}>
+                {#if d.sheet}
+                  <Link onclick={() => void exporting.goTo(d.sheet!, d.line)}>
+                    {project.sheetLabel(d.sheet)} · {i18n.t('export.line', { line: d.line })}
+                  </Link>
+                {:else}
+                  <span class="where">{i18n.t('export.template')}</span>
+                {/if}
+                <span class="message selectable">{d.message}</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {/if}
+
     {#if template}
-      <Section title={template.name[lang]} level={4}>
-        <Form stacked>
-          <Checkbox
-            checked={hyphenate}
-            disabled={exporting.busy}
-            onchange={(on) => (profile.hyphenate = on)}
-          >
-            {i18n.t('export.hyphenate')}
-          </Checkbox>
+      <Section title={i18n.t('export.layout')} level={4}>
+        <Form labels="start">
           <FormRow label={i18n.t('export.binding')} for="export-binding">
             <TextField
               id="export-binding"
@@ -74,17 +115,8 @@
           {#if bindingRefused}
             <p class="refused" role="alert">{i18n.t('export.binding.invalid')}</p>
           {/if}
-          {#each template.options.filter((o) => !o.hidden) as option (option.id)}
-            {#if option.type === 'bool'}
-              <Checkbox
-                checked={profile.options[option.id] === true ||
-                  (profile.options[option.id] === undefined && option.default)}
-                disabled={exporting.busy}
-                onchange={(on) => (profile.options[option.id] = on)}
-              >
-                {option.label[lang]}
-              </Checkbox>
-            {:else if option.type === 'enum'}
+          {#each offered as option (option.id)}
+            {#if option.type === 'enum'}
               <FormRow label={option.label[lang]} for="export-option-{option.id}">
                 <Select
                   id="export-option-{option.id}"
@@ -116,7 +148,7 @@
                   })}
                 </p>
               {/if}
-            {:else}
+            {:else if option.type !== 'bool'}
               <FormRow label={option.label[lang]} for="export-option-{option.id}">
                 <TextField
                   id="export-option-{option.id}"
@@ -128,19 +160,47 @@
             {/if}
           {/each}
         </Form>
+        <div class="checks">
+          <Checkbox
+            checked={hyphenate}
+            disabled={exporting.busy}
+            onchange={(on) => (profile.hyphenate = on)}
+          >
+            {i18n.t('export.hyphenate')}
+          </Checkbox>
+        </div>
       </Section>
+
+      {#if offered.some((o) => o.type === 'bool')}
+        <Section title={i18n.t('export.parts')} level={4}>
+          <div class="checks">
+            {#each offered as option (option.id)}
+              {#if option.type === 'bool'}
+                <Checkbox
+                  checked={profile.options[option.id] === true ||
+                    (profile.options[option.id] === undefined && option.default)}
+                  disabled={exporting.busy}
+                  onchange={(on) => (profile.options[option.id] = on)}
+                >
+                  {option.label[lang]}
+                </Checkbox>
+              {/if}
+            {/each}
+          </div>
+        </Section>
+      {/if}
     {/if}
 
     <!-- The colours of the template, which the elements name (the accent of headings, links). -->
     <Section title={i18n.t('export.colours')} level={4}>
       {#if exporting.detail?.builtin}
-        <p class="quiet">{i18n.t('templates.readonly')}</p>
+        <ReadonlyNote />
       {/if}
-      <PropertiesPanel only="palette" />
+      <div class="palette"><PropertiesPanel only="palette" /></div>
     </Section>
 
     <Section title={i18n.t('export.content')} level={4}>
-      <Form stacked>
+      <Form labels="start">
         <FormRow label={i18n.t('export.citationStyle')} for="export-style">
           <Select
             id="export-style"
@@ -179,18 +239,28 @@
         {#if !anyOpen}
           <p class="quiet">{i18n.t('export.none')}</p>
         {:else}
-          <ul>
+          <ul class="open">
             {#if warnings.comments > 0}
-              <li>{i18n.t('export.warn.comments', { count: warnings.comments })}</li>
+              <li>
+                {@render flag()}
+                <span>{i18n.t('export.warn.comments', { count: warnings.comments })}</span>
+              </li>
             {/if}
             {#if warnings.missingCitations > 0}
-              <li>{i18n.t('export.warn.missing', { count: warnings.missingCitations })}</li>
+              <li>
+                {@render flag()}
+                <span>{i18n.t('export.warn.missing', { count: warnings.missingCitations })}</span>
+              </li>
             {/if}
             {#if warnings.checks > 0}
-              <li>{i18n.t('export.warn.checks', { count: warnings.checks })}</li>
+              <li>
+                {@render flag()}
+                <span>{i18n.t('export.warn.checks', { count: warnings.checks })}</span>
+              </li>
             {/if}
             {#if warnings.noAuthors}
               <li>
+                {@render flag()}
                 <Link onclick={() => void exporting.goToTitelei()}>
                   {i18n.t('export.warn.noAuthors')}
                   · {i18n.t('titelei.title')}
@@ -199,6 +269,7 @@
             {/if}
             {#each warnings.unknownCitations as citation, index (index)}
               <li>
+                {@render flag()}
                 <Link onclick={() => void exporting.goTo(citation.sheet, citation.line)}>
                   {i18n.t('export.warn.unknown', { key: citation.key })}
                   · {project.sheetLabel(citation.sheet)}
@@ -207,6 +278,7 @@
             {/each}
             {#each warnings.emptyImages as image, index (index)}
               <li>
+                {@render flag()}
                 <Link onclick={() => void exporting.goTo(image.sheet, image.line)}>
                   {i18n.t('export.warn.emptyImage')}
                   · {project.sheetLabel(image.sheet)}
@@ -215,6 +287,7 @@
             {/each}
             {#each exporting.fontIssues as problem, index (index)}
               <li>
+                {@render flag()}
                 <Link onclick={() => (exporting.elementId = problem.element)}>
                   {i18n.t('export.warn.font', {
                     element: elementById(problem.element)?.[lang] ?? problem.element,
@@ -225,6 +298,7 @@
             {/each}
             {#each warnings.references as reference, index (index)}
               <li>
+                {@render flag()}
                 <Link onclick={() => void exporting.goTo(reference.sheet, reference.line)}>
                   {i18n.t('export.warn.reference', { label: reference.label })}
                   · {project.sheetLabel(reference.sheet)}
@@ -235,37 +309,6 @@
         {/if}
       </Section>
     {/if}
-
-    {#if result}
-      <div class="result" role="status" aria-live="polite">
-        {#if result.ok}
-          <p class="done">
-            {i18n.t('export.done', { path: result.path })}
-            {#if result.pages !== null}· {i18n.t('export.pages', { count: result.pages })}{/if}
-          </p>
-        {:else if result.reason === 'no_compiler'}
-          <Callout tone="danger">{i18n.t('export.noCompiler')}</Callout>
-        {:else if result.reason === 'failed'}
-          <Callout tone="danger">{i18n.t('export.failed')}</Callout>
-        {/if}
-        {#if result.diagnostics.length > 0}
-          <ul class="diagnostics">
-            {#each result.diagnostics as d, index (index)}
-              <li class={d.severity}>
-                {#if d.sheet}
-                  <Link onclick={() => void exporting.goTo(d.sheet!, d.line)}>
-                    {project.sheetLabel(d.sheet)} · {i18n.t('export.line', { line: d.line })}
-                  </Link>
-                {:else}
-                  <span class="where">{i18n.t('export.template')}</span>
-                {/if}
-                <span class="message selectable">{d.message}</span>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </div>
-    {/if}
   </section>
 {/if}
 
@@ -273,26 +316,72 @@
   .panel {
     min-width: 0;
   }
+  /* The title, the template it is for, and what is open, in one block. */
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-16);
+  }
   .title {
-    margin: 0 0 var(--sp-16);
+    margin: 0;
     color: var(--color-label);
     font: var(--type-title);
+  }
+  .sub {
+    margin: 0;
+    color: var(--color-label-secondary);
+    font: var(--type-body);
+  }
+  .mark {
+    display: inline-flex;
+    flex: none;
+    color: var(--color-warning);
+  }
+  .mark.ok {
+    color: var(--color-success);
   }
   .panel > :global(.callout) {
     margin-bottom: var(--sp-16);
   }
+  /* The first section follows the head: no space above it. */
+  .head + :global(.section),
+  .result + :global(.section),
+  .panel > :global(.callout) + :global(.section) {
+    padding-top: 0;
+  }
+  /* The colours bring a section of their own: its space below is the outer section's. */
+  .palette :global(.section:last-child) {
+    padding-bottom: 0;
+  }
+  .checks {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-8);
+  }
   ul {
     display: flex;
     flex-direction: column;
-    gap: var(--sp-4);
+    gap: var(--sp-8);
     margin: 0;
     padding: 0;
     list-style: none;
     color: var(--color-label);
     font: var(--type-body);
   }
+  .open li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-8);
+  }
+  .open .mark {
+    padding-top: 1px;
+  }
+  /* A refusal stands under the field it is about, in the column of the fields. */
   .refused {
-    margin: 0;
+    grid-column: 2;
+    margin: calc(var(--sp-8) * -1) 0 0;
     color: var(--color-danger);
     font: var(--type-caption);
   }
@@ -306,14 +395,21 @@
     display: flex;
     flex-direction: column;
     gap: var(--sp-12);
-    padding: var(--sp-16) 0;
-    border-top: 1px solid var(--color-separator);
+    padding-bottom: var(--sp-16);
+    border-bottom: 1px solid var(--color-separator);
+    margin-bottom: var(--sp-16);
   }
   .done {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-8);
     margin: 0;
     color: var(--color-label);
     font: var(--type-body);
     overflow-wrap: anywhere;
+  }
+  .done .mark {
+    padding-top: 1px;
   }
   .diagnostics {
     gap: var(--sp-8);

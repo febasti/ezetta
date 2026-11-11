@@ -56,7 +56,7 @@ export function setsToToml(sets: Sets): string {
     const values = sets[def.id]
     if (values && Object.keys(values).length > 0) element[def.id] = values
   }
-  return stringify({ engine: 2, element })
+  return stringify({ engine: 3, element })
 }
 
 /** `sets` with one value set, or with it removed (`null`: back to what the base says). A value that does not fit is refused. */

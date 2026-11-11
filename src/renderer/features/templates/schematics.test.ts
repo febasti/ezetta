@@ -81,7 +81,7 @@ describe('the drawings of the template editor', () => {
                   : [s.x, s.y, s.x + s.w, s.y + s.h]
             expect(Math.min(x1, x2), `${id} ${s.kind}`).toBeGreaterThanOrEqual(0)
             expect(Math.min(y1, y2), `${id} ${s.kind}`).toBeGreaterThanOrEqual(0)
-            expect(Math.max(x1, x2), `${id} ${s.kind}`).toBeLessThanOrEqual(128)
+            expect(Math.max(x1, x2), `${id} ${s.kind}`).toBeLessThanOrEqual(d.w ?? 128)
             expect(Math.max(y1, y2), `${id} ${s.kind}`).toBeLessThanOrEqual(d.h)
           }
   })

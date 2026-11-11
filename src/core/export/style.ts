@@ -137,6 +137,22 @@ export function elementTables(doc: unknown): Record<string, unknown> {
     const { indent_left: indent, ...rest } = list
     out['list'] = { list_indent: indent, level_indent: indent, ...rest }
   }
+  // A header or footer said whether the chapter or section it prints has its number (`show_number`,
+  // on by default); that became two more kinds of place, "1 Kapitel" and "1.1 Abschnitt".
+  // A style written before (`engine` below 3) that names `chapter` or `section` printed its number
+  // unless it said `show_number = false`: it is read as the kind that does. A style that only
+  // turned the number off, naming no place, cannot be mapped (the place comes from its base) and
+  // loses it.
+  const legacyRunning = !(isTable(doc) && typeof doc['engine'] === 'number' && doc['engine'] >= 3)
+  for (const id of ['header', 'footer']) {
+    const table = out[id]
+    if (!isTable(table)) continue
+    const { show_number: shown, ...rest } = table
+    if (legacyRunning && shown !== false)
+      for (const place of ['slot_left', 'slot_center', 'slot_right'])
+        if (rest[place] === 'chapter' || rest[place] === 'section') rest[place] += '_number'
+    out[id] = rest
+  }
   // The bar at the left of a block quote became a line on any side, the left one among them.
   const quote = out['quote']
   if (isTable(quote) && Object.keys(BAR_NAMES).some((old) => old in quote))

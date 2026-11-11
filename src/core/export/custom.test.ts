@@ -51,7 +51,22 @@ describe('sets', () => {
   it('writes TOML that reads back to the same values', () => {
     const sets = { body: { font: 'A B', justify: false }, heading_1: { size: '2em' } }
     expect(parseSets(setsToToml(sets))).toEqual(sets)
-    expect(setsToToml({})).toContain('engine = 2')
+    expect(setsToToml({})).toContain('engine = 3')
+  })
+
+  it('reads the number a chapter or section had in a header before it was part of the place', () => {
+    // Written before: `chapter` printed its number unless `show_number = false` said not to.
+    const old = (header: string) => parseSets(`engine = 2\n[element.header]\n${header}`)['header']
+    expect(old('slot_left = "chapter"\nslot_right = "section"')).toEqual({
+      slot_left: 'chapter_number',
+      slot_right: 'section_number',
+    })
+    expect(old('slot_left = "chapter"\nshow_number = false')).toEqual({ slot_left: 'chapter' })
+    expect(old('slot_center = "page"\nshow_number = true')).toEqual({ slot_center: 'page' })
+    // A style of today keeps what it says.
+    expect(parseSets('engine = 3\n[element.footer]\nslot_left = "chapter"')['footer']).toEqual({
+      slot_left: 'chapter',
+    })
   })
 
   it('resolves a written style like a bundled one', () => {

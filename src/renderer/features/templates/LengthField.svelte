@@ -102,7 +102,7 @@
     position: relative;
     display: inline-flex;
     align-items: center;
-    width: 72px;
+    width: 84px;
     height: var(--control-md);
     border: 1px solid var(--color-field-border);
     border-radius: var(--r-sm);

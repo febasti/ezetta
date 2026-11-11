@@ -12,6 +12,7 @@
   import Section from '../kit/Section.svelte'
   import NumberField from '../kit/NumberField.svelte'
   import ChoiceCards from '../kit/ChoiceCards.svelte'
+  import ToggleCards from '../kit/ToggleCards.svelte'
   import Segmented from '../kit/Segmented.svelte'
   import Select from '../kit/Select.svelte'
   import Switch from '../kit/Switch.svelte'
@@ -56,6 +57,7 @@
   let name = $state('Dissertation')
   let empty = $state('')
   let spacing = $state(1.65)
+  let cards = $state({ mirror: true, skip: false, number: true })
   let look = $state<'light' | 'dark'>('light')
   let language = $state<'de' | 'en'>('de')
   let theme = $state<'light' | 'dark' | 'sepia'>('light')
@@ -182,6 +184,33 @@
           { value: 'light', label: 'Hell', icon: 'sun' },
           { value: 'dark', label: 'Dunkel', icon: 'moon' },
         ]}
+      />
+      <ToggleCards
+        label="Kopfzeile"
+        options={[
+          {
+            key: 'mirror',
+            label: 'Spiegeln',
+            name: 'Auf geraden Seiten spiegeln',
+            icon: 'mirror',
+            checked: cards.mirror,
+          },
+          {
+            key: 'skip',
+            label: 'Nicht auf Kapitelseiten',
+            name: 'Nicht auf Kapitelseiten',
+            icon: 'eye-off',
+            checked: cards.skip,
+          },
+          {
+            key: 'number',
+            label: 'Kapitelnummer',
+            name: 'Nummer des Kapitels zeigen',
+            icon: 'number-sign',
+            checked: cards.number,
+          },
+        ]}
+        onchange={(key, on) => (cards = { ...cards, [key]: on })}
       />
       <NumberField
         label="Zeilenabstand"

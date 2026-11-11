@@ -228,10 +228,10 @@
     if kind == "page" { page-label() }
     else if kind == "title" { meta.title }
     else if kind == "author" { meta.at("author", default: "") }
-    else if kind == "chapter" { heading-label(heading-before(1), c.show_number) }
-    else if kind == "section" {
+    else if kind in ("chapter", "chapter_number") { heading-label(heading-before(1), kind == "chapter_number") }
+    else if kind in ("section", "section_number") {
       let (chapter, section) = (heading-before(1), heading-before(2))
-      if section != none and (chapter == none or is-after(section, chapter)) { heading-label(section, c.show_number) } else { none }
+      if section != none and (chapter == none or is-after(section, chapter)) { heading-label(section, kind == "section_number") } else { none }
     } else { none }
   }
   let bar(c, divider-side) = context {
