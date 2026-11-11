@@ -96,16 +96,7 @@ export interface Schematic {
 const at = (prop: string, de: Words, en: Words): Field => ({ prop, de, en })
 export const words = (w: Words, v: Values): string => (typeof w === 'string' ? w : w(v))
 
-/** Lines of text, one under another, each as wide as given (a fraction of `w`). */
-const lines = (x: number, y: number, w: number, widths: number[], gap = 7): Shape[] =>
-  widths.map((f, i) => ({ kind: 'bar', x, y: y + i * gap, w: Math.round(w * f), h: 3 }))
-
 const W = 128
-/** The paper of a drawing, and the text on it: from TL to TR. */
-const sheet = (h: number): Shape => ({ kind: 'sheet', x: 10, y: 6, w: 108, h: h - 12 })
-const TL = 20
-const TR = 108
-const TW = TR - TL
 
 /** Whether a length is more than nothing. */
 const some = (v: unknown): boolean =>
@@ -296,91 +287,9 @@ const PAPER_SIZE: Schematic = {
   places: { t: at('page_width', 'Breite', 'width'), l: at('page_height', 'Höhe', 'height') },
 }
 
-/** Footnotes: at the foot of the page under a rule, or beside the text in the margin. */
-const FOOTNOTES: Schematic = {
-  draw(v) {
-    const h = 78
-    const shapes: Shape[] = [sheet(h)]
-    const marks: Mark[] = []
-    const note = (x: number, y: number, w: number) =>
-      shapes.push(
-        { kind: 'bar', x, y, w: 3, h: 3, tone: 'strong' },
-        { kind: 'bar', x: x + 6, y, w, h: 3 },
-        { kind: 'bar', x: x + 6, y: y + 6, w: Math.round(w * 0.7), h: 3 },
-      )
-    if (v['placement'] === 'margin') {
-      const [tx2, mx1] = [74, 82]
-      shapes.push(...lines(TL, 12, tx2 - TL, [1, 1, 1, 1, 1, 1, 1, 0.6]))
-      shapes.push({ kind: 'bar', x: 58, y: 17, w: 2.5, h: 2.5, tone: 'strong' })
-      note(mx1, 16, TR - mx1 - 6)
-      note(mx1, 36, TR - mx1 - 6)
-      marks.push(
-        {
-          prop: 'margin_gap',
-          kind: 'h',
-          x: tx2,
-          y: 66,
-          len: mx1 - tx2,
-          band: band(tx2, 12, mx1 - tx2, 50),
-        },
-        {
-          prop: 'margin_width',
-          kind: 'h',
-          x: mx1,
-          y: 9,
-          len: TR - mx1,
-          band: band(mx1, 16, TR - mx1, 29),
-        },
-        { prop: 'note_gap', kind: 'v', x: 113, y: 25, len: 11, band: band(mx1, 25, TR - mx1, 11) },
-      )
-    } else {
-      shapes.push(...lines(TL, 12, TW, [1, 0.8]))
-      shapes.push({
-        kind: 'bar',
-        x: TL + Math.round(TW * 0.8) + 1,
-        y: 17,
-        w: 2.5,
-        h: 2.5,
-        tone: 'strong',
-      })
-      const style = (v['separator_style'] as string) ?? 'solid'
-      if (style !== 'none')
-        shapes.push({
-          kind: 'line',
-          x1: TL,
-          y1: 33.5,
-          x2: TL + 32,
-          y2: 33.5,
-          style: style as 'solid' | 'dashed' | 'dotted',
-        })
-      note(TL + 6, 42, TW - 12)
-      note(TL + 6, 60, TW - 12)
-      marks.push(
-        { prop: 'rule_length', kind: 'h', x: TL, y: 28, len: 32 },
-        { prop: 'rule_width', kind: 'line', x1: TL, y1: 33.5, x2: TL + 32, y2: 33.5 },
-        { prop: 'note_gap', kind: 'v', x: 113, y: 51, len: 9, band: band(TL, 51, TW, 9) },
-        // The indent before the number, on the row of the first note, ending at its number.
-        { prop: 'note_indent', kind: 'h', x: TL, y: 43, len: 6, band: band(TL, 40, 6, 29) },
-      )
-    }
-    return { h, shapes, marks }
-  },
-  places: {
-    tl: at('placement', 'Ort', 'place'),
-    t: at('rule_length', 'Länge der Linie', 'rule length'),
-    b: at('separator_style', 'Linie', 'rule'),
-    bl: at('rule_width', 'Stärke', 'weight'),
-    l: at('note_indent', 'Einzug', 'indent'),
-    r: at('note_gap', 'zwischen', 'between'),
-    tr: at('margin_width', 'Randbreite', 'margin width'),
-    br: at('margin_gap', 'zum Text', 'to the text'),
-  },
-}
-
 /** The drawings of each element, in the order they come. */
 export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
   page: [PAPER_SIZE, PAGE],
-  footnote: [FOOTNOTES],
 }
 
 /**
@@ -484,6 +393,24 @@ export const TABLES: Readonly<Record<string, readonly string[]>> = {
     'stripe_fill',
   ],
   table_caption: ['caption_position', 'caption_gap', 'align'],
+}
+
+/**
+ * The values of footnotes that their own editor sets (`FootnotePage.svelte`): where the notes stand, the
+ * column in the margin, the space between the notes and their indent, and the rule above them.
+ */
+export const NOTES: Readonly<Record<string, readonly string[]>> = {
+  footnote: [
+    'placement',
+    'margin_width',
+    'margin_gap',
+    'note_gap',
+    'note_indent',
+    'separator_style',
+    'rule_width',
+    'rule_length',
+    'separator_color',
+  ],
 }
 
 export const placedProps = (s: Schematic): string[] => Object.values(s.places).map((p) => p!.prop)

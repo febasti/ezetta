@@ -72,11 +72,6 @@
         <path class="stroke thin" d="M7.5 4.5h4.5M7.5 7h4.5M7.5 9.5h4.5M7.5 12h4.5" />
         <rect class="fill" x="13" y="4" width="2" height="5" rx="0.5" />
       {/if}
-    {:else if prop === 'separator_style'}
-      {#if value !== 'none'}
-        <path class="stroke {value}" d="M3 5h9" />
-      {/if}
-      <path class="stroke thin" d="M3 9h16M3 12.5h11" />
     {:else if prop === 'number_style'}
       <rect class="fill" x="3" y="3" width="4" height="4" rx="0.5" />
       <rect class="fill soft" x="9" y="4" width="10" height="2.5" rx="1" />
@@ -136,14 +131,6 @@
   }
   .stroke.faint {
     opacity: 0.4;
-  }
-  .stroke.dashed {
-    stroke-dasharray: 2 1.5;
-  }
-  .stroke.dotted {
-    stroke-dasharray: 0.01 2;
-    stroke-linecap: round;
-    stroke-width: 1.4;
   }
   .fill {
     fill: currentColor;

@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     ELEMENTS,
+    PROP_SECTIONS,
     SUB_ELEMENTS,
     propLabel,
     PROPS,
@@ -23,6 +24,7 @@
     FIGURES,
     HEADINGS,
     LISTS,
+    NOTES,
     PARAGRAPHS,
     QUOTES,
     RUNNING,
@@ -54,6 +56,7 @@
   import FigurePage from './FigurePage.svelte'
   import FramePage from './FramePage.svelte'
   import TablePage from './TablePage.svelte'
+  import FootnotePage from './FootnotePage.svelte'
   import EpigraphPage from './EpigraphPage.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Section from '../../ui/kit/Section.svelte'
@@ -616,6 +619,44 @@
   </div>
 {/snippet}
 
+{#snippet noteValues(element: ElementDef, values: Readonly<Record<string, unknown>>)}
+  <!-- The values of the notes that are not a place on their page: at the foot, the look of the rule; in the margin, the column. -->
+  {#if values['placement'] === 'margin'}
+    <div class="look wrap">
+      {#each ['margin_width', 'margin_gap', 'note_gap'] as id (id)}
+        <div class="cell">
+          <label class="short" for="prop-{element.id}-{id}"
+            >{propLabel(element.id, PROPS[id]!, lang)}</label
+          >
+          <span class="part length">{@render controlOf(element, id)}</span>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <!-- The rule above the notes has a title of its own, as its group had. -->
+    <Section
+      title={PROP_SECTIONS.find((g) => g.id === 'separator')?.[lang]}
+      level={4}
+      region={false}
+    >
+      <div class="look wrap">
+        <div class="cell">
+          <span class="short">{propLabel(element.id, PROPS['separator_style']!, lang)}</span>
+          {@render controlOf(element, 'separator_style')}
+        </div>
+        {#each ['rule_width', 'rule_length', 'separator_color'].filter( (id) => isShown(id, values) ) as id (id)}
+          <div class="cell">
+            <label class="short" for="prop-{element.id}-{id}"
+              >{propLabel(element.id, PROPS[id]!, lang)}</label
+            >
+            <span class="part {PROPS[id]!.type}">{@render controlOf(element, id)}</span>
+          </div>
+        {/each}
+      </div>
+    </Section>
+  {/if}
+{/snippet}
+
 {#snippet sections(element: ElementDef)}
   {@const shape = panelLayout(element)}
   {@const values = valuesOf(element)}
@@ -628,8 +669,10 @@
     {@const figurePage = element.id === 'figure' && group.id === 'arrangement'}
     {@const framePage = element.id === 'figure' && group.id === 'frame'}
     {@const tablePage = element.id === 'table' && group.id === 'table'}
+    {@const notesPage = (NOTES[element.id] ?? []).length > 0 && group.id === 'placement'}
     {@const custom = [
       ...(RUNNING[element.id] ?? []),
+      ...(NOTES[element.id] ?? []),
       ...(TABLES[element.id] ?? []),
       ...(FIGURES[element.id] ?? []),
       ...(LISTS[element.id] ?? []),
@@ -642,7 +685,7 @@
     {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
-    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists || figurePage || framePage || tablePage}
+    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists || figurePage || framePage || tablePage || notesPage}
       <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
         <!-- A drawing that is what a group is about (the page) comes first; one that only shows what
              a choice above it leads to (a paper of its own size) comes after the choice. -->
@@ -650,6 +693,17 @@
           {#each drawn as schematic, i (i)}
             {@render drawing(element, schematic)}
           {/each}
+        {/if}
+        {#if notesPage}
+          <!-- Footnotes: a page with the notes at its foot or in its margin, each value where it is set. -->
+          <FootnotePage
+            {element}
+            {values}
+            control={controlOf}
+            measure={measureCm(editor.resolved['page'] ?? {})}
+            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
+          />
+          {@render noteValues(element, values)}
         {/if}
         {#if tablePage}
           <!-- A table: a page with the table drawn as the template sets it and its caption, the values under it. -->
@@ -1122,6 +1176,10 @@
   .line-look .short,
   .caption {
     margin: 0;
+  }
+  .look.wrap {
+    flex-wrap: wrap;
+    row-gap: var(--sp-8);
   }
   .look {
     display: flex;

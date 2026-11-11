@@ -714,6 +714,7 @@
   "templates.quote.look": "Look of the lines",
   "templates.list.indent": "List",
   "templates.figure.caption": "Caption",
+  "templates.notes.indent": "Indent",
   "templates.table.cells": "Cells",
   "templates.table.header": "Header",
   "templates.table.stripes": "Every second row",

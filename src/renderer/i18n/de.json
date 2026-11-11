@@ -714,6 +714,7 @@
   "templates.quote.look": "Aussehen der Linien",
   "templates.list.indent": "Liste",
   "templates.figure.caption": "Beschriftung",
+  "templates.notes.indent": "Einzug",
   "templates.table.cells": "Zellen",
   "templates.table.header": "Kopfzeile",
   "templates.table.stripes": "Jede zweite Zeile",
