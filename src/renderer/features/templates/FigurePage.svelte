@@ -58,15 +58,19 @@
   </div>
 {/snippet}
 
-<!-- The choices that are about the figure as a whole, over the page. -->
+<!-- The choices over the page: the caption's position and alignment, and the figure's alignment. -->
 <div class="choices">
-  <div class="choice">
-    <span class="short">{i18n.t('templates.figure.caption')}</span>
-    {@render control(caption, 'caption_position')}
-  </div>
-  <div class="choice">
+  <div class="choice figure">
     <span class="short">{propLabel(element.id, PROPS['align']!, lang)}</span>
     {@render control(element, 'align')}
+  </div>
+  <!-- The caption: where it stands, and where its lines stand. -->
+  <div class="choice">
+    <span class="short">{i18n.t('templates.figure.caption')}</span>
+    <div class="pair">
+      {@render control(caption, 'caption_position')}
+      {@render control(caption, 'align')}
+    </div>
   </div>
 </div>
 
@@ -115,6 +119,14 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--sp-4);
+  }
+  /* The figure's own alignment comes after the caption's choices on the page, first in the order of the panel. */
+  .choice.figure {
+    order: 2;
+  }
+  .pair {
+    display: flex;
+    gap: var(--sp-8);
   }
   /* The page lies on the panel's ground, as on a desk. */
   .desk {

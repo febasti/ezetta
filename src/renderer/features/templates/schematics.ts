@@ -110,7 +110,6 @@ const TW = TR - TL
 /** Whether a length is more than nothing. */
 const some = (v: unknown): boolean =>
   typeof v === 'string' && v.trim() !== '' && !/^[0.]*[a-z%]*$/i.test(v.trim())
-const filled = (v: unknown): boolean => typeof v === 'string' && v !== ''
 /** A length in centimetres, or null. */
 function cm(v: unknown): number | null {
   const m = typeof v === 'string' ? /^\s*([\d.]+)\s*(cm|mm|in|pt)\s*$/.exec(v) : null
@@ -158,10 +157,6 @@ function ratio(v: Values): number {
   const [w, h] = paper(v)
   return Math.min(2.5, Math.max(0.4, w / h))
 }
-const align = (v: unknown, inner: number, outer: number, start: number): number =>
-  Math.round(
-    v === 'center' ? start + (outer - inner) / 2 : v === 'right' ? start + outer - inner : start,
-  )
 const band = (x: number, y: number, w: number, h: number): Rect => ({ x, y, w, h })
 
 /**
@@ -301,135 +296,6 @@ const PAPER_SIZE: Schematic = {
   places: { t: at('page_width', 'Breite', 'width'), l: at('page_height', 'Höhe', 'height') },
 }
 
-/** A caption with what it belongs to: above or below it, how wide, how set, how far from it. */
-const caption = (table: boolean): Schematic => ({
-  draw(v) {
-    const h = 66
-    const above = v['caption_position'] === 'above'
-    const fit = v['caption_fit'] === true
-    const [ow, oh] = [46, 26]
-    const ox = Math.round(TL + (TW - ow) / 2)
-    const [capW, capX] = fit ? [ow, ox] : [TW, TL]
-    const [capY, objY] = above ? [12, 30] : [44, 12]
-    const gapY = above ? 21 : objY + oh
-    const gapLen = above ? objY - gapY : capY - gapY
-    const shapes: Shape[] = [sheet(h)]
-    if (table) {
-      for (const [r, y] of [0, 9, 18].entries())
-        for (const c of [0, 1, 2])
-          shapes.push({
-            kind: 'bar',
-            x: ox + 3 + c * 15,
-            y: objY + y + 3,
-            w: 10,
-            h: 2.5,
-            tone: r === 0 ? 'strong' : 'text',
-          })
-      for (const y of [objY, objY + 9, objY + oh])
-        shapes.push({ kind: 'line', x1: ox, y1: y + 0.5, x2: ox + ow, y2: y + 0.5 })
-    } else shapes.push({ kind: 'picture', x: ox, y: objY, w: ow, h: oh })
-    for (const [i, f] of [1, 0.6].entries()) {
-      const w = Math.round(capW * f)
-      shapes.push({
-        kind: 'bar',
-        x: align(v['align'] ?? 'center', w, capW, capX),
-        y: capY + i * 6,
-        w,
-        h: 3,
-        tone: 'strong',
-      })
-    }
-    return {
-      h,
-      shapes,
-      marks: [
-        {
-          prop: 'caption_gap',
-          kind: 'v',
-          x: 113,
-          y: gapY,
-          len: gapLen,
-          band: band(TL, gapY, TW, gapLen),
-        },
-      ],
-    }
-  },
-  places: {
-    t: at('caption_position', 'Stellung', 'position'),
-    r: at('caption_gap', 'Abstand', 'distance'),
-    l: at('align', 'Ausrichtung', 'alignment'),
-    b: at(
-      'caption_fit',
-      table ? 'so breit wie die Tabelle' : 'so breit wie das Bild',
-      table ? 'as wide as the table' : 'as wide as the picture',
-    ),
-  },
-})
-
-/** A table: its rules, the ground of its header and stripes, the room in a cell. */
-const TABLE: Schematic = {
-  draw(v) {
-    const h = 70
-    const style = (v['border_style'] as string) ?? 'rows'
-    const [x1, x2] = [24, 104]
-    const ys = [11, 25, 39, 53]
-    const cw = (x2 - x1) / 3
-    const shapes: Shape[] = [sheet(h)]
-    if (filled(v['header_fill']))
-      shapes.push({ kind: 'bar', tone: 'tint', ...band(x1, ys[0]!, x2 - x1, 14) })
-    if (filled(v['stripe_fill']))
-      shapes.push({ kind: 'bar', tone: 'tint', ...band(x1, ys[2]!, x2 - x1, 14) })
-    for (const [r, y] of ys.slice(0, 3).entries())
-      for (const c of [0, 1, 2]) {
-        const w = r === 0 ? 14 : 11
-        shapes.push({
-          kind: 'bar',
-          x: align(v['cell_align'], w, cw - 12, x1 + c * cw + 6),
-          y: y + 5.5,
-          w,
-          h: 3,
-          tone: r === 0 && v['header_bold'] === true ? 'strong' : 'text',
-        })
-      }
-    const rule = (y: number, weight = 1) =>
-      shapes.push({ kind: 'line', x1, y1: y + 0.5, x2, y2: y + 0.5, weight })
-    if (style === 'rows') ys.forEach((y, i) => rule(y, i === 1 ? 1.5 : 1))
-    if (style === 'booktabs') {
-      rule(ys[0]!, 1.5)
-      rule(ys[1]!)
-      rule(ys[3]!, 1.5)
-    }
-    if (style === 'grid') {
-      ys.forEach((y) => rule(y))
-      for (const x of [x1, x1 + cw, x1 + 2 * cw, x2])
-        shapes.push({
-          kind: 'line',
-          x1: Math.round(x) + 0.5,
-          y1: ys[0]!,
-          x2: Math.round(x) + 0.5,
-          y2: ys[3]!,
-        })
-    }
-    return {
-      h,
-      shapes,
-      marks: [
-        { prop: 'rule_strong_width', kind: 'line', x1, y1: ys[1]! + 0.5, x2, y2: ys[1]! + 0.5 },
-        { prop: 'rule_width', kind: 'line', x1, y1: ys[2]! + 0.5, x2, y2: ys[2]! + 0.5 },
-        { prop: 'inset', kind: 'h', x: x1, y: 61, len: 6, band: band(x1, ys[1]!, 6, 28) },
-      ],
-    }
-  },
-  places: {
-    t: at('border_style', 'Linien', 'rules'),
-    tr: at('rule_strong_width', 'unter dem Kopf', 'under the header'),
-    br: at('rule_width', 'übrige', 'others'),
-    b: at('inset', 'Zellen innen', 'cell padding'),
-    l: at('cell_align', 'Ausrichtung', 'alignment'),
-    bl: at('header_bold', 'Kopf fett', 'bold header'),
-  },
-}
-
 /** Footnotes: at the foot of the page under a rule, or beside the text in the margin. */
 const FOOTNOTES: Schematic = {
   draw(v) {
@@ -514,8 +380,6 @@ const FOOTNOTES: Schematic = {
 /** The drawings of each element, in the order they come. */
 export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
   page: [PAPER_SIZE, PAGE],
-  table: [TABLE],
-  table_caption: [caption(true)],
   footnote: [FOOTNOTES],
 }
 
@@ -595,11 +459,32 @@ export const FIGURES: Readonly<Record<string, readonly string[]>> = {
     'frame_radius',
     'frame_distance',
   ],
-  figure_caption: ['caption_position', 'caption_gap'],
+  figure_caption: ['caption_position', 'caption_gap', 'align'],
 }
 
 /** Whether a length is more than nothing (a border that has a weight). */
 export const hasLength = (v: unknown): boolean => some(v)
+
+/**
+ * The values of a table and of its caption that their own editor sets (`TablePage.svelte`): the space
+ * around it, the kind of its rules and their weight, the alignment and the room in its cells, the ground of its header and
+ * stripes, and where its caption stands and its distance to it, so the panel's rows leave them out.
+ */
+export const TABLES: Readonly<Record<string, readonly string[]>> = {
+  table: [
+    'above',
+    'below',
+    'border_style',
+    'cell_align',
+    'inset',
+    'rule_width',
+    'rule_strong_width',
+    'header_fill',
+    'header_bold',
+    'stripe_fill',
+  ],
+  table_caption: ['caption_position', 'caption_gap', 'align'],
+}
 
 export const placedProps = (s: Schematic): string[] => Object.values(s.places).map((p) => p!.prop)
 

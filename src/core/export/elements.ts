@@ -1154,6 +1154,8 @@ export const ELEMENTS: readonly ElementDef[] = [
     [
       ...TEXT,
       'line_height',
+      'above',
+      'below',
       'border_style',
       'inset',
       'rule_width',

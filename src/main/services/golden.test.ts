@@ -707,6 +707,13 @@ const VARIANTS: {
     },
   },
   {
+    name: 'essay-tabellenabstand',
+    template: 'essay',
+    options: {},
+    // A table has its own space before and after it; without, it keeps the figure's.
+    sets: { table: { above: '2.5em', below: '3em' } },
+  },
+  {
     name: 'essay-listen',
     template: 'essay',
     options: {},

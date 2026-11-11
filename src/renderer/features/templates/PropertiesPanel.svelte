@@ -26,6 +26,7 @@
     PARAGRAPHS,
     QUOTES,
     RUNNING,
+    TABLES,
     isAbove,
     lengthCm,
     measureCm,
@@ -52,6 +53,7 @@
   import ListPage from './ListPage.svelte'
   import FigurePage from './FigurePage.svelte'
   import FramePage from './FramePage.svelte'
+  import TablePage from './TablePage.svelte'
   import EpigraphPage from './EpigraphPage.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Section from '../../ui/kit/Section.svelte'
@@ -593,6 +595,27 @@
   </div>
 {/snippet}
 
+{#snippet tableValues(element: ElementDef)}
+  <!-- The values of a table that are not a place on its page: its grounds, its bold header, its rules, its cells. -->
+  <div class="look">
+    {#each [['header_fill', 'templates.table.header'], ['stripe_fill', 'templates.table.stripes']] as const as [id, caption] (id)}
+      <div class="cell">
+        <label class="short" for="prop-{element.id}-{id}">{i18n.t(caption)}</label>
+        <span class="part color">{@render controlOf(element, id)}</span>
+      </div>
+    {/each}
+  </div>
+  {@render row(element, 'header_bold')}
+  <div class="look">
+    {#each [['rule_strong_width', 'templates.table.rule.header'], ['rule_width', 'templates.table.rule'], ['inset', 'templates.table.inset']] as const as [id, caption] (id)}
+      <div class="cell">
+        <label class="short" for="prop-{element.id}-{id}">{i18n.t(caption)}</label>
+        <span class="part length">{@render controlOf(element, id)}</span>
+      </div>
+    {/each}
+  </div>
+{/snippet}
+
 {#snippet sections(element: ElementDef)}
   {@const shape = panelLayout(element)}
   {@const values = valuesOf(element)}
@@ -604,8 +627,10 @@
     {@const lists = (LISTS[element.id] ?? []).length > 0 && group.id === 'list'}
     {@const figurePage = element.id === 'figure' && group.id === 'arrangement'}
     {@const framePage = element.id === 'figure' && group.id === 'frame'}
+    {@const tablePage = element.id === 'table' && group.id === 'table'}
     {@const custom = [
       ...(RUNNING[element.id] ?? []),
+      ...(TABLES[element.id] ?? []),
       ...(FIGURES[element.id] ?? []),
       ...(LISTS[element.id] ?? []),
       ...(EPIGRAPHS[element.id] ?? []),
@@ -617,7 +642,7 @@
     {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
-    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists || figurePage || framePage}
+    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists || figurePage || framePage || tablePage}
       <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
         <!-- A drawing that is what a group is about (the page) comes first; one that only shows what
              a choice above it leads to (a paper of its own size) comes after the choice. -->
@@ -625,6 +650,19 @@
           {#each drawn as schematic, i (i)}
             {@render drawing(element, schematic)}
           {/each}
+        {/if}
+        {#if tablePage}
+          <!-- A table: a page with the table drawn as the template sets it and its caption, the values under it. -->
+          {@const caption = elementById('table_caption')!}
+          <TablePage
+            {element}
+            {caption}
+            {values}
+            captionValues={valuesOf(caption)}
+            control={controlOf}
+            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
+          />
+          {@render tableValues(element)}
         {/if}
         {#if figurePage}
           <!-- A figure: a page with the figure and its caption between two pieces of text. -->

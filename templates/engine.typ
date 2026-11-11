@@ -395,6 +395,11 @@
   show figure.where(kind: table): set figure(supplement: if rf.supplement_table == none { auto } else { rf.supplement_table })
   set math.equation(supplement: if rf.supplement_equation == none { auto } else { rf.supplement_equation })
   show figure: set block(above: style.figure.above, below: style.figure.below)
+  // A table is a figure too: it keeps the figure's space around it unless it has its own.
+  show figure.where(kind: table): set block(
+    above: if style.table.above != none { style.table.above } else { style.figure.above },
+    below: if style.table.below != none { style.table.below } else { style.figure.below },
+  )
   // A picture, as a figure or on its own, stands where the template says, and its caption follows
   // unless it has an alignment of its own. It may have a border. An image in the line of the text (in
   // a box) or in a table has neither. A corner radius rounds the picture too when it touches the
