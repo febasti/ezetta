@@ -8,6 +8,7 @@
     isShown,
   } from '@core/export/elements'
   import { checkValue } from '@core/export/style'
+  import { headingNumberingOf } from '@core/export/numbering'
   import { exporting as editor, OPTIONS } from '../export/export.svelte'
   import { elementFont, findFamily, hasItalic, hasWeight } from '@core/export/fonts'
   import type { FontProblem } from '@core/export/fonts'
@@ -17,7 +18,7 @@
   import ChoiceGlyph from './ChoiceGlyph.svelte'
   import { GLYPHS } from './glyphs'
   import SchematicDrawing from './SchematicDrawing.svelte'
-  import { PARAGRAPHS, RUNNING, isAbove, panelLayout, words } from './schematics'
+  import { HEADINGS, PARAGRAPHS, RUNNING, isAbove, panelLayout, words } from './schematics'
   import type { Field, Schematic } from './schematics'
   import { numberIn } from '@core/export/template'
   import { fontProblemText } from './fontProblems'
@@ -33,6 +34,7 @@
   import ReadonlyNote from './ReadonlyNote.svelte'
   import RunningLine from './RunningLine.svelte'
   import ParagraphSetup from './ParagraphSetup.svelte'
+  import HeadingPage from './HeadingPage.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Segmented from '../../ui/kit/Segmented.svelte'
@@ -510,17 +512,39 @@
   </div>
 {/snippet}
 
+{#snippet headingLines(element: ElementDef, values: Readonly<Record<string, unknown>>)}
+  <!-- What a line of the heading looks like, there while the line is on. -->
+  {#each ['above', 'below'] as side (side)}
+    {#if values[`line_${side}`] === true}
+      {@const toggle = PROPS[`line_${side}`]!}
+      <div class="line-look">
+        <p class="short">{propLabel(element.id, toggle, lang)}</p>
+        <div class="grid">
+          {#each ['color', 'thickness', 'width', 'distance'] as field (field)}
+            {@render row(element, `line_${side}_${field}`, true)}
+          {/each}
+        </div>
+      </div>
+    {/if}
+  {/each}
+{/snippet}
+
 {#snippet sections(element: ElementDef)}
   {@const shape = panelLayout(element)}
   {@const values = valuesOf(element)}
   {#each shape.groups as group (group.id)}
     {@const paragraphs = (PARAGRAPHS[element.id] ?? []).some((id) => group.ids.includes(id))}
-    {@const custom = [...(RUNNING[element.id] ?? []), ...(PARAGRAPHS[element.id] ?? [])]}
+    {@const headings = (HEADINGS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
+    {@const custom = [
+      ...(RUNNING[element.id] ?? []),
+      ...(PARAGRAPHS[element.id] ?? []),
+      ...(HEADINGS[element.id] ?? []),
+    ]}
     {@const shown = group.ids.filter((id) => isShown(id, values) && !custom.includes(id))}
     {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
-    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs}
+    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings}
       <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
         <!-- A drawing that is what a group is about (the page) comes first; one that only shows what
              a choice above it leads to (a paper of its own size) comes after the choice. -->
@@ -528,6 +552,17 @@
           {#each drawn as schematic, i (i)}
             {@render drawing(element, schematic)}
           {/each}
+        {/if}
+        {#if headings}
+          <!-- A heading: a page with the heading between two pieces of text, each value where it is set. -->
+          <HeadingPage
+            {element}
+            {values}
+            control={controlOf}
+            refused={editor.refused}
+            numbering={headingNumberingOf(editor.resolved)}
+          />
+          {@render headingLines(element, values)}
         {/if}
         {#if paragraphs}
           <!-- The body text: two paragraphs, each value where it is set on them. -->
@@ -559,7 +594,7 @@
       </Section>
     {/if}
   {/each}
-  {#each shape.lines.filter((l) => !RUNNING[element.id] || l.toggle !== 'divider') as section (section.toggle)}
+  {#each shape.lines.filter( (l) => (l.toggle === 'divider' ? !RUNNING[element.id] : !HEADINGS[element.id]) ) as section (section.toggle)}
     {@const on = values[section.toggle] === true}
     <Section>
       {@render row(element, section.toggle)}
@@ -925,6 +960,14 @@
   }
   .settings :global(.cards) {
     flex: 1;
+  }
+  .line-look {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-8);
+  }
+  .line-look .short {
+    margin: 0;
   }
   .look {
     display: flex;

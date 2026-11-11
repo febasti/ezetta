@@ -280,94 +280,6 @@ const PAPER_SIZE: Schematic = {
   places: { t: at('page_width', 'Breite', 'width'), l: at('page_height', 'Höhe', 'height') },
 }
 
-/** The number of a heading: the text before and after it, the gap to the title, a long title. */
-const numbered =
-  (gap: boolean): Schematic['draw'] =>
-  (v) => {
-    const h = 54
-    const hanging = v['number_style'] === 'hanging'
-    const title = gap ? 66 : 60
-    return {
-      h,
-      shapes: [
-        sheet(h),
-        { kind: 'box', x: TL, y: 16, w: 10, h: 9, dashed: true },
-        { kind: 'bar', x: TL + 13, y: 16, w: 10, h: 9, tone: 'strong' },
-        { kind: 'box', x: TL + 26, y: 16, w: 10, h: 9, dashed: true },
-        { kind: 'bar', x: title, y: 18, w: TR - title, h: 5, tone: 'strong' },
-        { kind: 'bar', x: hanging || !gap ? title : TL, y: 30, w: 34, h: 5, tone: 'strong' },
-      ],
-      marks: [
-        { prop: 'number_prefix', kind: 'area', x: TL, y: 16, w: 10, h: 9 },
-        { prop: 'number_suffix', kind: 'area', x: TL + 26, y: 16, w: 10, h: 9 },
-        ...(gap
-          ? [
-              {
-                prop: 'number_gap',
-                kind: 'h' as const,
-                x: TL + 36,
-                y: 11,
-                len: title - TL - 36,
-                band: band(TL + 36, 16, title - TL - 36, 9),
-              },
-            ]
-          : []),
-      ],
-    }
-  }
-const NUMBER_ALL: Schematic = {
-  draw: numbered(true),
-  places: {
-    l: at('number_prefix', 'Text davor', 'text before'),
-    r: at('number_suffix', 'Text danach', 'text after'),
-    b: at('number_gap', 'Abstand', 'gap'),
-    t: at('number_style', 'lange Titel', 'long titles'),
-  },
-}
-const NUMBER_LEVEL: Schematic = {
-  draw: numbered(false),
-  places: { l: NUMBER_ALL.places.l!, r: NUMBER_ALL.places.r! },
-}
-
-/** A heading between text: the space before and after it, where it stands, a break before it. */
-const HEADING_SPACE: Schematic = {
-  draw(v) {
-    const h = 80
-    const hw = 54
-    const shapes: Shape[] = [
-      sheet(h),
-      ...lines(TL, 12, TW, [1, 0.7]),
-      { kind: 'bar', x: align(v['align'], hw, TW, TL), y: 35, w: hw, h: 6, tone: 'strong' },
-      ...lines(TL, 53, TW, [1, 1, 0.6]),
-    ]
-    // A new page before the heading: the text above it ends with its page.
-    if (v['break_before'] === 'page' || v['break_before'] === 'odd')
-      shapes.push({
-        kind: 'line',
-        x1: 10,
-        y1: 27.5,
-        x2: 118,
-        y2: 27.5,
-        style: 'dashed',
-        faint: true,
-      })
-    return {
-      h,
-      shapes,
-      marks: [
-        { prop: 'above', kind: 'v', x: 113, y: 22, len: 13, band: band(TL, 22, TW, 13) },
-        { prop: 'below', kind: 'v', x: 113, y: 41, len: 12, band: band(TL, 41, TW, 12) },
-      ],
-    }
-  },
-  places: {
-    tr: at('above', 'davor', 'above'),
-    br: at('below', 'danach', 'below'),
-    l: at('align', 'Ausrichtung', 'alignment'),
-    tl: at('break_before', 'Umbruch davor', 'break before'),
-  },
-}
-
 /** A block quote between text: its indents and the space around it, with its lines and ground. */
 const QUOTE_SPACE: Schematic = {
   draw(v) {
@@ -840,8 +752,6 @@ const FOOTNOTES: Schematic = {
 /** The drawings of each element, in the order they come. */
 export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
   page: [PAPER_SIZE, PAGE],
-  heading: [NUMBER_ALL],
-  ...Object.fromEntries([1, 2, 3, 4].map((n) => [`heading_${n}`, [HEADING_SPACE, NUMBER_LEVEL]])),
   quote: [QUOTE_SPACE, QUOTE_LINES],
   list: [LIST],
   figure: [FIGURE_SPACE, FRAME],
@@ -867,6 +777,18 @@ export const RUNNING: Readonly<Record<string, readonly string[]>> = Object.fromE
 export const PARAGRAPHS: Readonly<Record<string, readonly string[]>> = {
   body: ['justify', 'hyphenate', 'paragraph_spacing', 'first_line_indent'],
 }
+
+/**
+ * The values of a heading that its own editor sets (`HeadingPage.svelte`): where it stands, the
+ * space around it, the break before it, the text around its number, and the two lines (which the
+ * panel's line sections leave out), so the panel's rows leave them out too.
+ */
+export const HEADINGS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
+  ['heading', 'heading_1', 'heading_2', 'heading_3', 'heading_4'].map((id) => [
+    id,
+    ['align', 'above', 'below', 'break_before', 'number_prefix', 'number_suffix'],
+  ]),
+)
 
 export const placedProps = (s: Schematic): string[] => Object.values(s.places).map((p) => p!.prop)
 
