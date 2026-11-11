@@ -13,6 +13,8 @@
     id?: string
     size?: 'sm' | 'md'
     pressed?: boolean
+    /** A toggle that rests on the control's fill (as the menu beside it does), not on nothing. */
+    filled?: boolean
     /** For a button that shows or hides something (a disclosure): whether it is shown. */
     expanded?: boolean
     disabled?: boolean
@@ -24,6 +26,7 @@
     id,
     size = 'md',
     pressed,
+    filled = false,
     expanded,
     disabled = false,
     onclick,
@@ -32,6 +35,7 @@
 
 <button
   class="icon-button {size}"
+  class:filled
   type="button"
   {id}
   aria-label={label}
@@ -64,6 +68,9 @@
     width: var(--control-sm);
     height: var(--control-sm);
     border-radius: var(--r-sm);
+  }
+  .icon-button.filled {
+    background: var(--color-control);
   }
   .icon-button:hover:not(:disabled) {
     background: var(--color-control);

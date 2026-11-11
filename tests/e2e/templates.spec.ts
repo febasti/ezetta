@@ -211,10 +211,11 @@ test('any font of the system can be chosen, and what it lacks is greyed out and 
     const toml = () => readFile(style('mit-schrift'), 'utf8').catch(() => '')
     await choose(page, 'Fließtext')
 
-    // The field lists the fonts as it is typed into, each with what it has.
-    const font = editor(page).getByRole('combobox', { name: 'Schriftart' })
+    // The menu lists the fonts as it is searched, each with what it has.
+    const font = editor(page).getByRole('button', { name: 'Schriftart', exact: true })
+    const search = editor(page).getByRole('searchbox', { name: 'Schriftart suchen …' })
     await font.click()
-    await font.fill('Georg')
+    await search.fill('Georg')
     const georgia = editor(page).getByRole('option', { name: /^Georgia\b/ })
     await expect(georgia).toContainText('kursiv')
     await georgia.click()
@@ -226,7 +227,7 @@ test('any font of the system can be chosen, and what it lacks is greyed out and 
     await expect(weight.locator('option[value="thin"]')).toBeDisabled()
     // Nor has it small caps: the headings, which take the body text's font, cannot have them.
     await choose(page, 'Alle Überschriften')
-    await expect(editor(page).getByRole('combobox', { name: 'Schriftart' })).toHaveValue('Georgia')
+    await expect(font).toHaveAttribute('data-value', 'Georgia')
     const letterCase = editor(page).getByRole('radiogroup', { name: 'Schreibweise' })
     await expect(letterCase.getByRole('radio', { name: 'Kapitälchen' })).toBeDisabled()
     await expect(letterCase.getByRole('radio', { name: 'Versalien' })).toBeEnabled()
@@ -237,15 +238,17 @@ test('any font of the system can be chosen, and what it lacks is greyed out and 
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
 
     // A font without an italic or a bold: italic cannot be chosen, and the text's emphasis is said.
-    await font.fill('Academy Engraved LET')
-    await font.press('Tab')
+    await font.click()
+    await search.fill('Academy Engraved LET')
+    await search.press('Enter')
     await expect.poll(toml).toContain('font = "Academy Engraved LET"')
     await expect(editor(page).locator('#prop-body-italic')).toBeDisabled()
     await expect(editor(page).getByText('hat keine Kursive: Betontes im Text')).toBeVisible()
 
     // A font this machine does not have is said too, here and in "Dokument einrichten".
-    await font.fill('Nirgends Sans')
-    await font.press('Tab')
+    await font.click()
+    await search.fill('Nirgends Sans')
+    await search.press('Enter')
     await expect.poll(toml).toContain('font = "Nirgends Sans"')
     await expect(editor(page).getByText('ist auf diesem Rechner nicht installiert')).toBeVisible()
     await showExport(page)
@@ -456,13 +459,16 @@ test('every text element has a font, and headings a letter spacing', async () =>
     for (const name of ['Blockzitat', 'Abbildung', 'Tabelle', 'Fußnote', 'Inhaltsverzeichnis']) {
       await choose(page, name)
       // The captions are below the figure or the table: each has a font field of its own.
-      await expect(editor(page).locator('input[id$="-font"]').last()).toHaveValue(
+      await expect(editor(page).locator('[id$="-font"]').last()).toHaveAttribute(
+        'data-value',
         'Libertinus Serif',
       )
     }
     await choose(page, 'Blockzitat')
-    await editor(page).getByLabel('Schriftart').fill('DejaVu Sans Mono')
-    await editor(page).getByLabel('Schriftart').press('Tab')
+    await editor(page).getByRole('button', { name: 'Schriftart', exact: true }).click()
+    const typeface = editor(page).getByRole('searchbox', { name: 'Schriftart suchen …' })
+    await typeface.fill('DejaVu Sans Mono')
+    await typeface.press('Enter')
     await expect
       .poll(() => readFile(style('schriften'), 'utf8').catch(() => ''))
       .toContain('font = "DejaVu Sans Mono"')

@@ -57,6 +57,7 @@
   import FramePage from './FramePage.svelte'
   import TablePage from './TablePage.svelte'
   import FootnotePage from './FootnotePage.svelte'
+  import TypeSpecimen from './TypeSpecimen.svelte'
   import EpigraphPage from './EpigraphPage.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Section from '../../ui/kit/Section.svelte'
@@ -195,6 +196,7 @@
       icon={TOGGLE_ICONS[id]!}
       label={propLabel(element.id, def, lang)}
       pressed={value === true}
+      filled
       disabled={readOnly || (family !== undefined && !hasItalic(family) && value !== true)}
       onclick={() => void editor.set(element.id, id, value !== true)}
     />
@@ -687,6 +689,10 @@
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
     {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists || figurePage || framePage || tablePage || notesPage}
       <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
+        {#if group.id === 'type'}
+          <!-- A line of sample text in the type of the element, as the style resolves it. -->
+          <TypeSpecimen {element} resolved={editor.resolved} {palette} />
+        {/if}
         <!-- A drawing that is what a group is about (the page) comes first; one that only shows what
              a choice above it leads to (a paper of its own size) comes after the choice. -->
         {#if group.id !== 'format'}
