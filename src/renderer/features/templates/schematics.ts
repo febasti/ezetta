@@ -301,85 +301,6 @@ const PAPER_SIZE: Schematic = {
   places: { t: at('page_width', 'Breite', 'width'), l: at('page_height', 'Höhe', 'height') },
 }
 
-/** A list: its indents, the gap after a bullet, the space between items and around the list. */
-const LIST: Schematic = {
-  draw(v) {
-    const h = 76
-    const marker = (v['marker'] as string) ?? 'default'
-    const shape = (level: number) =>
-      marker === 'bullet'
-        ? 'dot'
-        : marker === 'circle'
-          ? 'ring'
-          : marker === 'square'
-            ? 'square'
-            : marker === 'dash'
-              ? 'dash'
-              : level === 1
-                ? 'triangle'
-                : 'dot'
-    // Each bullet fills the three pixels from its left edge (m1, m2). Each distance runs on the row
-    // of an item of its own and ends right at the bullet or the text: the list's indent on the first
-    // (|—|•), a level's on the second, the gap to the text on the third (•|—|text).
-    const m1 = TL + 8
-    const t1 = m1 + 3 + 7
-    const m2 = t1 + 8
-    const t2 = m2 + 3 + 7
-    const row = (y: number) => y + 1
-    return {
-      h,
-      shapes: [
-        sheet(h),
-        ...lines(TL, 11, TW, [1]),
-        { kind: 'marker', x: m1 + 1.5, y: row(21) + 0.5, shape: shape(0) },
-        { kind: 'bar', x: t1, y: 21, w: 68, h: 3 },
-        { kind: 'marker', x: m2 + 1.5, y: row(32) + 0.5, shape: shape(1) },
-        { kind: 'bar', x: t2, y: 32, w: TR - 6 - t2, h: 3 },
-        { kind: 'marker', x: m1 + 1.5, y: row(43) + 0.5, shape: shape(0) },
-        { kind: 'bar', x: t1, y: 43, w: TR - t1, h: 3 },
-        ...lines(TL, 57, TW, [1, 0.6]),
-      ],
-      marks: [
-        {
-          prop: 'list_indent',
-          kind: 'h',
-          x: TL,
-          y: row(21),
-          len: m1 - TL,
-          band: band(TL, 19, m1 - TL, 29),
-        },
-        {
-          prop: 'marker_gap',
-          kind: 'h',
-          x: m1 + 3,
-          y: row(43),
-          len: t1 - m1 - 3,
-          band: band(m1 + 3, 41, t1 - m1 - 3, 7),
-        },
-        {
-          prop: 'level_indent',
-          kind: 'h',
-          x: t1,
-          y: row(32),
-          len: m2 - t1,
-          band: band(t1, 30, m2 - t1, 7),
-        },
-        { prop: 'item_spacing', kind: 'v', x: 103, y: 24, len: 8, band: band(t1, 24, TR - t1, 8) },
-        { prop: 'above', kind: 'v', x: 113, y: 14, len: 7, band: band(TL, 14, TW, 7) },
-        { prop: 'below', kind: 'v', x: 113, y: 46, len: 11, band: band(TL, 46, TW, 11) },
-      ],
-    }
-  },
-  places: {
-    tl: at('marker_gap', 'zum Text', 'to the text'),
-    l: at('list_indent', 'Liste', 'list'),
-    bl: at('level_indent', 'je Ebene', 'per level'),
-    r: at('item_spacing', 'Punkte', 'items'),
-    tr: at('above', 'davor', 'above'),
-    br: at('below', 'danach', 'below'),
-  },
-}
-
 /** A figure between text: the space around it, where it stands, its frame when it has one. */
 const FIGURE_SPACE: Schematic = {
   draw(v) {
@@ -679,7 +600,6 @@ const FOOTNOTES: Schematic = {
 /** The drawings of each element, in the order they come. */
 export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
   page: [PAPER_SIZE, PAGE],
-  list: [LIST],
   figure: [FIGURE_SPACE, FRAME],
   figure_caption: [caption(false)],
   table: [TABLE],
@@ -741,6 +661,11 @@ export const QUOTES: Readonly<Record<string, readonly string[]>> = {
 /** The values of an epigraph that its own editor sets (`EpigraphPage.svelte`): its width and the space around it. */
 export const EPIGRAPHS: Readonly<Record<string, readonly string[]>> = {
   epigraph: ['width', 'above', 'below'],
+}
+
+/** The values of a list that its own editor sets (`ListPage.svelte`): the space around it and its indents. */
+export const LISTS: Readonly<Record<string, readonly string[]>> = {
+  list: ['above', 'below', 'list_indent', 'level_indent'],
 }
 
 export const placedProps = (s: Schematic): string[] => Object.values(s.places).map((p) => p!.prop)
@@ -817,6 +742,8 @@ export function panelLayout(el: ElementDef): {
   }
   // What a header or footer holds is the main thing in its panel: it comes first.
   if (RUNNING[el.id]) groups.sort((a, b) => Number(b.id === 'running') - Number(a.id === 'running'))
+  // The look of a list's bullets follows the choice of them, which is in the list's group.
+  if (LISTS[el.id]) groups.sort((a, b) => Number(a.id === 'marker') - Number(b.id === 'marker'))
   const lines = LINE_SECTIONS.filter((section) => el.props.includes(section.toggle))
   // Titles over the groups only help when there is more than one group.
   return {

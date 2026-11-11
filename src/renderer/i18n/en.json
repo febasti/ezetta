@@ -712,6 +712,8 @@
   "templates.running.options": "Display",
   "templates.quote.lines": "Lines of the quote",
   "templates.quote.look": "Look of the lines",
+  "templates.list.indent": "List",
+  "templates.list.level": "per level",
   "templates.quote.padding": "Padding on sides without a line",
   "templates.paragraphs.options": "Setting",
   "templates.paragraphs.lines": "Line setting",

@@ -589,6 +589,9 @@ const DIVIDER_LABELS = {
 
 /** What a property is called where its usual name would say the wrong thing. */
 const LABELS_FOR: Readonly<Record<string, Readonly<Record<string, { de: string; en: string }>>>> = {
+  list: {
+    marker_gap: { de: 'Abstand des Zeichens zum Text', en: 'Distance of the bullet to the text' },
+  },
   header: DIVIDER_LABELS,
   footer: DIVIDER_LABELS,
   table_caption: {
