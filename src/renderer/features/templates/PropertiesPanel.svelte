@@ -210,8 +210,8 @@
       disabled={readOnly || (family !== undefined && !hasItalic(family) && value !== true)}
       onchange={(on) => void editor.set(element.id, id, on)}
     />
-  {:else if def.type === 'enum' && GLYPHS[def.id]}
-    <!-- A choice drawn as small pictures: a page upright or across, the rules of a table. -->
+  {:else if def.type === 'enum' && (GLYPHS[def.id] || (def.id === 'align' && element.id === 'figure'))}
+    <!-- A choice drawn as small pictures: a page upright or across, the rules of a table, where a figure stands (its own pictures: the text's alignment has other ones). -->
     <Segmented
       label={def[lang]}
       options={(def.values ?? []).map((v) => ({
@@ -223,7 +223,7 @@
       onchange={(v) => void editor.set(element.id, id, v)}
     >
       {#snippet glyph(v: string)}
-        <ChoiceGlyph prop={def.id} value={v} />
+        <ChoiceGlyph prop={def.id === 'align' ? 'figure_align' : def.id} value={v} />
       {/snippet}
     </Segmented>
   {:else if def.type === 'enum' && (def.id === 'align' || def.id === 'cell_align')}

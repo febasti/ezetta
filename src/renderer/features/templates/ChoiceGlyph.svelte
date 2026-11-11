@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * A choice of the template editor as a small picture, 22 × 16, in the colour of the text: where a
-   * caption stands, the rules of a table, the line above the footnotes. The choices of the page (a
+   * caption stands, where a figure stands, the rules of a table, the line above the footnotes. The choices of the page (a
    * page upright or across, one page or two, the columns) are the app's icons instead, as wide. The
    * segmented control around it says the choice's name.
    */
@@ -29,6 +29,12 @@
       {:else}
         <path class="stroke" d="M4 4.5h12M4 8h14M4 11.5h9" />
       {/if}
+    {:else if prop === 'figure_align'}
+      <!-- A picture standing at the left, in the middle or at the right of the lines of text around it. -->
+      {@const x = value === 'left' ? 3 : value === 'right' ? 11 : 7}
+      <path class="stroke thin" d="M3 2.5h16M3 13.5h16" />
+      <rect class="stroke" x={x + 0.5} y="5.5" width="7" height="5" rx="0.5" />
+      <path class="stroke" d="M{x + 1.5} 9.5l1.5 -2 1.5 1.5 1 -1 1 1.5" />
     {:else if prop === 'break_before'}
       {#if value === 'none'}
         <path class="stroke thin" d="M3 3h16M3 13h16" />
