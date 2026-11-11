@@ -132,6 +132,27 @@ function paper(v: Values): [number, number] {
   if (v['paper'] === 'custom') return [cm(v['page_width']) ?? w, cm(v['page_height']) ?? h]
   return v['orientation'] === 'landscape' ? [h, w] : [w, h]
 }
+/** The width of the text on a page in centimetres: the paper less its inside and outside margins. */
+export function measureCm(page: Values): number {
+  const [w] = paper(page)
+  return Math.max(2, w - (cm(page['margin_inside']) ?? 0) - (cm(page['margin_outside']) ?? 0))
+}
+/** A length in centimetres, an `em` counted as `emCm`; null for anything else (a percentage). */
+export function lengthCm(v: unknown, emCm: number): number | null {
+  const m = typeof v === 'string' ? /^\s*([\d.]+)\s*em\s*$/.exec(v) : null
+  return m ? Number(m[1]) * emCm : cm(v)
+}
+/** How much of the text's width a length takes, 0 to 1: a percentage, or centimetres over the measure. */
+export function shareOf(v: unknown, measure: number, emCm: number): number {
+  const percent = typeof v === 'string' ? /^\s*([\d.]+)\s*%\s*$/.exec(v) : null
+  const share = percent ? Number(percent[1]) / 100 : (lengthCm(v, emCm) ?? measure) / measure
+  return Math.min(1, Math.max(0.03, share))
+}
+/** The thickness of a line as drawn, in whole pixels from one to four: it shows heavier from lighter, not how heavy. */
+export function thicknessPx(v: unknown, emCm: number): number {
+  const points = (lengthCm(v, emCm) ?? 0.5 / 28.35) * 28.35
+  return Math.min(4, Math.max(1, Math.round(points * 1.5)))
+}
 /** The width of the paper over its height. */
 function ratio(v: Values): number {
   const [w, h] = paper(v)

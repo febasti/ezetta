@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ELEMENTS, LINE_SECTIONS, PROPS } from '@core/export/elements'
 import { parseStyle } from '@core/export/style'
 import { GLYPHS } from './glyphs'
-import { SCHEMATICS, panelLayout, placedProps } from './schematics'
+import { SCHEMATICS, measureCm, panelLayout, placedProps, shareOf, thicknessPx } from './schematics'
 import type { Schematic, Values } from './schematics'
 
 /** The values the built-in style gives each element. */
@@ -143,5 +143,21 @@ describe('the drawings of the template editor', () => {
     expect(panelLayout(heading).lines.map((l) => l.toggle)).toEqual(
       LINE_SECTIONS.filter((l) => heading.props.includes(l.toggle)).map((l) => l.toggle),
     )
+  })
+
+  it('measure a line of a heading against the text: its share of the width and its thickness', () => {
+    // A4 with margins of 3 and 2 cm: the text is 16 cm wide.
+    const measure = measureCm({ paper: 'a4', margin_inside: '3cm', margin_outside: '2cm' })
+    expect(measure).toBeCloseTo(16)
+    expect(shareOf('100%', measure, 0.4)).toBe(1)
+    expect(shareOf('50%', measure, 0.4)).toBeCloseTo(0.5)
+    expect(shareOf('4cm', measure, 0.4)).toBeCloseTo(0.25)
+    // An em is the heading's: 10 em of 0.4 cm is 4 cm. A length longer than the text stops at it.
+    expect(shareOf('10em', measure, 0.4)).toBeCloseTo(0.25)
+    expect(shareOf('30cm', measure, 0.4)).toBe(1)
+    // A line is always something to see, and a thin one is thin, a heavy one heavier, but no more.
+    expect(thicknessPx('0.5pt', 0.4)).toBeLessThan(thicknessPx('3pt', 0.4))
+    expect(thicknessPx('0.1pt', 0.4)).toBe(1)
+    expect(thicknessPx('20pt', 0.4)).toBe(4)
   })
 })

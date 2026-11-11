@@ -3,6 +3,7 @@
   import { PROPS, propLabel } from '@core/export/elements'
   import type { ElementDef } from '@core/export/elements'
   import { formatHeadingNumber } from '@core/export/numbering'
+  import { shareOf, thicknessPx } from './schematics'
   import type { HeadingNumbering } from '@core/export/numbering'
   import { i18n } from '../../i18n/i18n.svelte'
   import Icon from '../../ui/Icon.svelte'
@@ -25,8 +26,11 @@
     refused: string | null
     /** How the template numbers headings, for the sample number. */
     numbering: HeadingNumbering
+    /** The width of the text on the page, and the size of the heading's type, both in centimetres. */
+    measure: number
+    emCm: number
   }
-  let { element, values, control, refused, numbering }: Props = $props()
+  let { element, values, control, refused, numbering, measure, emCm }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const has = (id: string): boolean => element.props.includes(id)
@@ -59,6 +63,19 @@
   </div>
 {/snippet}
 
+{#snippet rule(side: 'above' | 'below')}
+  <!-- The line, as long as its length is of the text's width, where the heading's alignment puts it,
+       and as thick as its weight (lightly: it shows heavier from lighter, not how heavy). -->
+  {#if values[`line_${side}`] === true}
+    <div class="rule" style:justify-content={place === 'end' ? 'flex-end' : place}>
+      <span
+        style:width="{shareOf(values[`line_${side}_width`], measure, emCm) * 100}%"
+        style:height="{thicknessPx(values[`line_${side}_thickness`], emCm)}px"
+      ></span>
+    </div>
+  {/if}
+{/snippet}
+
 {#snippet toggle(side: 'above' | 'below')}
   {@const id = `line_${side}`}
   <div class="toggle">
@@ -85,7 +102,7 @@
   {#if has('above')}{@render between('above')}{/if}
   {#if has('line_above')}
     {@render toggle('above')}
-    {#if values['line_above'] === true}<div class="rule"></div>{/if}
+    {@render rule('above')}
   {/if}
 
   <div class="heading" style:justify-content={place === 'end' ? 'flex-end' : place}>
@@ -103,7 +120,7 @@
   {/if}
 
   {#if has('line_below')}
-    {#if values['line_below'] === true}<div class="rule"></div>{/if}
+    {@render rule('below')}
     {@render toggle('below')}
   {/if}
   {#if has('below')}{@render between('below')}{/if}
@@ -224,7 +241,12 @@
     font: var(--type-body);
   }
   .rule {
-    height: 1px;
+    display: flex;
+    align-items: center;
+    height: var(--sp-4);
+  }
+  .rule span {
+    display: block;
     background: var(--color-label-secondary);
   }
   /* The heading as it stands: the text before the number, the number, the text after it, the title. */

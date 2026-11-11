@@ -18,7 +18,16 @@
   import ChoiceGlyph from './ChoiceGlyph.svelte'
   import { GLYPHS } from './glyphs'
   import SchematicDrawing from './SchematicDrawing.svelte'
-  import { HEADINGS, PARAGRAPHS, RUNNING, isAbove, panelLayout, words } from './schematics'
+  import {
+    HEADINGS,
+    PARAGRAPHS,
+    RUNNING,
+    isAbove,
+    lengthCm,
+    measureCm,
+    panelLayout,
+    words,
+  } from './schematics'
   import type { Field, Schematic } from './schematics'
   import { numberIn } from '@core/export/template'
   import { fontProblemText } from './fontProblems'
@@ -100,6 +109,8 @@
     Object.entries(s.places).filter(([, at]) => isShown(at!.prop, values)) as [string, Field][]
   /** Whether the pages face each other (a book), which is when a header can be mirrored. */
   const facing = (_el: ElementDef): boolean => editor.resolved['page']?.['facing'] === 'facing'
+  /** The size of the body text's type in centimetres, which an `em` of a heading is counted from. */
+  const bodyCm = (): number => lengthCm(editor.resolved['body']?.['size'], 0.39) ?? 0.39
   const showOptions = $derived(!only && editor.elementId === OPTIONS)
   const own = (el: ElementDef, prop: string): boolean =>
     detail?.overrides[el.id]?.[prop] !== undefined
@@ -561,6 +572,8 @@
             control={controlOf}
             refused={editor.refused}
             numbering={headingNumberingOf(editor.resolved)}
+            measure={measureCm(editor.resolved['page'] ?? {})}
+            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
           />
           {@render headingLines(element, values)}
         {/if}
