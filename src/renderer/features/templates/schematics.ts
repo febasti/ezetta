@@ -348,9 +348,9 @@ export const EPIGRAPHS: Readonly<Record<string, readonly string[]>> = {
   epigraph: ['width', 'above', 'below'],
 }
 
-/** The values of a list that its own editor sets (`ListPage.svelte`): the space around it and its indents. */
+/** The values of a list that its own editor sets (`ListPage.svelte`): the space around it and between its items, its indents, and the distance of a bullet to its text. */
 export const LISTS: Readonly<Record<string, readonly string[]>> = {
-  list: ['above', 'below', 'list_indent', 'level_indent'],
+  list: ['above', 'below', 'list_indent', 'level_indent', 'marker_gap', 'item_spacing'],
 }
 
 /**
