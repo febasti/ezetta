@@ -27,6 +27,7 @@
     NOTES,
     PARAGRAPHS,
     QUOTES,
+    PAGES,
     RUNNING,
     TABLES,
     isAbove,
@@ -53,6 +54,7 @@
   import HeadingPage from './HeadingPage.svelte'
   import QuotePage from './QuotePage.svelte'
   import ListPage from './ListPage.svelte'
+  import PageSetup from './PageSetup.svelte'
   import FigurePage from './FigurePage.svelte'
   import FramePage from './FramePage.svelte'
   import TablePage from './TablePage.svelte'
@@ -406,13 +408,7 @@
        name above it. A field beside the drawing is centred on it; its name stands over it. -->
   <div class="schematic" style:--picture="{picture}px">
     <div class="picture">
-      <!-- The page's drawing also shows the document's binding offset, which is set elsewhere. -->
-      <SchematicDrawing
-        drawing={schematic.draw(
-          element.id === 'page' ? { ...values, binding: editor.profile?.binding ?? null } : values,
-        )}
-        hot={hotIn(element)}
-      />
+      <SchematicDrawing drawing={schematic.draw(values)} hot={hotIn(element)} />
     </div>
     {#each placed.filter(([place]) => !isAbove(place)) as [place, at] (place)}
       {@render placeOf(element, values, place, at)}
@@ -668,6 +664,7 @@
     {@const quotes = (QUOTES[element.id] ?? []).length > 0 && group.id === 'arrangement'}
     {@const epigraphs = (EPIGRAPHS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
     {@const lists = (LISTS[element.id] ?? []).length > 0 && group.id === 'list'}
+    {@const pageSetup = (PAGES[element.id] ?? []).length > 0 && group.id === 'margins'}
     {@const figurePage = element.id === 'figure' && group.id === 'arrangement'}
     {@const framePage = element.id === 'figure' && group.id === 'frame'}
     {@const tablePage = element.id === 'table' && group.id === 'table'}
@@ -678,6 +675,7 @@
       ...(TABLES[element.id] ?? []),
       ...(FIGURES[element.id] ?? []),
       ...(LISTS[element.id] ?? []),
+      ...(PAGES[element.id] ?? []),
       ...(EPIGRAPHS[element.id] ?? []),
       ...(PARAGRAPHS[element.id] ?? []),
       ...(HEADINGS[element.id] ?? []),
@@ -687,7 +685,7 @@
     {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
-    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists || figurePage || framePage || tablePage || notesPage}
+    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists || pageSetup || figurePage || framePage || tablePage || notesPage}
       <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
         {#if group.id === 'type'}
           <!-- A line of sample text in the type of the element, as the style resolves it. -->
@@ -739,6 +737,15 @@
         {#if framePage}
           <!-- The border of an image, around the picture, each value on its side. -->
           <FramePage {element} {values} control={controlOf} emCm={bodyCm()} />
+        {/if}
+        {#if pageSetup}
+          <!-- The page: one or two, with the margins as bands and each value on its side. -->
+          <PageSetup
+            {element}
+            {values}
+            binding={editor.profile?.binding ?? null}
+            control={controlOf}
+          />
         {/if}
         {#if lists}
           <!-- A list: three items between two pieces of text, each value where it is set. -->

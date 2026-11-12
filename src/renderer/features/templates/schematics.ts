@@ -151,119 +151,55 @@ function ratio(v: Values): number {
 const band = (x: number, y: number, w: number, h: number): Rect => ({ x, y, w, h })
 
 /**
- * The page: one or two pages in their proportions, the text in columns, the margins marked. The
- * binding offset of the document (`binding`, set in the document's own settings, not here) is a
- * hatched strip at the inner edge, in its proportion to the paper, that moves the text out.
+ * The page as `PageSetup.svelte` draws it, in pixels: one page or two, in the paper's proportions, and
+ * the margins in their proportion to the paper (never less than a few pixels, never more than a third,
+ * so a margin of nothing is still to be seen and one of ten centimetres does not eat the page). A
+ * length that cannot be read (a percentage) is drawn as a usual margin. The binding offset of the
+ * document (`binding`, set in the document's own settings, not here) is a strip at the inner edge, in
+ * its proportion to the paper, that moves the text out.
  */
-const PAGE: Schematic = {
-  draw(v) {
-    // The page is the main thing of its panel, so it is drawn larger than the other drawings.
-    const w = 176
-    const h = 128
-    const facing = v['facing'] !== 'single'
-    const n = facing ? 2 : 1
-    const r = ratio(v)
-    const ph = Math.round(Math.min(112, (w - 16) / (n * r)))
-    const pw = Math.round(ph * r)
-    const x0 = Math.round((w - n * pw) / 2)
-    const y = Math.round((h - ph) / 2)
-    // The lines of text, as many as the page's height allows.
-    const lineGap = Math.max(4, Math.round(ph / 20))
-    const lineHeight = Math.max(1.5, lineGap * 0.4)
-    const top = Math.max(4, Math.round(ph * 0.13))
-    const bottom = Math.max(4, Math.round(ph * 0.15))
-    const inside = Math.max(4, Math.round(pw * 0.17))
-    const outside = Math.max(3, Math.round(pw * 0.12))
-    const columns = Math.max(1, Number(v['columns']) || 1)
-    const gap = Math.max(3, Math.round(pw * 0.07))
-    const offset = cm(v['binding'])
-    const bind = offset
-      ? Math.min(Math.round(pw * 0.2), Math.max(2, Math.round((pw * offset) / paper(v)[0])))
-      : 0
-    const shapes: Shape[] = []
-    const marks: Mark[] = []
-    for (let i = 0; i < n; i += 1) {
-      const x = x0 + i * pw
-      const innerLeft = !(facing && i === 0)
-      const left = innerLeft ? inside + bind : outside
-      const right = innerLeft ? outside : inside + bind
-      const tw = pw - left - right
-      const cw = (tw - gap * (columns - 1)) / columns
-      shapes.push({ kind: 'sheet', x, y, w: pw, h: ph })
-      // The strip inside the paper's hairline.
-      if (bind > 0)
-        shapes.push({
-          kind: 'hatch',
-          x: innerLeft ? x + 1 : x + pw - bind,
-          y: y + 1,
-          w: bind - 1,
-          h: ph - 2,
-        })
-      for (let c = 0; c < columns; c += 1)
-        for (let ly = y + top; ly + lineHeight <= y + ph - bottom; ly += lineGap)
-          shapes.push({ kind: 'bar', x: x + left + c * (cw + gap), y: ly, w: cw, h: lineHeight })
-      if (i < n - 1) continue
-      // The marks are on the right page (or the only one): its inner margin is at its left, after
-      // the binding.
-      const mx = Math.round(x + left + tw * 0.3)
-      const my = y + Math.round(ph / 2)
-      marks.push(
-        { prop: 'margin_top', kind: 'v', x: mx, y, len: top, band: band(x, y, pw, top) },
-        {
-          prop: 'margin_bottom',
-          kind: 'v',
-          x: mx,
-          y: y + ph - bottom,
-          len: bottom,
-          band: band(x, y + ph - bottom, pw, bottom),
-        },
-        {
-          prop: 'margin_inside',
-          kind: 'h',
-          x: x + bind,
-          y: my,
-          len: inside,
-          band: band(x + bind, y, inside, ph),
-        },
-        {
-          prop: 'margin_outside',
-          kind: 'h',
-          x: x + pw - right,
-          y: my,
-          len: right,
-          band: band(x + pw - right, y, right, ph),
-        },
-      )
-      if (columns > 1)
-        marks.push({
-          prop: 'column_gap',
-          kind: 'h',
-          x: Math.round(x + left + cw),
-          y: y + Math.round(ph * 0.3),
-          len: gap,
-          band: band(x + left + cw, y + top, gap, ph - top - bottom),
-        })
-    }
-    return { h, w, shapes, marks }
-  },
-  places: {
-    t: at('margin_top', 'oben', 'top'),
-    b: at('margin_bottom', 'unten', 'bottom'),
-    l: at(
-      'margin_inside',
-      (v) => (v['facing'] === 'single' ? 'links' : 'innen'),
-      (v) => (v['facing'] === 'single' ? 'left' : 'inside'),
-    ),
-    r: at(
-      'margin_outside',
-      (v) => (v['facing'] === 'single' ? 'rechts' : 'außen'),
-      (v) => (v['facing'] === 'single' ? 'right' : 'outside'),
-    ),
-    // The choices that change the whole page in a row over it.
-    a1: at('facing', 'Seiten', 'pages'),
-    a3: at('columns', 'Spalten', 'columns'),
-    br: at('column_gap', 'Spaltenabstand', 'column gap'),
-  },
+export interface PageBox {
+  /** The pages drawn: two where they face each other. */
+  count: 1 | 2
+  pw: number
+  ph: number
+  top: number
+  bottom: number
+  inside: number
+  outside: number
+  /** The strip the binding takes at the inner edge of a page; 0 for none. */
+  bind: number
+  columns: number
+  /** The space between two columns. */
+  gap: number
+}
+
+export function pageBox(v: Values, binding: unknown, maxW: number, maxH: number): PageBox {
+  const count = v['facing'] === 'single' ? 1 : 2
+  const [wCm, hCm] = paper(v)
+  const r = ratio(v)
+  const ph = Math.round(Math.min(maxH, maxW / (count * r)))
+  const pw = Math.round(ph * r)
+  /** A margin of `value` out of `total` centimetres on a side of `size` pixels. */
+  const side = (value: unknown, total: number, size: number, usual: number): number => {
+    const c = cm(value)
+    const share = c === null ? usual : c / total
+    const most = Math.round(size * 0.3)
+    return Math.min(most, Math.max(Math.min(6, most), Math.round(share * size)))
+  }
+  const offset = cm(binding)
+  return {
+    count,
+    pw,
+    ph,
+    top: side(v['margin_top'], hCm, ph, 0.1),
+    bottom: side(v['margin_bottom'], hCm, ph, 0.1),
+    inside: side(v['margin_inside'], wCm, pw, 0.15),
+    outside: side(v['margin_outside'], wCm, pw, 0.12),
+    bind: offset ? Math.min(Math.round(pw * 0.2), Math.max(3, Math.round((pw * offset) / wCm))) : 0,
+    columns: Math.max(1, Number(v['columns']) || 1),
+    gap: side(v['column_gap'], wCm, pw, 0.05),
+  }
 }
 
 /** A paper of its own size: its proportions, width and height marked. */
@@ -289,7 +225,23 @@ const PAPER_SIZE: Schematic = {
 
 /** The drawings of each element, in the order they come. */
 export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
-  page: [PAPER_SIZE, PAGE],
+  page: [PAPER_SIZE],
+}
+
+/**
+ * The values of the page that its own editor sets (`PageSetup.svelte`): the margins, the layout of the
+ * pages and the columns, so the panel's rows leave them out.
+ */
+export const PAGES: Readonly<Record<string, readonly string[]>> = {
+  page: [
+    'margin_top',
+    'margin_bottom',
+    'margin_inside',
+    'margin_outside',
+    'facing',
+    'columns',
+    'column_gap',
+  ],
 }
 
 /**

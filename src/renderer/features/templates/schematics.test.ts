@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { ELEMENTS, LINE_SECTIONS, PROPS } from '@core/export/elements'
 import { parseStyle } from '@core/export/style'
 import { GLYPHS } from './glyphs'
-import { SCHEMATICS, measureCm, panelLayout, placedProps, shareOf, thicknessPx } from './schematics'
+import {
+  SCHEMATICS,
+  measureCm,
+  pageBox,
+  panelLayout,
+  placedProps,
+  shareOf,
+  thicknessPx,
+} from './schematics'
 import type { Schematic, Values } from './schematics'
 
 /** The values the built-in style gives each element. */
@@ -96,33 +104,34 @@ describe('the drawings of the template editor', () => {
   })
 
   it('draw one page or two, upright or across, as the page is set', () => {
-    const page = SCHEMATICS['page']!.find((s) => placedProps(s).includes('facing'))!
-    const sheets = (v: Values) => page.draw(v).shapes.filter((s) => s.kind === 'sheet')
     const base = style['page'] ?? {}
-    expect(sheets({ ...base, facing: 'facing' })).toHaveLength(2)
-    expect(sheets({ ...base, facing: 'single' })).toHaveLength(1)
-    const [upright] = sheets({ ...base, facing: 'single', orientation: 'portrait' })
-    const [across] = sheets({ ...base, facing: 'single', orientation: 'landscape' })
-    expect(upright!.kind === 'sheet' && upright!.h > upright!.w).toBe(true)
-    expect(across!.kind === 'sheet' && across!.w > across!.h).toBe(true)
+    const box = (v: Values) => pageBox({ ...base, ...v }, null, 176, 224)
+    expect(box({ facing: 'facing' }).count).toBe(2)
+    expect(box({ facing: 'single' }).count).toBe(1)
+    const upright = box({ facing: 'single', orientation: 'portrait' })
+    const across = box({ facing: 'single', orientation: 'landscape' })
+    expect(upright.ph).toBeGreaterThan(upright.pw)
+    expect(across.pw).toBeGreaterThan(across.ph)
+    // Two pages together stay within the room, one beside the other.
+    const spread = box({ facing: 'facing' })
+    expect(spread.count * spread.pw).toBeLessThanOrEqual(176)
   })
 
-  it('hatch the binding offset at the inner edge of each page, and move the text out by it', () => {
-    const page = SCHEMATICS['page']!.find((s) => placedProps(s).includes('facing'))!
+  it('draw a margin in its proportion to the paper, never less than a few pixels', () => {
+    const base = { ...(style['page'] ?? {}), paper: 'a4', orientation: 'portrait' }
+    const wide = pageBox({ ...base, margin_inside: '5cm' }, null, 176, 224)
+    const narrow = pageBox({ ...base, margin_inside: '2cm' }, null, 176, 224)
+    const none = pageBox({ ...base, margin_inside: '0cm' }, null, 176, 224)
+    expect(wide.inside).toBeGreaterThan(narrow.inside)
+    expect(none.inside).toBeGreaterThanOrEqual(6)
+    // A margin that cannot be read as a length is drawn as a usual one.
+    expect(pageBox({ ...base, margin_inside: '10%' }, null, 176, 224).inside).toBeGreaterThan(0)
+  })
+
+  it('take the binding offset at the inner edge of each page', () => {
     const base = { ...(style['page'] ?? {}), facing: 'facing' }
-    const plain = page.draw(base)
-    const bound = page.draw({ ...base, binding: '1cm' })
-    expect(plain.shapes.some((s) => s.kind === 'hatch')).toBe(false)
-    const rects = (d: typeof plain, kind: 'sheet' | 'hatch') =>
-      d.shapes.flatMap((s) => (s.kind === kind ? [{ x: s.x, w: s.w }] : []))
-    const [left, right] = rects(bound, 'sheet')
-    const [h1, h2] = rects(bound, 'hatch')
-    // Inside the paper's hairline: up to it on the left page, from it on the right one.
-    expect(h1!.x + h1!.w).toBe(left!.x + left!.w - 1)
-    expect(h2!.x).toBe(right!.x + 1)
-    const inside = (d: typeof plain) =>
-      d.marks.flatMap((m) => (m.prop === 'margin_inside' && m.kind === 'h' ? [m.x] : []))[0]!
-    expect(inside(bound)).toBeGreaterThan(inside(plain))
+    expect(pageBox(base, null, 176, 224).bind).toBe(0)
+    expect(pageBox(base, '1cm', 176, 224).bind).toBeGreaterThan(0)
   })
 
   it('leave every property of every element in the panel exactly once', () => {
