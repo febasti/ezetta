@@ -325,10 +325,7 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
     prop('border_thickness', 'length', 'Stärke', 'Thickness'),
     prop('border_gap', 'length', 'Abstand zum Text', 'Distance to the text'),
     prop('show_depth', 'enum', 'Ebenen anzeigen', 'Levels shown', ['1', '2', '3', '4', '6']),
-    prop('leader', 'enum', 'Füllzeichen vor der Seitenzahl', 'Leader before the page number', [
-      'dots',
-      'none',
-    ]),
+    prop('leader', 'enum', 'Füllzeichen', 'Leader', ['dots', 'none']),
     prop('chapter_weight', 'enum', 'Schnitt der Kapitel', 'Weight of chapters', WEIGHTS),
     prop('title_text', 'text', 'Titel', 'Title'),
     // A list of figures or of tables has a title property of its own, so it does not take the contents'.
@@ -395,7 +392,7 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
       'dotted',
       'none',
     ]),
-    prop('number_side', 'enum', 'Stellung der Nummer', 'Place of the number', ['right', 'left']),
+    prop('number_side', 'enum', 'Nummernstellung', 'Number position', ['right', 'left']),
     prop('radius', 'length', 'Eckenradius', 'Corner radius'),
     prop('accent', 'color', 'Akzentfarbe', 'Accent colour'),
     prop('accent_secondary', 'color', 'Zweitfarbe', 'Second colour'),
@@ -410,8 +407,8 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
     prop('supplement_figure', 'text', 'Wort für Abbildungen', 'Word for figures'),
     prop('supplement_table', 'text', 'Wort für Tabellen', 'Word for tables'),
     prop('supplement_equation', 'text', 'Wort für Gleichungen', 'Word for equations'),
-    prop('hanging_indent', 'length', 'Einzug ab der zweiten Zeile', 'Indent from the second line'),
-    prop('entry_spacing', 'length', 'Abstand zwischen den Einträgen', 'Space between entries'),
+    prop('hanging_indent', 'length', 'Einzug ab Zeile 2', 'Hanging indent'),
+    prop('entry_spacing', 'length', 'Eintragsabstand', 'Entry spacing'),
     prop('slot_left', 'enum', 'Links', 'Left', SLOTS),
     prop('slot_center', 'enum', 'Mitte', 'Centre', SLOTS),
     prop('slot_right', 'enum', 'Rechts', 'Right', SLOTS),
@@ -423,7 +420,7 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
     prop('divider_thickness', 'length', 'Stärke', 'Thickness'),
     prop('divider_gap', 'length', 'Abstand zum Text', 'Distance to the text'),
     prop('page_style', 'enum', 'Darstellung', 'Style', ['plain', 'dashes', 'prefix']),
-    prop('front_format', 'enum', 'Zahlenformat im Vorspann', 'Number format in the front matter', [
+    prop('front_format', 'enum', 'Zahlen im Vorspann', 'Front matter numbers', [
       'arabic',
       'roman',
       'roman_lower',
@@ -695,10 +692,10 @@ export const PROP_SECTIONS: readonly {
       'line_height',
       'weight',
       'italic',
-      'color',
+      'underline',
       'text_case',
       'letter_spacing',
-      'underline',
+      'color',
     ],
   },
   {

@@ -103,14 +103,16 @@
       <Section title={i18n.t('export.layout')} level={4}>
         <Form labels="start">
           <FormRow label={i18n.t('export.binding')} for="export-binding">
-            <TextField
-              id="export-binding"
-              value={profile.binding ?? ''}
-              placeholder="0 cm"
-              invalid={bindingRefused}
-              disabled={exporting.busy}
-              onchange={(e) => setBinding((e.currentTarget as HTMLInputElement).value)}
-            />
+            <span class="short">
+              <TextField
+                id="export-binding"
+                value={profile.binding ?? ''}
+                placeholder="0 cm"
+                invalid={bindingRefused}
+                disabled={exporting.busy}
+                onchange={(e) => setBinding((e.currentTarget as HTMLInputElement).value)}
+              />
+            </span>
           </FormRow>
           {#if bindingRefused}
             <p class="refused" role="alert">{i18n.t('export.binding.invalid')}</p>
@@ -130,15 +132,17 @@
               {@const typed = String(profile.options[option.id] ?? option.default)}
               <!-- A number (the line spacing): a value outside its bounds is marked and not used. -->
               <FormRow label={option.label[lang]} for="export-option-{option.id}">
-                <TextField
-                  id="export-option-{option.id}"
-                  value={typed.replace('.', i18n.locale === 'de' ? ',' : '.')}
-                  inputmode="numeric"
-                  invalid={numberIn(typed, option.min, option.max) === null}
-                  disabled={exporting.busy}
-                  onvalue={(v) =>
-                    (profile.options[option.id] = numberIn(v, option.min, option.max) ?? v)}
-                />
+                <span class="short">
+                  <TextField
+                    id="export-option-{option.id}"
+                    value={typed.replace('.', i18n.locale === 'de' ? ',' : '.')}
+                    inputmode="numeric"
+                    invalid={numberIn(typed, option.min, option.max) === null}
+                    disabled={exporting.busy}
+                    onvalue={(v) =>
+                      (profile.options[option.id] = numberIn(v, option.min, option.max) ?? v)}
+                  />
+                </span>
               </FormRow>
               {#if numberIn(typed, option.min, option.max) === null}
                 <p class="refused" role="alert">
@@ -315,6 +319,14 @@
 <style>
   .panel {
     min-width: 0;
+  }
+  /* A number or a length is a short field, as in the template's own panels. */
+  .short {
+    display: block;
+    width: 96px;
+  }
+  .short :global(.text-field) {
+    width: 100%;
   }
   /* The title, the template it is for, and what is open, in one block. */
   .head {

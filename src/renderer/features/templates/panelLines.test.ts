@@ -17,10 +17,11 @@ describe('the lines of the template editor', () => {
     expect(panelLines(['size', 'weight'])).toEqual([{ props: ['size'] }, { props: ['weight'] }])
   })
 
-  it('put the size with the colour where there is no line spacing or alignment to share with', () => {
+  it('give the colour a line of its own, unless it shares one with the alignment', () => {
     expect(panelLines(['font', 'size', 'color'])).toEqual([
       { props: ['font'] },
-      expect.objectContaining({ props: ['size', 'color'] }),
+      { props: ['size'] },
+      { props: ['color'] },
     ])
     expect(panelLines(['size', 'color', 'align'])).toEqual([
       { props: ['size'] },

@@ -431,6 +431,9 @@ export function panelLayout(el: ElementDef): {
     // A property is in the first section that has it, so one used by two kinds of element (the
     // weight of a rule) is drawn once.
     const mine = plain.filter((id) => section.props.includes(id) && !used.includes(id))
+    // The type is always set in the same order, whatever order an element lists its values in.
+    if (section.id === 'type')
+      mine.sort((a, b) => section.props.indexOf(a) - section.props.indexOf(b))
     used.push(...mine)
     const schematics = drawings.filter((s) => mine.includes(placedProps(s)[0]!))
     const ids = mine.filter((id) => !placed.has(id))

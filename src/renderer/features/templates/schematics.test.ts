@@ -147,6 +147,26 @@ describe('the drawings of the template editor', () => {
     }
   })
 
+  it('set the type in the same order in every element', () => {
+    const order = [
+      'font',
+      'size',
+      'line_height',
+      'weight',
+      'italic',
+      'underline',
+      'text_case',
+      'letter_spacing',
+      'color',
+    ]
+    for (const element of ELEMENTS) {
+      const type = panelLayout(element).groups.find((g) => g.id === 'type')
+      if (!type) continue
+      const ids = type.ids.filter((id) => order.includes(id))
+      expect(ids, element.id).toEqual(order.filter((id) => ids.includes(id)))
+    }
+  })
+
   it('keep the lines of a heading as their own cards', () => {
     const heading = ELEMENTS.find((e) => e.id === 'heading_2')!
     expect(panelLayout(heading).lines.map((l) => l.toggle)).toEqual(

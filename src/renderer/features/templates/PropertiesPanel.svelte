@@ -316,6 +316,19 @@
       disabled={readOnly}
       oncommit={(text) => commit(element, def, text)}
     />
+  {:else if def.type === 'factor'}
+    <!-- A factor (the line spacing) is a short number, so its field is a short one. -->
+    <span class="count">
+      <TextField
+        id={control}
+        label={propLabel(element.id, def, lang)}
+        value={typeof value === 'string' ? value : ''}
+        placeholder="—"
+        invalid={editor.refused === key}
+        disabled={readOnly}
+        onchange={(e) => commit(element, def, field(e))}
+      />
+    </span>
   {:else}
     <TextField
       id={control}
@@ -1232,6 +1245,19 @@
   }
   .control > :global(.select),
   .control > :global(.text-field) {
+    flex: 1;
+  }
+  .count {
+    display: block;
+    min-width: 0;
+  }
+  .count :global(.text-field) {
+    width: 100%;
+  }
+  .control > .count {
+    width: 96px;
+  }
+  .part .count {
     flex: 1;
   }
   .grid {

@@ -569,7 +569,7 @@ test('headers, footers and the page number are set with three places each', asyn
 
     await choose(page, 'Seitenzahl')
     await editor(page).getByLabel('Darstellung').selectOption({ label: 'Mit Wort (Seite 3)' })
-    await editor(page).getByLabel('Zahlenformat im Vorspann').selectOption({ label: 'I, II, III' })
+    await editor(page).getByLabel('Zahlen im Vorspann').selectOption({ label: 'I, II, III' })
     await expect.poll(toml).toContain('page_style = "prefix"')
     await expect.poll(toml).toContain('front_format = "roman"')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
@@ -737,7 +737,7 @@ test('the numbers of headings have a text before and after them and a separator,
 
     await choose(page, 'Inhaltsverzeichnis')
     await editor(page).getByLabel('Ebenen anzeigen').selectOption({ label: 'Bis Ebene 2' })
-    await editor(page).getByLabel('Füllzeichen vor der Seitenzahl').selectOption({ label: 'Keine' })
+    await editor(page).getByLabel('Füllzeichen').selectOption({ label: 'Keine' })
     const title = editor(page).getByLabel('Titel', { exact: true })
     await title.fill('Inhalt')
     await title.press('Tab')
@@ -822,10 +822,10 @@ test('the bibliography has a title of its own, an indent and a space between ent
     await choose(page, 'Literaturverzeichnis')
     await editor(page).getByLabel('Titel', { exact: true }).fill('Quellen')
     await editor(page).getByLabel('Titel', { exact: true }).press('Tab')
-    const indent = editor(page).getByLabel('Einzug ab der zweiten Zeile')
+    const indent = editor(page).getByLabel('Einzug ab Zeile 2')
     await indent.fill('2em')
     await indent.press('Tab')
-    const gap = editor(page).getByLabel('Abstand zwischen den Einträgen')
+    const gap = editor(page).getByLabel('Eintragsabstand')
     await gap.fill('1em')
     await gap.press('Tab')
     await expect.poll(toml).toContain('entry_spacing = "1em"')
@@ -968,7 +968,7 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     await expect(editor(page).getByLabel('Linienlänge')).toHaveCount(0)
 
     await choose(page, 'Formeln')
-    await editor(page).getByLabel('Stellung der Nummer').selectOption({ label: 'Links' })
+    await editor(page).getByLabel('Nummernstellung').selectOption({ label: 'Links' })
     await expect.poll(toml).toContain('number_side = "left"')
     // The math font is one of the two the app brings; the colours and the space around a formula
     // of its own are the template's.

@@ -19,12 +19,6 @@ export const SHARED_LINES: readonly SharedLine[] = [
   { props: ['text_case', 'letter_spacing'], de: 'Schreibweise', en: 'Letter case' },
   { props: ['label_weight', 'label_style'], de: 'Schnitt', en: 'Weight' },
   { props: ['color', 'align'], de: 'Farbe', en: 'Colour' },
-  {
-    props: ['size', 'color'],
-    unless: ['line_height', 'align'],
-    de: 'Größe und Farbe',
-    en: 'Size and colour',
-  },
 ]
 
 /** A switch drawn as an icon, by the property it sets. */
