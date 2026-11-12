@@ -198,7 +198,7 @@ export function createHandlers({
         snapshot: await host.chooseBibliography(dialogTitle, filterName),
       }),
       readBibliography: () => host.session().library(),
-      renderMath: ({ source, display }) => math.render(source, display),
+      renderMath: ({ source, display, font }) => math.render(source, display, font),
       addImage: async ({ name, data }) => unwrap(await host.session().addAsset(name, data)),
       writeSheet: async ({ path, content }) => {
         const { words, footnoteWords } = unwrap(await host.session().writeSheet(path, content))

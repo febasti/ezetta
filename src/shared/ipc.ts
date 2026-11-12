@@ -475,7 +475,13 @@ export const ipc = {
     /** Draws a formula with the Typst compiler, at a fixed size; the editor scales it. */
     renderMath: defineInvoke(
       'project:render-math',
-      z.object({ source: z.string().max(20_000), display: z.boolean() }).strict(),
+      z
+        .object({
+          source: z.string().max(20_000),
+          display: z.boolean(),
+          font: z.enum(['new_computer_modern', 'libertinus']).optional(),
+        })
+        .strict(),
       mathResult,
     ),
     writeSheet: defineInvoke(

@@ -175,7 +175,10 @@ void app.whenReady().then(async () => {
   const resourcesPath = app.isPackaged ? process.resourcesPath : undefined
   // Typst draws the formulas in the editor and compiles the export, in the project's folder.
   const typstBinary = findTypst({ resourcesPath, override: devEnv('EZETTA_TYPST') })
-  const math = createMathRenderer(spawnTypst(typstBinary))
+  const math = createMathRenderer(spawnTypst(typstBinary), {
+    // Libertinus Math is not the compiler's own: it comes with the templates.
+    fontsDir: join(resourceDir('templates'), 'fonts'),
+  })
   // LanguageTool runs as a local child process, started when the first check asks for it.
   // Development and tests can name the port of one that already runs on this machine.
   const runningPort = Number(devEnv('EZETTA_LANGUAGETOOL_PORT')) || 0

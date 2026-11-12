@@ -148,6 +148,12 @@ describe('the page given to the compiler', () => {
     expect(mathDocument('x', true)).toContain('numbering: none')
   })
 
+  it('sets the math font a template chooses, and leaves the compiler its own otherwise', () => {
+    expect(mathDocument('x', true, 'libertinus')).toContain('font: "Libertinus Math"')
+    expect(mathDocument('x', true, 'new_computer_modern')).not.toContain('font:')
+    expect(mathDocument('x', true)).not.toContain('font:')
+  })
+
   it('refuses code, which could read files, and very long sources', () => {
     expect(previewProblem('x^2')).toBeNull()
     expect(previewProblem('#read("/etc/passwd")')).toBe('code')

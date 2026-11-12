@@ -103,12 +103,16 @@ const MARK = '#fe00fe'
 /** The font size the formulas are drawn at. Sizes in the editor are relative to it. */
 export const MATH_SIZE_PT = 10
 
+/** The math fonts a template can choose; the first is the compiler's own. */
+export type MathFont = 'new_computer_modern' | 'libertinus'
+
 /** The page the compiler is given for one formula. */
-export function mathDocument(source: string, display: boolean): string {
+export function mathDocument(source: string, display: boolean, font?: MathFont): string {
   const head = [
     '#set page(width: auto, height: auto, margin: (x: 0pt, y: 1pt), fill: none)',
     `#set text(size: ${MATH_SIZE_PT}pt, fill: rgb("${INK}"))`,
     '#set math.equation(numbering: none)',
+    ...(font === 'libertinus' ? ['#show math.equation: set text(font: "Libertinus Math")'] : []),
   ].join('\n')
   return display
     ? `${head}\n$ ${source} $\n`

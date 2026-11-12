@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { mathDocument, parseMathSvg, previewProblem } from '@core/typst/math'
+import type { MathFont } from '@core/typst/math'
 import { mathDiagnostic } from '@core/typst/mathError'
 import { executable } from './executable'
 
@@ -19,7 +20,8 @@ export type MathResult =
     }
 
 export interface MathRenderer {
-  render(source: string, display: boolean): Promise<MathResult>
+  /** `font` is the math font of a template, when the formula is drawn as a template sets it. */
+  render(source: string, display: boolean, font?: MathFont): Promise<MathResult>
 }
 
 export interface TypstRun {
@@ -28,8 +30,8 @@ export interface TypstRun {
   stderr: string
 }
 
-/** Runs the compiler with the page on stdin. Throws when it cannot be started. */
-export type TypstRunner = (input: string) => Promise<TypstRun>
+/** Runs the compiler with the page on stdin, and any further arguments. Throws when it cannot be started. */
+export type TypstRunner = (input: string, extraArgs?: readonly string[]) => Promise<TypstRun>
 
 const ARGS = [
   'compile',
@@ -72,9 +74,9 @@ export function findTypst(options: {
 
 /** The real runner: no shell, an empty working directory, a time limit, and a cap on the output. */
 export function spawnTypst(binary: string): TypstRunner {
-  return (input) =>
+  return (input, extraArgs = []) =>
     new Promise((resolve, reject) => {
-      const child = spawn(binary, ARGS, {
+      const child = spawn(binary, [ARGS[0]!, ...extraArgs, ...ARGS.slice(1)], {
         cwd: tmpdir(),
         shell: false,
         stdio: 'pipe',
@@ -118,7 +120,7 @@ export function firstError(stderr: string): string {
 
 export function createMathRenderer(
   run: TypstRunner,
-  options: { concurrency?: number } = {},
+  options: { concurrency?: number; fontsDir?: string } = {},
 ): MathRenderer {
   // One run takes about 12 ms; four at a time draw the 40 formulas of a sheet in about 0.15 s
   // (two: 0.28 s) and still leave cores for the editor.
@@ -138,7 +140,7 @@ export function createMathRenderer(
   }
 
   return {
-    async render(source, display) {
+    async render(source, display, font) {
       const problem = previewProblem(source)
       if (problem)
         return {
@@ -150,7 +152,12 @@ export function createMathRenderer(
       if (waiting.length >= MAX_WAITING) return { ok: false, reason: 'busy', message: 'Busy' }
       let result: TypstRun
       try {
-        result = await slot(() => run(mathDocument(source, display)))
+        result = await slot(() =>
+          run(
+            mathDocument(source, display, font),
+            font === 'libertinus' && options.fontsDir ? ['--font-path', options.fontsDir] : [],
+          ),
+        )
       } catch {
         return { ok: false, reason: 'unavailable', message: 'The Typst compiler was not found' }
       }
