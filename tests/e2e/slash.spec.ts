@@ -86,6 +86,23 @@ test('a divider is inserted from the slash menu, drawn, chosen with a click and 
   }
 })
 
+test('a line break from the slash menu makes the line the next one of the paragraph above', async () => {
+  const { app, page } = await open()
+  try {
+    // On the empty line after the paragraph, what is typed starts a paragraph of its own.
+    await page.keyboard.type('/umbr')
+    const menu = page.locator('.cm-tooltip-autocomplete')
+    await expect(menu.getByRole('option')).toHaveCount(1)
+    await expect(menu.getByRole('option')).toContainText('Zeilenumbruch')
+    await pastMenuGuard(page)
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Neue Zeile.')
+    await expect.poll(read).toBe('= Methoden\n\nDas Design ist qualitativ. \\\nNeue Zeile.')
+  } finally {
+    await app.close()
+  }
+})
+
 test('a slash inside a line is text, and so is one followed by what no item is called', async () => {
   const { app, page } = await open()
   try {

@@ -180,6 +180,7 @@ const OUTLINE = {
     'M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463',
   ],
   separator: ['M3 12l0 .01', 'M7 12l10 0', 'M21 12l0 .01'],
+  'corner-down-left': ['M18 6v6a3 3 0 0 1 -3 3h-10l4 -4m0 8l-4 -4'],
 } as const
 
 const FILLED = {

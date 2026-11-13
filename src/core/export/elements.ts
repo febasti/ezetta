@@ -706,7 +706,7 @@ export const PROP_SECTIONS: readonly {
     id: 'divider',
     de: 'Trenner',
     en: 'Divider',
-    props: ['divider_mark', 'width', 'rule_width'],
+    props: ['divider_mark', 'align', 'width', 'rule_width', 'above', 'below'],
     only: ['divider'],
   },
   {

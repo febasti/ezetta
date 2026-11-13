@@ -21,6 +21,7 @@
   import SchematicDrawing from './SchematicDrawing.svelte'
   import {
     EPIGRAPHS,
+    DIVIDERS,
     FIGURES,
     HEADINGS,
     LISTS,
@@ -61,6 +62,7 @@
   import FootnotePage from './FootnotePage.svelte'
   import TypeSpecimen from './TypeSpecimen.svelte'
   import EpigraphPage from './EpigraphPage.svelte'
+  import DividerPage from './DividerPage.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Segmented from '../../ui/kit/Segmented.svelte'
@@ -676,6 +678,7 @@
     {@const headings = (HEADINGS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
     {@const quotes = (QUOTES[element.id] ?? []).length > 0 && group.id === 'arrangement'}
     {@const epigraphs = (EPIGRAPHS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
+    {@const dividers = (DIVIDERS[element.id] ?? []).length > 0 && group.id === 'divider'}
     {@const lists = (LISTS[element.id] ?? []).length > 0 && group.id === 'list'}
     {@const pageSetup = (PAGES[element.id] ?? []).length > 0 && group.id === 'margins'}
     {@const figurePage = element.id === 'figure' && group.id === 'arrangement'}
@@ -690,6 +693,7 @@
       ...(LISTS[element.id] ?? []),
       ...(PAGES[element.id] ?? []),
       ...(EPIGRAPHS[element.id] ?? []),
+      ...(DIVIDERS[element.id] ?? []),
       ...(PARAGRAPHS[element.id] ?? []),
       ...(HEADINGS[element.id] ?? []),
       ...(QUOTES[element.id] ?? []),
@@ -698,7 +702,7 @@
     {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
-    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || lists || pageSetup || figurePage || framePage || tablePage || notesPage}
+    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || dividers || lists || pageSetup || figurePage || framePage || tablePage || notesPage}
       <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
         {#if group.id === 'type'}
           <!-- A line of sample text in the type of the element, as the style resolves it. -->
@@ -767,6 +771,16 @@
         {#if epigraphs}
           <!-- An epigraph: set apart at the right under a chapter's title, each value where it is set. -->
           <EpigraphPage
+            {element}
+            {values}
+            control={controlOf}
+            measure={measureCm(editor.resolved['page'] ?? {})}
+            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
+          />
+        {/if}
+        {#if dividers}
+          <!-- A divider: a page with it between two pieces of text, each value where it is set. -->
+          <DividerPage
             {element}
             {values}
             control={controlOf}

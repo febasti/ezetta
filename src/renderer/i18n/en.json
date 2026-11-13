@@ -922,5 +922,7 @@
   "divider.label": "Divider",
   "slash.section.paragraph": "Paragraph",
   "slash.section.insert": "Insert",
-  "slash.divider": "Divider"
+  "slash.divider": "Divider",
+  "cmd.lineBreak": "Insert line break",
+  "slash.lineBreak": "Line break"
 }

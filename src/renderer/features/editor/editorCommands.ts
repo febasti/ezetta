@@ -24,7 +24,13 @@ import {
 } from '@core/typst/edit'
 import type { EditInput, EditResult, InlineKind, ParagraphStyle } from '@core/typst/edit'
 import { footnoteAt } from '@core/typst/footnotes'
-import { joinBackward, joinForward, lineBreak, newParagraph } from '@core/typst/paragraphs'
+import {
+  joinBackward,
+  joinForward,
+  lineBreak,
+  lineBreakHere,
+  newParagraph,
+} from '@core/typst/paragraphs'
 import {
   inlineQuoteAt,
   leaveBlockQuote,
@@ -73,6 +79,7 @@ export type EditorCommandId =
   | 'formula'
   | 'formula-display'
   | 'divider'
+  | 'line-break'
   | 'style-text'
   | 'style-heading-1'
   | 'style-heading-2'
@@ -251,6 +258,16 @@ const DEFAULT_EDITOR_COMMANDS: readonly EditorCommand[] = [
     id: 'divider',
     label: () => i18n.t('cmd.divider'),
     run: (view) => apply(view, insertDivider(inputOf(view))),
+  },
+  // Shift+Enter is its key in the text (`paragraphKeymap`); as a command (the slash menu, the palette)
+  // it also works at the start of a paragraph, which it makes the next line of the one above.
+  {
+    id: 'line-break',
+    label: () => i18n.t('cmd.lineBreak'),
+    run: (view) => {
+      const result = lineBreakHere(inputOf(view))
+      if (result) apply(view, result)
+    },
   },
   paragraph('style-text', { kind: 'text' }, () => i18n.t('cmd.styleText'), { key: '0', alt: true }),
   heading(1),

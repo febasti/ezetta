@@ -631,6 +631,51 @@ test('tables have rules, a header and stripes; a block quote can have lines on i
   }
 })
 
+test('a divider is set on a page of its own: its mark, where it stands, the space around it and its rule', async () => {
+  const { app, page } = await open()
+  try {
+    await openEditor(page)
+    await makeCopy(page, 'Trenner')
+    const toml = () => readFile(style('trenner'), 'utf8').catch(() => '')
+
+    await choose(page, 'Trenner')
+    const drawn = editor(page).locator('.desk .divider')
+    await expect(drawn.locator('.asterisks')).toBeVisible()
+    // The rule's length and weight are there only for a rule.
+    await expect(editor(page).locator('#prop-divider-width')).toHaveCount(0)
+    await expect(editor(page).locator('#prop-divider-rule_width')).toHaveCount(0)
+    const mark = editor(page).getByRole('radiogroup', { name: 'Zeichen', exact: true })
+    await expect(mark.getByRole('radio', { name: 'Sternchen (* * *)' })).toBeChecked()
+    await mark.getByRole('radio', { name: 'Linie' }).click()
+    await expect.poll(toml).toContain('divider_mark = "line"')
+    await expect(drawn.locator('.rule')).toBeVisible()
+    for (const [id, value] of [
+      ['width', '60%'],
+      ['rule_width', '1pt'],
+      ['above', '2em'],
+      ['below', '3em'],
+    ] as const) {
+      const field = editor(page).locator(`#prop-divider-${id}`)
+      await field.fill(value)
+      await field.press('Tab')
+    }
+    await editor(page)
+      .getByRole('radiogroup', { name: 'Ausrichtung', exact: true })
+      .getByRole('radio', { name: 'Links' })
+      .click()
+    await expect.poll(toml).toContain('width = "60%"')
+    await expect.poll(toml).toContain('rule_width = "1pt"')
+    await expect.poll(toml).toContain('above = "2em"')
+    await expect.poll(toml).toContain('below = "3em"')
+    await expect.poll(toml).toContain('align = "left"')
+    await expect(drawn).toHaveClass(/left/)
+    await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
+    await expect(editor(page).getByRole('alert')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
 test('an image can have a border, whose other values appear with its width', async () => {
   const { app, page } = await open()
   try {
@@ -1273,7 +1318,11 @@ test('the elements are in groups that open and close: the headings under one ent
       'Seitenzahl',
     ])
     await group('Text').click()
-    await expect(inside('Text').getByRole('button')).toHaveText(['Fließtext', 'Markierung'])
+    await expect(inside('Text').getByRole('button')).toHaveText([
+      'Fließtext',
+      'Trenner',
+      'Markierung',
+    ])
     await expect(inside('Verweise')).toHaveCount(0)
     // The chosen element is still the one shown, though its group is closed.
     await expect(editor(page).getByRole('heading', { name: 'Überschrift 2' })).toBeVisible()

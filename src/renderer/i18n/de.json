@@ -922,5 +922,7 @@
   "divider.label": "Trenner",
   "slash.section.paragraph": "Absatz",
   "slash.section.insert": "Einfügen",
-  "slash.divider": "Trenner"
+  "slash.divider": "Trenner",
+  "cmd.lineBreak": "Zeilenumbruch einfügen",
+  "slash.lineBreak": "Zeilenumbruch"
 }

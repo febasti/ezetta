@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { EditInput, EditResult } from './edit'
-import { gapAt, joinBackward, joinForward, lineBreak, newParagraph, typeOnGap } from './paragraphs'
+import {
+  gapAt,
+  joinBackward,
+  joinForward,
+  lineBreak,
+  lineBreakHere,
+  newParagraph,
+  typeOnGap,
+} from './paragraphs'
 import { parseTypst } from './parser'
 
 /** `«…»` marks a selection and `|` a caret; the result shows the caret as `|`, or null. */
@@ -79,6 +87,25 @@ describe('Shift+Enter', () => {
 
   it('is left to the editor in raw text', () => {
     expect(shiftEnter('`a|b`')).toBeNull()
+  })
+})
+
+describe('a line break from the slash menu', () => {
+  const here = (s: string) => run(s, lineBreakHere)
+
+  it('at the start of a paragraph behind an empty line, makes it the next line of the one above', () => {
+    expect(here('Eins.\n\n|Zwei.')).toBe('Eins. \\\n|Zwei.')
+    // On the empty line after the last paragraph, where the menu opens most often.
+    expect(here('Eins.\n\n|')).toBe('Eins. \\\n|')
+    // Spaces at the end of the line above are not doubled.
+    expect(here('Eins.  \n\n|Zwei.')).toBe('Eins. \\\n|Zwei.')
+  })
+
+  it('is the line break of Shift+Enter everywhere else', () => {
+    expect(here('Ein|s.')).toBe('Ein \\\n|s.')
+    expect(here('|Eins.')).toBe('\\\n|Eins.')
+    // Not into a heading, which holds no line break: there the paragraph stays apart.
+    expect(here('= Titel\n\n|Text.')).toBe(run('= Titel\n\n|Text.', lineBreak))
   })
 })
 

@@ -8,13 +8,15 @@ import { syntaxTree } from '@codemirror/language'
 import { insideOpaque } from '@core/typst/edit'
 import type { IconName } from '../../editor/icons'
 import { i18n } from '../../i18n/i18n.svelte'
-import { shortcutLabel } from '../../lib/shortcut'
+import { isMac, shortcutLabel } from '../../lib/shortcut'
+import type { Shortcut } from '../../lib/shortcut'
 import { editorCommands, runEditorCommand } from './editorCommands'
 import type { EditorCommandId } from './editorCommands'
 
 /**
  * The slash menu: `/` at the start of a line offers what a paragraph can be (text, a heading, a list,
- * a block quote, an epigraph) and everything that can be inserted (a footnote, a citation, a
+ * a block quote, an epigraph), a line break (which makes the line the next one of the paragraph
+ * above) and everything that can be inserted (a footnote, a citation, a
  * cross-reference, a quote, images, a table, formulas, a divider, a link, a comment). Typing after
  * the slash narrows it, by name or by another word for the thing in either language ("h2", "bild",
  * "image"). Choosing one takes the slash and what was typed after it away and runs the command, as
@@ -28,6 +30,8 @@ export interface SlashItem {
   label: () => string
   /** Other words that find it, in both languages, lower case. */
   words: string
+  /** The keys that do it in the text, shown where the command has no shortcut of its own. */
+  keys?: Shortcut
 }
 
 const heading = (level: 1 | 2 | 3 | 4): SlashItem => ({
@@ -45,6 +49,14 @@ export const SLASH_ITEMS: readonly SlashItem[] = [
     icon: 'pilcrow',
     label: () => i18n.t('paragraph.text'),
     words: 'text absatz paragraph body plain',
+  },
+  {
+    command: 'line-break',
+    section: 'paragraph',
+    icon: 'corner-down-left',
+    label: () => i18n.t('slash.lineBreak'),
+    words: 'zeilenumbruch umbruch zeile neue line break newline br',
+    keys: { key: 'Enter', shift: true },
   },
   heading(1),
   heading(2),
@@ -190,11 +202,19 @@ export interface SlashCompletion extends Completion {
   icon: IconName
 }
 
+/** Keys without Cmd or Ctrl, as the system writes them (⇧↩ on a Mac, Shift+Enter elsewhere). */
+function keysLabel(keys: Shortcut): string {
+  const enter = keys.key === 'Enter'
+  if (isMac()) return `${keys.alt ? '⌥' : ''}${keys.shift ? '⇧' : ''}${enter ? '↩' : keys.key}`
+  return `${keys.alt ? 'Alt+' : ''}${keys.shift ? 'Shift+' : ''}${keys.key}`
+}
+
 function completionOf(item: SlashItem, label: string): SlashCompletion {
   const shortcut = editorCommands.find((c) => c.id === item.command)?.shortcut
+  const detail = shortcut ? shortcutLabel(shortcut) : item.keys ? keysLabel(item.keys) : null
   return {
     label,
-    ...(shortcut ? { detail: shortcutLabel(shortcut) } : {}),
+    ...(detail ? { detail } : {}),
     icon: item.icon,
     section: SECTIONS[item.section](),
     apply: (view, _completion, from, to) => {

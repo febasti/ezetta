@@ -75,6 +75,30 @@ export function lineBreak(input: EditInput): EditResult | null {
 }
 
 /**
+ * A line break asked for at the start of a paragraph that follows another behind one empty line (the
+ * slash menu opens there): the empty line becomes a line break, so this paragraph goes on as the next
+ * line of the one above. Everywhere else it is `lineBreak` at the caret. Null where neither applies
+ * (code, math, raw text, comments).
+ */
+export function lineBreakHere(input: EditInput): EditResult | null {
+  const { doc, tree, from, to } = input
+  if (from === to && !insideOpaque(tree, from)) {
+    const line = lineAt(doc, from)
+    const gap = from === line.from ? lineBefore(doc, line.from) : null
+    const above = gap && blankLine(gap.text) ? lineBefore(doc, gap.from) : null
+    // A heading holds no line break, and a list item would need its indent: those stay apart.
+    const plain = above && !blankLine(above.text) && !/^\s*(?:=+|[-+]|\d+\.)\s/.test(above.text)
+    if (above && plain && joinable(tree, doc, above, line)) {
+      let end = above.to
+      while (end > above.from && (doc[end - 1] === ' ' || doc[end - 1] === '\t')) end -= 1
+      const insert = ' \\\n'
+      return { changes: [{ from: end, to: from, insert }], ...caretAt(end + insert.length) }
+    }
+  }
+  return lineBreak(input)
+}
+
+/**
  * Backspace at the start of a paragraph that follows another behind one empty line: the empty line
  * and both line breaks go, so the caret stands at the end of the paragraph above, joined to this
  * one. Null everywhere else (a selection, inside a line, more than one empty line, a list item, where
