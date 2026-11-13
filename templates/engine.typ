@@ -283,12 +283,15 @@
   // Quotes, figures, tables, footnotes.
   // A quote in the text is set by Typst. A block quote is indented, in the quote size, in the
   // quotation marks of the language with `quotes: true` (the project setting), and its source (the
-  // attribution) follows its last word or stands on a line of its own at the right. An epigraph is a block quote with the
-  // label <epigraph>: set apart at the right, its source under it.
+  // attribution) follows its last word or stands on a line of its own at the right. An epigraph is a
+  // block quote with the label <epigraph>: set apart at the right, its source under it. A translation
+  // (the label <translation>) is set with the block quote right before it: under it, or beside it.
   show quote.where(block: false): set text(..text-args(style.quote_inline))
   show quote.where(block: true): it => {
     let source = if type(it.attribution) == label { cite(it.attribution) } else { it.attribution }
-    if it.at("label", default: none) == <epigraph> {
+    if it.at("label", default: none) == <translation> {
+      // Set with its original (see below).
+    } else if it.at("label", default: none) == <epigraph> {
       let e = style.epigraph
       let s = style.epigraph_source
       align(right, block(
@@ -310,18 +313,40 @@
       ))
     } else {
       let q = style.quote
+      let tr = style.translation
       // The source follows the last word of the quote (after its closing mark), or stands on a line of
       // its own at the right. With citations in footnotes it always follows the last word: a line of
       // its own would hold nothing but the note's number.
       let after = q.source_position != "line" or meta.at("note_citations", default: false)
-      let content = spaced(q.line_height, {
-        set text(..text-args(q))
-        let body = if it.quotes == true { quote(it.body) } else { it.body }
+      let marks = it.quotes == true
+      // The text of a quote in the look of `c`, with its source.
+      let quoted(element, c) = spaced(c.line_height, {
+        set text(..text-args(c))
+        let source = element.attribution
+        if type(source) == label { source = cite(source) }
+        let body = if marks { quote(element.body) } else { element.body }
         if source == none { body } else if after { body + [ ] + source } else {
           body
           align(right, source)
         }
       })
+      // A block quote labelled <translation> right behind this one is its translation (the export
+      // takes the label off one that has no block quote before it): it is set here, under the
+      // original or beside it, and leaves nothing where it stands.
+      let content = context {
+        let next = query(quote.where(block: true).after(here(), inclusive: false))
+        let translation = if next.len() > 0 and next.first().at("label", default: none) == <translation> {
+          next.first()
+        }
+        if translation == none {
+          quoted(it, q)
+        } else if tr.translation_position == "side" {
+          grid(columns: (1fr, 1fr), column-gutter: tr.column_gap, quoted(it, q), quoted(translation, tr))
+        } else {
+          quoted(it, q)
+          block(above: tr.above, quoted(translation, tr))
+        }
+      }
       // Lines on any side, a background, and padding make the quote a box of its own. A side with a
       // line keeps its distance to the text, a side without one the padding.
       let side-line(on) = if on { (paint: q.border_color, thickness: q.border_thickness) } else { none }

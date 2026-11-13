@@ -183,13 +183,19 @@ function enclosingQuote(input: EditInput): SyntaxNode | null {
   return null
 }
 
-/** The label that makes a block quote an epigraph (motto), right behind its closing bracket. */
-const EPIGRAPH_AFTER = /^[ \t]*<epigraph>/
+/**
+ * The labels that make a block quote an epigraph (motto) or a translation, right behind its closing
+ * bracket.
+ */
+const LABEL_AFTER = /^[ \t]*<(epigraph|translation)>/
 
-/** The end of the epigraph label behind a block quote that ends at `to`, or null without one. */
-function epigraphLabelEnd(doc: string, to: number): number | null {
-  const label = EPIGRAPH_AFTER.exec(doc.slice(to, to + 40))
-  return label ? to + label[0].length : null
+/** The label behind a block quote that ends at `to` (its kind and where it ends), or null. */
+function quoteLabel(
+  doc: string,
+  to: number,
+): { kind: 'epigraph' | 'translation'; end: number } | null {
+  const label = LABEL_AFTER.exec(doc.slice(to, to + 40))
+  return label ? { kind: label[1] as 'epigraph' | 'translation', end: to + label[0].length } : null
 }
 
 function lineStartOf(doc: string, pos: number): number {
@@ -209,7 +215,7 @@ export function paragraphStyleAt(tree: Tree, doc: string, pos: number): Paragrap
   const input: EditInput = { doc, tree, from: pos, to: pos }
   const enclosing = enclosingQuote(input)
   if (enclosing)
-    return { kind: epigraphLabelEnd(doc, enclosing.to) === null ? 'quote' : 'epigraph' }
+    return { kind: quoteLabel(doc, enclosing.to)?.kind === 'epigraph' ? 'epigraph' : 'quote' }
   const lineStart = lineStartOf(doc, pos)
   let at = pos
   while (
@@ -249,20 +255,25 @@ export function setParagraphStyle(input: EditInput, style: ParagraphStyle): Edit
 
   const quote = enclosingQuote(input)
 
-  // A block quote and an epigraph are the same element, told apart by the label behind it: choosing
-  // the other one of the two changes the label, choosing the same one takes the quote off.
-  const labelEnd = quote ? epigraphLabelEnd(doc, quote.to) : null
+  // A block quote, an epigraph and a translation are the same element, told apart by the label
+  // behind it: choosing another of them changes the label, choosing the same one takes the quote off
+  // (a translation is a block quote in the style menu).
+  const label = quote ? quoteLabel(doc, quote.to) : null
   if (style.kind === 'quote') {
     if (!quote) return wrapQuote(input, first, lastEnd)
-    return labelEnd === null
+    return label === null
       ? unwrapQuote(input, quote)
-      : result([{ from: quote.to, to: labelEnd, insert: '' }], input.from, input.to)
+      : result([{ from: quote.to, to: label.end, insert: '' }], input.from, input.to)
   }
   if (style.kind === 'epigraph') {
     if (!quote) return wrapQuote(input, first, lastEnd, true)
-    return labelEnd === null
-      ? result([{ from: quote.to, to: quote.to, insert: ' <epigraph>' }], input.from, input.to)
-      : unwrapQuote(input, quote)
+    return label?.kind === 'epigraph'
+      ? unwrapQuote(input, quote)
+      : result(
+          [{ from: quote.to, to: label?.end ?? quote.to, insert: ' <epigraph>' }],
+          input.from,
+          input.to,
+        )
   }
   if (style.kind === 'text' && quote) return unwrapQuote(input, quote)
 
@@ -323,8 +334,8 @@ function unwrapQuote(input: EditInput, quote: SyntaxNode): EditResult {
   const { doc } = input
   const openEnd = open.to + (doc[open.to] === '\n' ? 1 : 0)
   const closeStart = close.from - (close.from > openEnd && doc[close.from - 1] === '\n' ? 1 : 0)
-  // An epigraph takes its label with it.
-  const closeEnd = epigraphLabelEnd(doc, quote.to) ?? close.to
+  // An epigraph or a translation takes its label with it.
+  const closeEnd = quoteLabel(doc, quote.to)?.end ?? close.to
   const changes = [
     { from: quote.from, to: openEnd, insert: '' },
     { from: closeStart, to: closeEnd, insert: '' },

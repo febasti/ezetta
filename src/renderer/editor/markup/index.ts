@@ -170,6 +170,14 @@ export const markupTheme = EditorView.theme({
   // to its edge, see `atomicKeys.ts`) is on the selection's ground until the next press.
   '.cm-line.cm-quote.cm-quote-current': { borderLeftColor: 'var(--color-accent)' },
   '.cm-line.cm-quote-armed': { backgroundColor: 'var(--color-selection)' },
+  // A translation: a block quote like its original, its name at the right of its first line.
+  '.cm-line.cm-quote-translation-first::after': {
+    content: 'attr(data-label)',
+    float: 'right',
+    marginLeft: 'var(--sp-8)',
+    font: 'var(--type-caption)',
+    color: 'var(--color-label-tertiary)',
+  },
   // An epigraph (motto): set apart, right-aligned and italic, with no rule beside it.
   '.cm-line.cm-epigraph': {
     paddingLeft: 'calc(var(--sp-32) + var(--sp-16))',

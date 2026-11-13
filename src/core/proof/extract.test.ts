@@ -89,6 +89,17 @@ describe('proofUnits', () => {
     expect(read(units(doc)[0]!)).toBe('Siehe Link und diese Seite.')
   })
 
+  it('skips a block quote that has a translation, and checks the translation', () => {
+    const doc =
+      'Davor.\n\n#quote(block: true, attribution: [@platon])[Cogito ergo sum.]\n\n#quote(block: true)[Ich denke.] <translation>\n'
+    const read_ = units(doc).map(read).join(' | ')
+    expect(read_).not.toContain('Cogito')
+    expect(read_).toContain('Ich denke.')
+    expect(read_).toContain('Davor.')
+    // Without the translation the quote is checked as text in the project's language.
+    expect(units(doc.replace(' <translation>', '')).map(read).join(' ')).toContain('Cogito')
+  })
+
   it('reads an escaped character as the character', () => {
     expect(read(units('Kosten: 5\\$ und 3\\#\n')[0]!)).toBe('Kosten: 5$ und 3#')
   })

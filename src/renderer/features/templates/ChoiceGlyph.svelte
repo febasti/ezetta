@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * A choice of the template editor as a small picture, 22 × 16, in the colour of the text: where a
-   * caption stands, where a figure stands, where the source of a block quote stands, the rules of a table, the line above the footnotes, the
+   * caption stands, where a figure stands, where the source of a block quote stands, where a translation stands, the rules of a table, the line above the footnotes, the
    * mark of a divider. The choices of the page (a
    * page upright or across, one page or two, the columns) are the app's icons instead, as wide. The
    * segmented control around it says the choice's name.
@@ -61,6 +61,15 @@
       {:else}
         <path class="stroke thin" d="M3 10h9" />
         <rect class="fill" x="13.5" y="12.5" width="5.5" height="2" rx="1" />
+      {/if}
+    {:else if prop === 'translation_position'}
+      <!-- The original and its translation (faint): one under the other, or side by side. -->
+      {#if value === 'below'}
+        <path class="stroke" d="M3 3h16M3 6h12" />
+        <path class="stroke thin" d="M3 10.5h16M3 13.5h12" />
+      {:else}
+        <path class="stroke" d="M3 4h7M3 7.5h7M3 11h5" />
+        <path class="stroke thin" d="M12 4h7M12 7.5h7M12 11h5" />
       {/if}
     {:else if prop === 'border_style'}
       {#if value === 'rows'}

@@ -139,3 +139,22 @@ describe('dividers', () => {
       expect(run(input).text).toBe(input)
   })
 })
+
+describe('translations', () => {
+  const ORIGINAL = '#quote(block: true)[Original]'
+  const TRANSLATION = '#quote(block: true)[Übersetzung] <translation>'
+
+  it('keep their label right behind a block quote', () => {
+    const text = `${ORIGINAL}\n\n${TRANSLATION}\n`
+    expect(run(text).text).toBe(text)
+  })
+
+  it('lose it with no block quote right before them, and print as one', () => {
+    expect(run(`Text.\n\n${TRANSLATION}\n`).text).toBe(
+      'Text.\n\n#quote(block: true)[Übersetzung]\n',
+    )
+    expect(run(`${ORIGINAL} <epigraph>\n\n${TRANSLATION}`).text).toBe(
+      `${ORIGINAL} <epigraph>\n\n#quote(block: true)[Übersetzung]`,
+    )
+  })
+})

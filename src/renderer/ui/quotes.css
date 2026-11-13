@@ -47,10 +47,11 @@
 }
 
 /* Small buttons in the line of text, in the interface's face: the hint for a long quote (on the
- * selection's ground in the accent, as it offers something), and the offer of a source (quiet until
- * hovered). */
+ * selection's ground in the accent, as it offers something), and the offers of a source and of a
+ * translation (quiet until hovered). */
 .cm-quote-hint,
-.cm-quote-source-add {
+.cm-quote-source-add,
+.cm-quote-translation-add {
   margin-left: var(--sp-8);
   padding: 1px var(--sp-4);
   border: 0;
@@ -72,16 +73,19 @@
     var(--color-window)
   );
 }
-.cm-quote-source-add {
+.cm-quote-source-add,
+.cm-quote-translation-add {
   background: none;
   color: var(--color-label-tertiary);
 }
-.cm-quote-source-add:hover {
+.cm-quote-source-add:hover,
+.cm-quote-translation-add:hover {
   background: var(--color-selection);
   color: var(--color-accent);
 }
 .cm-quote-hint:focus-visible,
-.cm-quote-source-add:focus-visible {
+.cm-quote-source-add:focus-visible,
+.cm-quote-translation-add:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--color-focus);
 }

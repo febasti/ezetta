@@ -459,8 +459,11 @@ test('the project setting puts the quotation marks of the language around block 
     await block.click()
     await page.keyboard.press('Home')
     await page.keyboard.type('A')
-    // (With the caret in it, the quote offers to add a source after its closing mark.)
-    await expect(block).toHaveText('„AEr sagte ‚innen‘ dort.“+ Quelle hinzufügen')
+    // (With the caret in it, the quote offers to add a source and a translation after its closing
+    // mark.)
+    await expect(block).toHaveText(
+      '„AEr sagte ‚innen‘ dort.“+ Quelle hinzufügen+ Übersetzung hinzufügen',
+    )
     await page.keyboard.press('Home')
     await page.keyboard.press('Backspace')
     await expect(page.locator('.cm-content .cm-line.cm-quote')).toHaveCount(1)
@@ -537,7 +540,11 @@ test('a block quote without a source offers one while the caret is in it, and th
 test('the Beleg button in a block quote cites into its source', async () => {
   const { app, page } = await openWith('#quote(block: true)[Ein Block.]\n')
   try {
-    await page.locator('.cm-content').getByText('Ein Block.').click()
+    // On the words: the line also holds the offers of a source and a translation.
+    await page
+      .locator('.cm-content')
+      .getByText('Ein Block.')
+      .click({ position: { x: 8, y: 8 } })
     await page.locator('.toolbar').getByRole('button', { name: 'Beleg', exact: true }).click()
     await page.locator('input.cm-cite-search').fill('smith')
     await page.keyboard.press('Enter')
@@ -609,6 +616,54 @@ test('the quote menu has the three kinds and changes between them', async () => 
   }
 })
 
+test('a block quote offers a translation at its end, drawn under it with its name and its own source', async () => {
+  const { app, page } = await openWith(
+    'Davor.\n\n#quote(block: true, attribution: [@smith2020])[Cogito, ergo sum.]\n\nDanach.\n',
+  )
+  try {
+    const offer = page.locator('.cm-content .cm-quote-translation-add')
+    // Offered only while the caret is in the quote, beside its source.
+    await page.locator('.cm-content').getByText('Davor.').click()
+    await expect(offer).toHaveCount(0)
+    await page.locator('.cm-content').getByText('Cogito').click()
+    await expect(offer).toHaveText('+ Übersetzung hinzufügen')
+    await expect(page.getByRole('menuitem', { name: 'Übersetzung hinzufügen' })).toHaveCount(0)
+
+    await offer.click()
+    await page.keyboard.type('Ich denke, also bin ich.')
+    await expect
+      .poll(read)
+      .toContain(
+        '[Cogito, ergo sum.]\n\n#quote(block: true)[Ich denke, also bin ich.] <translation>\n\nDanach.',
+      )
+    // Drawn as a block quote, named at its right; the label never shows.
+    const translation = page.locator('.cm-content .cm-line.cm-quote-translation')
+    await expect(translation).toHaveAttribute('data-label', 'Übersetzung')
+    await expect(page.locator('.cm-content')).not.toContainText('<translation>')
+    // No second translation, neither for the quote nor for the translation.
+    await expect(offer).toHaveCount(0)
+    await page.locator('.cm-content').getByText('Cogito').click()
+    await expect(offer).toHaveCount(0)
+
+    // The translation has a source of its own, offered and drawn as a block quote's.
+    await translation.getByText('Ich denke').click()
+    const addSource = translation.locator('.cm-quote-source-add')
+    await expect(addSource).toHaveText('+ Quelle hinzufügen')
+    await addSource.click()
+    await expect(citeDialog(page)).toBeVisible()
+    await page.locator('input.cm-cite-search').fill('jones')
+    await page.keyboard.press('Enter')
+    await expect
+      .poll(read)
+      .toContain(
+        '#quote(block: true, attribution: [@jones2019])[Ich denke, also bin ich.] <translation>',
+      )
+    await expect(translation.locator('.cm-quote-source .cm-cite')).toHaveText(['(Jones 2019)'])
+  } finally {
+    await app.close()
+  }
+})
+
 test('the caret comes into a block quote from the paragraph above, behind its opening mark', async () => {
   const { app, page } = await openWith('Davor.\n\n#quote(block: true)[Der Text.]\n')
   try {
@@ -619,7 +674,7 @@ test('the caret comes into a block quote from the paragraph above, behind its op
     await page.keyboard.type('X')
     // The text went into the quote, behind the opening mark, not in front of it.
     await expect(page.locator('.cm-content .cm-line.cm-quote')).toHaveText(
-      '„XDer Text.“+ Quelle hinzufügen',
+      '„XDer Text.“+ Quelle hinzufügen+ Übersetzung hinzufügen',
     )
     await expect.poll(read).toContain('#quote(block: true)[XDer Text.]')
   } finally {

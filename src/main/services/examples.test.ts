@@ -50,6 +50,7 @@ const FEATURES: [name: string, pattern: RegExp][] = [
   ['a quotation in the text', /#quote\[/],
   ['a block quotation with its source', /#quote\(block: true, attribution: \[@/],
   ['an epigraph', /<epigraph>/],
+  ['a block quotation with its translation', /\] <translation>/],
   ['a figure with an image', /#figure\(\s*image\("assets\/[^"]+"/],
   ['a table', /table\.header/],
   ['a formula in the text', /\$[a-z] = \d+\$/],

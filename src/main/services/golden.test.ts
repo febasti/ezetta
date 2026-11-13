@@ -117,6 +117,19 @@ const TRENNER = [
   `${LONG}`,
 ].join('\n')
 
+/** A sheet with a block quote and its translation. */
+const TRANSLATED = [
+  '= Übersetzt',
+  '',
+  'Davor ein Satz.',
+  '',
+  '#quote(block: true, attribution: [@smith2020[S. 3]])[Nemo enim ipsam voluptatem, quia voluptas sit, aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos.]',
+  '',
+  '#quote(block: true, attribution: [Übers. d. Verf.])[Niemand nämlich verschmäht die Lust selbst, weil sie Lust ist, oder hasst sie oder flieht sie, sondern weil große Schmerzen folgen.] <translation>',
+  '',
+  'Danach geht der Text weiter.',
+].join('\n')
+
 const VARIANTS: {
   name: string
   template: string
@@ -194,6 +207,20 @@ const VARIANTS: {
     template: 'monographie',
     options: {},
     sets: { quote: { source_position: 'line' } },
+  },
+  // A block quote with its translation, under it and beside it.
+  {
+    name: 'monographie-uebersetzung',
+    template: 'monographie',
+    options: {},
+    extraSheets: { 'zusatz/zusatz.typ': TRANSLATED },
+  },
+  {
+    name: 'monographie-uebersetzung-neben',
+    template: 'monographie',
+    options: {},
+    extraSheets: { 'zusatz/zusatz.typ': TRANSLATED },
+    sets: { translation: { translation_position: 'side', italic: true } },
   },
   {
     name: 'monographie-quelle-fussnote',

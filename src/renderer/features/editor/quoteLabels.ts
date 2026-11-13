@@ -9,5 +9,7 @@ export function quoteLabels(): QuoteConfig['labels'] {
     addSource: i18n.t('quote.addSource'),
     source: i18n.t('quote.source'),
     sourceInvalid: i18n.t('quote.sourceInvalid'),
+    translation: i18n.t('quote.translationLabel'),
+    addTranslation: i18n.t('quote.translation'),
   }
 }

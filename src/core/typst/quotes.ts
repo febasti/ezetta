@@ -1,6 +1,6 @@
 import type { Tree } from '@lezer/common'
 import type { EditInput, EditResult } from './edit'
-import { insideOpaque } from './edit'
+import { QUOTE_OPEN, insideOpaque } from './edit'
 import { balanced, parseArgs } from './args'
 import { groupSource } from './citations'
 import type { Citation } from './citations'
@@ -18,10 +18,14 @@ import { countWords } from './text'
  *       passage that is still part of the text, set off as an indented paragraph
  *   `#quote(block: true, attribution: [Goethe, _Faust_])[Motto.] <epigraph>`   an epigraph (motto), at
  *       the start of a chapter: set apart, with a free-text source under it
+ *   `#quote(block: true, attribution: [@cary1897[S. 12]])[Translated text.] <translation>`   the
+ *       translation of the block quote right before it, with a source of its own; the template sets
+ *       it under the original or beside it
  *
  * The source of a block quote is its `attribution`: ordinary markup in brackets, in which citations
  * are written as everywhere else, so they are never inside the quoted text. The label `<epigraph>`
- * marks the third kind, so a sheet stays plain Typst and the template decides how each looks.
+ * marks the third kind and `<translation>` a translation, so a sheet stays plain Typst (outside the
+ * app a translation is a second block quote) and the template decides how each looks.
  *
  * The file never holds quotation marks of its own. The editor draws the marks of an inline quote as
  * decoration only.
@@ -43,6 +47,11 @@ export interface Quote {
   words: number
   /** An epigraph (motto): a block quote with `<epigraph>` right behind it. */
   epigraph: boolean
+  /**
+   * A translation: a block quote with `<translation>` right behind it. It translates the block quote
+   * right before it (`originalOf`); without one it is an ordinary block quote.
+   */
+  translation: boolean
   /** The end of the quote with that label (equal to `to` for a quote without one). */
   end: number
   /**
@@ -53,7 +62,7 @@ export interface Quote {
 }
 
 const BLOCK_ARG = /block\s*:\s*true/
-const EPIGRAPH_LABEL = /^[ \t]*<epigraph>/
+const QUOTE_LABEL = /^[ \t]*<(epigraph|translation)>/
 
 /**
  * `blockMarks`: block quotes get quotation marks too (a project setting), so an inline quote inside
@@ -95,7 +104,7 @@ export function scanQuotes(
             innerTo: found.valueTo - 1,
           }
       }
-      const label = block ? EPIGRAPH_LABEL.exec(doc.slice(node.to, node.to + 40)) : null
+      const label = block ? QUOTE_LABEL.exec(doc.slice(node.to, node.to + 40)) : null
       out.push({
         from: node.from,
         to: node.to,
@@ -105,7 +114,8 @@ export function scanQuotes(
         args: args ? { from: args.from, to: args.to } : null,
         depth: block ? 0 : depth,
         words: block ? 0 : countWords(doc.slice(open.to, close.from)),
-        epigraph: label !== null,
+        epigraph: label?.[1] === 'epigraph',
+        translation: label?.[1] === 'translation',
         end: node.to + (label ? label[0].length : 0),
         attribution,
       })
@@ -343,9 +353,68 @@ export function addSourceCitations(
   return { edit, start: edit.from + edit.insert.indexOf(`[${text}]`) + 1 }
 }
 
+/** The text of a document: a string, or the editor's text, which gives slices of itself. */
+export type DocText = string | { sliceString(from: number, to: number): string }
+const sliceOf = (doc: DocText, from: number, to: number): string =>
+  typeof doc === 'string' ? doc.slice(from, to) : doc.sliceString(from, to)
+
+/** A block quote that is neither an epigraph nor a translation: one that can have a translation. */
+const plainBlock = (quote: Quote): boolean => quote.block && !quote.epigraph && !quote.translation
+
+/**
+ * The block quote a translation translates: the one right before it, with nothing but space
+ * between, which is neither an epigraph nor a translation itself. Null for anything else.
+ */
+export function originalOf(doc: DocText, quotes: readonly Quote[], quote: Quote): Quote | null {
+  if (!quote.translation) return null
+  const before = quotes.filter(
+    (q) => q.end <= quote.from && sliceOf(doc, q.end, quote.from).trim() === '',
+  )
+  const original = before.at(-1)
+  return original && plainBlock(original) ? original : null
+}
+
+/** The translation of a block quote: the quote labelled `<translation>` right behind it, or null. */
+export function translationOf(doc: DocText, quotes: readonly Quote[], quote: Quote): Quote | null {
+  if (!plainBlock(quote)) return null
+  const next = quotes.find(
+    (q) => q.from >= quote.end && q.translation && sliceOf(doc, quote.end, q.from).trim() === '',
+  )
+  return next ?? null
+}
+
+/** Whether a translation can be added behind a quote: a block quote that has none yet. */
+export const translatable = (doc: DocText, quotes: readonly Quote[], quote: Quote): boolean =>
+  plainBlock(quote) && translationOf(doc, quotes, quote) === null
+
+/**
+ * Adds an empty translation behind a block quote, after an empty line: a block quote labelled
+ * `<translation>`. `caret` is inside it. Null for a quote that cannot have one (an inline quote, an
+ * epigraph, a translation) or already has one.
+ */
+export function addTranslation(
+  doc: string,
+  quotes: readonly Quote[],
+  quote: Quote,
+): { edit: TextEdit; caret: number } | null {
+  if (!translatable(doc, quotes, quote)) return null
+  const open = `\n\n${QUOTE_OPEN}`
+  return {
+    edit: { from: quote.end, to: quote.end, insert: `${open}] <translation>` },
+    caret: quote.end + open.length,
+  }
+}
+
+/** The block quote, epigraph or translation the caret is in (the innermost one), or null. */
+export function blockQuoteAt(quotes: readonly Quote[], pos: number): Quote | null {
+  return quotes
+    .filter((q) => q.block && q.openTo <= pos && pos <= q.closeFrom)
+    .reduce<Quote | null>((inner, q) => (inner && inner.from > q.from ? inner : q), null)
+}
+
 /** Makes a block quote an epigraph (the label `<epigraph>` behind it), or takes the label off again. */
 export function toggleEpigraph(quote: Quote): TextEdit | null {
-  if (!quote.block) return null
+  if (!quote.block || quote.translation) return null
   return quote.epigraph
     ? { from: quote.to, to: quote.end, insert: '' }
     : { from: quote.to, to: quote.to, insert: ' <epigraph>' }
@@ -410,7 +479,7 @@ export function quoteToInline(
   quote: Quote,
   citations: readonly Pick<Citation, 'from' | 'end'>[] = [],
 ): TextEdit[] | null {
-  if (!quote.block || !quote.args || quote.epigraph) return null
+  if (!quote.block || !quote.args || quote.epigraph || quote.translation) return null
   if (BLANK_LINE.test(doc.slice(quote.openTo, quote.closeFrom))) return null
   let moved: string | null = null
   if (quote.attribution) {

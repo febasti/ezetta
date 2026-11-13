@@ -1,11 +1,19 @@
 import { Decoration } from '@codemirror/view'
+import { originalOf, translatable } from '@core/typst/quotes'
 import type { Quote } from '@core/typst/quotes'
 import type { SyntaxNode } from '@lezer/common'
 import type { AtomicUnit } from '../atomicKeys'
 import { groupChipFor } from '../citeWidget'
 import { armedQuoteField, quoteConfig, quoteField } from '../quoteState'
 import type { QuoteConfig } from '../quoteState'
-import { EpigraphSource, QuoteHint, QuoteMark, QuoteSource, QuoteSourceAdd } from '../quoteWidgets'
+import {
+  EpigraphSource,
+  QuoteHint,
+  QuoteMark,
+  QuoteSource,
+  QuoteSourceAdd,
+  QuoteTranslationAdd,
+} from '../quoteWidgets'
 import type { QuoteEmphasis, SourcePart } from '../quoteWidgets'
 import type { Builder, Call } from './builder'
 import type { ChipMarkup } from './chips'
@@ -14,7 +22,8 @@ import type { ChipMarkup } from './chips'
  * Quotes in their three kinds. An inline quote shows the quotation marks of the project's language
  * in place of its syntax; the marks go only with the last of the quote's words, never by a press next
  * to them (`atomicKeys.ts`). A block quote hides its wrapper for good and is drawn with a rule, with
- * its source (`attribution`) at its end. An epigraph is a block quote labelled `<epigraph>`.
+ * its source (`attribution`) at its end. An epigraph is a block quote labelled `<epigraph>`; a
+ * translation is one labelled `<translation>` right behind another block quote, named at its right.
  */
 export class QuoteMarkup {
   private readonly settings: QuoteConfig
@@ -23,8 +32,12 @@ export class QuoteMarkup {
   private readonly armed: number | null
   /** The quote the caret is in (the innermost one): its marks, or a block quote's rule, are in the accent. */
   private readonly current: number | null
-  /** Where the labels of epigraphs end: they are hidden with the quote's closing bracket. */
-  private readonly epigraphLabels: Set<number>
+  /** Where the labels of epigraphs and translations end: hidden with the quote's closing bracket. */
+  private readonly labelEnds: Set<number>
+  /** Where the translations that have an original start. */
+  private readonly translations: Set<number>
+  /** Where the block quotes start that can have a translation added. */
+  private readonly translatable: Set<number>
   /** Where the sources of block quotes are written: drawn at the end of the quote, so not there. */
   private readonly attributions: { from: number; to: number }[]
 
@@ -44,7 +57,15 @@ export class QuoteMarkup {
           : inner,
       null,
     )
-    this.epigraphLabels = new Set(quotes.filter((q) => q.epigraph).map((q) => q.end))
+    this.labelEnds = new Set(quotes.filter((q) => q.epigraph || q.translation).map((q) => q.end))
+    this.translations = new Set(
+      quotes
+        .filter((q) => q.translation && originalOf(state.doc, quotes, q) !== null)
+        .map((q) => q.from),
+    )
+    this.translatable = new Set(
+      quotes.filter((q) => translatable(state.doc, quotes, q)).map((q) => q.from),
+    )
     this.attributions = quotes.flatMap((q) => (q.attribution ? [q.attribution] : []))
   }
 
@@ -57,9 +78,9 @@ export class QuoteMarkup {
     )
   }
 
-  /** True for the label of an epigraph, which is hidden with its quote's closing bracket. */
+  /** True for the label of an epigraph or a translation, hidden with its quote's closing bracket. */
   hidesLabel(node: SyntaxNode): boolean {
-    return !this.b.showSource && this.epigraphLabels.has(node.to)
+    return !this.b.showSource && this.labelEnds.has(node.to)
   }
 
   /** An inline quote: its wrapper is drawn as the quotation marks of the project's language. */
@@ -184,9 +205,23 @@ export class QuoteMarkup {
         : {}),
     })
     b.addLine(epigraph ? 'cm-epigraph' : 'cm-quote', node.from, endPos)
+    // A translation: the block quote under its original, named at the right of its first line.
+    if (this.translations.has(node.from)) {
+      b.addLine('cm-quote-translation', node.from, endPos)
+      b.ranges.push(
+        Decoration.line({
+          class: 'cm-quote-translation-first',
+          attributes: { 'data-label': settings.labels.translation },
+        }).range(first.from),
+      )
+    }
     const emphasis = this.emphasis(node.from)
     if (emphasis) b.addLine(`cm-quote-${emphasis}`, node.from, endPos)
-    if (quote) this.addSource(quote, close.to, last.to)
+    // The source goes behind the label of a translation, which is hidden with the closing bracket.
+    if (quote) {
+      this.addSource(quote, endPos, last.to)
+      if (!epigraph) this.addTranslationOffer(quote, endPos)
+    }
     return true
   }
 
@@ -241,12 +276,25 @@ export class QuoteMarkup {
       )
       return
     }
-    if (!b.state.readOnly && b.touches(quote.from, quote.to))
+    if (!b.state.readOnly && b.touches(quote.from, quote.end))
       b.ranges.push(
         Decoration.widget({
           widget: new QuoteSourceAdd(this.settings.labels.addSource),
           side: 1,
         }).range(closeTo),
       )
+  }
+
+  /** The offer of a translation behind a block quote that has none, while the caret is in it. */
+  private addTranslationOffer(quote: Quote, end: number): void {
+    const { b } = this
+    if (b.state.readOnly || !this.translatable.has(quote.from) || !b.touches(quote.from, quote.end))
+      return
+    b.ranges.push(
+      Decoration.widget({
+        widget: new QuoteTranslationAdd(this.settings.labels.addTranslation),
+        side: 2,
+      }).range(end),
+    )
   }
 }

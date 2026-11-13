@@ -4,6 +4,10 @@ import { scanCitations } from './citations'
 import { parseTypst } from './parser'
 import {
   addSourceCitations,
+  addTranslation,
+  blockQuoteAt,
+  originalOf,
+  translationOf,
   blockQuoteWords,
   inlineQuoteAt,
   leaveBlockQuote,
@@ -466,6 +470,71 @@ describe('toggleEpigraph', () => {
 
   it('does nothing for an inline quote', () => {
     expect(toggleEpigraph(scan('#quote[Text]')[0]!)).toBeNull()
+  })
+})
+
+describe('translations', () => {
+  const ORIGINAL = '#quote(block: true, attribution: [@platon[21d]])[ὅτι ἃ μὴ οἶδα]'
+  const PAIR = `${ORIGINAL}\n\n#quote(block: true, attribution: [Übers. d. Verf.])[was ich nicht weiß] <translation>`
+
+  it('are block quotes labelled <translation>, paired with the block quote right before them', () => {
+    const quotes = scan(PAIR)
+    expect(quotes.map((q) => q.translation)).toEqual([false, true])
+    expect(quotes[1]!.end).toBe(PAIR.length)
+    expect(originalOf(PAIR, quotes, quotes[1]!)).toBe(quotes[0])
+    expect(translationOf(PAIR, quotes, quotes[0]!)).toBe(quotes[1])
+    // A single line break between them is as good as an empty line.
+    const tight = PAIR.replace('\n\n', '\n')
+    expect(originalOf(tight, scan(tight), scan(tight)[1]!)).not.toBeNull()
+  })
+
+  it('translate nothing with text between them and the quote, or after an epigraph', () => {
+    const apart = PAIR.replace('\n\n', '\n\nDazwischen.\n\n')
+    expect(originalOf(apart, scan(apart), scan(apart)[1]!)).toBeNull()
+    const motto = PAIR.replace(']\n\n', '] <epigraph>\n\n')
+    expect(originalOf(motto, scan(motto), scan(motto)[1]!)).toBeNull()
+    expect(translationOf(motto, scan(motto), scan(motto)[0]!)).toBeNull()
+  })
+
+  it('are added empty behind a block quote, with the caret inside', () => {
+    const quotes = scan(ORIGINAL)
+    const made = addTranslation(ORIGINAL, quotes, quotes[0]!)!
+    const out = applyAll(ORIGINAL, [made.edit])
+    expect(out).toBe(`${ORIGINAL}\n\n#quote(block: true)[] <translation>`)
+    expect(out.slice(made.caret - 1, made.caret + 1)).toBe('[]')
+    const after = scan(out)
+    expect(originalOf(out, after, after[1]!)).toBe(after[0])
+  })
+
+  it('are not added to a quote that has one, to an epigraph, a translation or an inline quote', () => {
+    const quotes = scan(PAIR)
+    expect(addTranslation(PAIR, quotes, quotes[0]!)).toBeNull()
+    expect(addTranslation(PAIR, quotes, quotes[1]!)).toBeNull()
+    const motto = '#quote(block: true)[Motto] <epigraph>'
+    expect(addTranslation(motto, scan(motto), scan(motto)[0]!)).toBeNull()
+    expect(
+      addTranslation('#quote[Text]', scan('#quote[Text]'), scan('#quote[Text]')[0]!),
+    ).toBeNull()
+  })
+
+  it('are neither made epigraphs nor quotes in the text', () => {
+    const quotes = scan(PAIR)
+    expect(toggleEpigraph(quotes[1]!)).toBeNull()
+    expect(quoteToInline(PAIR, quotes[1]!)).toBeNull()
+  })
+
+  it('lose their label with their wrapper', () => {
+    const doc = '#quote(block: true)[Original]\n\n#quote(block: true)[Übersetzung] <translation>\n'
+    expect(applyAll(doc, removeQuote(doc, scan(doc)[1]!))).toBe(
+      '#quote(block: true)[Original]\n\nÜbersetzung\n',
+    )
+  })
+
+  it('are found at the caret, the innermost block quote first', () => {
+    const quotes = scan(PAIR)
+    expect(blockQuoteAt(quotes, PAIR.indexOf('οἶδα'))).toBe(quotes[0])
+    expect(blockQuoteAt(quotes, PAIR.indexOf('weiß'))).toBe(quotes[1])
+    expect(blockQuoteAt(quotes, 0)).toBeNull()
   })
 })
 

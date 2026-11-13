@@ -2,7 +2,7 @@ import { redo, undo } from '@codemirror/commands'
 import { WidgetType } from '@codemirror/view'
 import type { EditorView } from '@codemirror/view'
 import { balanced } from '@core/typst/args'
-import { quoteToBlock, setAttribution } from '@core/typst/quotes'
+import { addTranslation, quoteToBlock, setAttribution } from '@core/typst/quotes'
 import { chipElement } from './citeWidget'
 import type { GroupChip } from './citeWidget'
 import { citeField, openCite, openNewCite } from './citeState'
@@ -176,6 +176,47 @@ export class QuoteSourceAdd extends WidgetType {
       // The quote may have moved since this element was made: find the one that ends here now.
       const quote = quoteClosingAt(view.state, view.posAtDOM(add))
       if (quote) openNewCite(view, quote.closeFrom, quote.from)
+    })
+    return add
+  }
+
+  override ignoreEvent(): boolean {
+    return true
+  }
+}
+
+/**
+ * Offered at the end of a block quote that has no translation yet, while the caret is in it: adds an
+ * empty translation behind it and puts the caret in it.
+ */
+export class QuoteTranslationAdd extends WidgetType {
+  constructor(private readonly text: string) {
+    super()
+  }
+
+  override eq(other: QuoteTranslationAdd): boolean {
+    return other.text === this.text
+  }
+
+  override toDOM(view: EditorView): HTMLElement {
+    const add = document.createElement('button')
+    add.type = 'button'
+    add.className = 'cm-quote-translation-add'
+    add.textContent = `+ ${this.text}`
+    add.addEventListener('mousedown', (event) => event.preventDefault())
+    add.addEventListener('click', () => {
+      // The quote may have moved since this element was made: find the one that ends here now.
+      const quote = quoteClosingAt(view.state, view.posAtDOM(add))
+      const quotes = view.state.field(quoteField)
+      const made = quote ? addTranslation(view.state.doc.toString(), quotes, quote) : null
+      if (!made) return
+      view.dispatch({
+        changes: made.edit,
+        selection: { anchor: made.caret },
+        scrollIntoView: true,
+        userEvent: 'input.format',
+      })
+      view.focus()
     })
     return add
   }

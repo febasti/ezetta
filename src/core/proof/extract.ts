@@ -1,5 +1,6 @@
 import type { Tree } from '@lezer/common'
 import { citationGroups, scanCitations } from '../typst/citations'
+import { originalOf, scanQuotes } from '../typst/quotes'
 import { RESERVED_PREFIX, scanCrossRefs } from '../typst/targets'
 import type { CrossRef } from '../typst/targets'
 
@@ -89,6 +90,12 @@ export function proofUnits(tree: Tree, doc: string, standIns: StandIns): ProofUn
   }
   for (const ref of scanCrossRefs(tree, doc))
     atoms.push({ from: ref.from, to: ref.to, as: standIns.reference(ref) })
+  // A block quote that has a translation is in another language: the checker leaves it alone.
+  const quotes = scanQuotes(tree, doc)
+  for (const quote of quotes) {
+    const original = originalOf(doc, quotes, quote)
+    if (original) atoms.push({ from: original.from, to: original.end, as: null })
+  }
 
   tree.iterate({
     enter: (ref) => {

@@ -176,6 +176,10 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     page: { de: 'Neue Seite', en: 'New page' },
     odd: { de: 'Neue rechte Seite (mit Leerseite)', en: 'New right-hand page (with a blank page)' },
   },
+  translation_position: {
+    below: { de: 'Unter dem Original', en: 'Below the original' },
+    side: { de: 'Neben dem Original', en: 'Beside the original' },
+  },
   source_position: {
     after: { de: 'Nach dem Zitat', en: 'After the quote' },
     line: { de: 'Eigene Zeile rechts', en: 'Own line, at the right' },
@@ -409,6 +413,7 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
     prop('accent_secondary', 'color', 'Zweitfarbe', 'Second colour'),
     prop('caption_position', 'enum', 'Stellung', 'Position', ['below', 'above']),
     prop('source_position', 'enum', 'Quelle', 'Source', ['after', 'line']),
+    prop('translation_position', 'enum', 'Stellung', 'Position', ['below', 'side']),
     prop('caption_separator', 'enum', 'Zeichen nach der Nummer', 'Mark after the number', [
       'colon',
       'period',
@@ -573,8 +578,10 @@ const SHOWN_WHEN: Readonly<Record<string, (values: Readonly<Record<string, unkno
     margin_gap: (v) => v['placement'] === 'margin',
     // The indent before a note's number is of the notes at the foot; a note in the margin has none.
     note_indent: (v) => v['placement'] !== 'margin',
-    // The gap between columns only when there is more than one.
-    column_gap: (v) => v['columns'] !== '1',
+    // The gap between columns only when there is more than one; that of a translation only beside
+    // its original, and its distance to the original only under it.
+    column_gap: (v) => v['columns'] !== '1' && v['translation_position'] !== 'below',
+    above: (v) => v['translation_position'] !== 'side',
     separator_style: (v) => v['placement'] !== 'margin',
     rule_width: (v) =>
       v['placement'] !== 'margin' &&
@@ -611,6 +618,10 @@ const LABELS_FOR: Readonly<Record<string, Readonly<Record<string, { de: string; 
   divider: {
     width: { de: 'Länge der Linie', en: 'Length of the rule' },
     rule_width: { de: 'Stärke der Linie', en: 'Weight of the rule' },
+  },
+  translation: {
+    above: { de: 'Abstand zum Original', en: 'Distance to the original' },
+    column_gap: { de: 'Abstand zwischen den Spalten', en: 'Gap between the columns' },
   },
   table_caption: {
     caption_gap: { de: 'Abstand zur Tabelle', en: 'Distance to the table' },
@@ -725,6 +736,13 @@ export const PROP_SECTIONS: readonly {
       'letter_spacing',
       'color',
     ],
+  },
+  {
+    id: 'translation',
+    de: 'Zum Original',
+    en: 'Next to the original',
+    props: ['translation_position', 'above', 'column_gap'],
+    only: ['translation'],
   },
   {
     id: 'arrangement',
@@ -1110,6 +1128,17 @@ export const ELEMENTS: readonly ElementDef[] = [
       border_thickness: '2pt',
       border_gap: '0.8em',
     },
+  ),
+  // The translation of a block quote (a block quote labelled `<translation>` right behind it): under
+  // its original or beside it, in the original's look unless it has its own.
+  el(
+    'translation',
+    'quote',
+    'quotes',
+    'Übersetzung',
+    'Translation',
+    [...TEXT, 'line_height', 'translation_position', 'above', 'column_gap'],
+    { translation_position: 'below', above: '0.75em', column_gap: '1.5em' },
   ),
   el(
     'epigraph',

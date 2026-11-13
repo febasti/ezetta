@@ -2,6 +2,7 @@ import type { Tree } from '@lezer/common'
 import { citationOverview } from '../typst/citations'
 import { DIVIDER_MARKER, scanDividers } from '../typst/dividers'
 import { scanFigures } from '../typst/figures'
+import { originalOf, scanQuotes } from '../typst/quotes'
 import { parseTypst } from '../typst/parser'
 import { scanCrossRefs } from '../typst/targets'
 
@@ -146,6 +147,13 @@ export function preprocessSheet(
 
   for (const divider of scanDividers(parsed, text))
     edits.push({ from: divider.from, to: divider.to, insert: DIVIDER_MARKER })
+
+  // A translation belongs to the block quote right before it, which the template sets it with; one
+  // with no such quote loses its label and prints as the block quote it is.
+  const quotes = scanQuotes(parsed, text)
+  for (const quote of quotes)
+    if (quote.translation && !originalOf(text, quotes, quote))
+      edits.push({ from: quote.to, to: quote.end, insert: '' })
 
   for (const figure of scanFigures(parsed, text)) {
     if (figure.empty) continue // a placeholder frame has no path, and prints as it is

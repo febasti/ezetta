@@ -266,6 +266,13 @@ describe('setParagraphStyle', () => {
     ).toBe('Zi|tat')
   })
 
+  it('treats a translation as a block quote whose label the other styles change or take off', () => {
+    const t = (inner: string) => `#quote(block: true)[${inner}] <translation>`
+    expect(style(t('Zi|tat'), { kind: 'quote' })).toBe('#quote(block: true)[Zi|tat]')
+    expect(style(t('Zi|tat'), { kind: 'epigraph' })).toBe('#quote(block: true)[Zi|tat] <epigraph>')
+    expect(style(t('Zi|tat'), { kind: 'text' })).toBe('Zi|tat')
+  })
+
   it('does not select the following line when the selection ends at a line start', () => {
     expect(style('«eins\n»zwei', { kind: 'bullet' })).toBe('«- eins\n»zwei')
   })

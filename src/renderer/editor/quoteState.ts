@@ -21,6 +21,10 @@ export interface QuoteConfig {
     /** The field for the source of an epigraph: its name for screen readers and its placeholder. */
     source: string
     sourceInvalid: string
+    /** The name drawn beside a translation. */
+    translation: string
+    /** The button that adds a translation behind a block quote that has none. */
+    addTranslation: string
   }
 }
 
@@ -34,6 +38,8 @@ const DEFAULT_CONFIG: QuoteConfig = {
     addSource: '',
     source: '',
     sourceInvalid: '',
+    translation: '',
+    addTranslation: '',
   },
 }
 
@@ -75,9 +81,12 @@ export const armedQuoteField = StateField.define<number | null>({
   },
 })
 
-/** The block quote whose closing bracket is at `pos`: where the chips of its source are drawn. */
+/**
+ * The block quote that ends at `pos` (behind the label of a translation): where the chips of its
+ * source are drawn.
+ */
 export function quoteClosingAt(state: EditorState, pos: number): Quote | undefined {
-  return state.field(quoteField).find((q) => q.block && !q.epigraph && q.to === pos)
+  return state.field(quoteField).find((q) => q.block && !q.epigraph && q.end === pos)
 }
 
 /** The epigraph that ends on the line that ends at `pos`: where the field of its source is drawn. */

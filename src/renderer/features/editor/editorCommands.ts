@@ -32,6 +32,8 @@ import {
   newParagraph,
 } from '@core/typst/paragraphs'
 import {
+  addTranslation,
+  blockQuoteAt,
   inlineQuoteAt,
   leaveBlockQuote,
   quoteToBlock,
@@ -90,6 +92,7 @@ export type EditorCommandId =
   | 'style-quote'
   | 'style-epigraph'
   | 'quote-inline'
+  | 'quote-translation'
 
 export interface EditorCommand {
   id: EditorCommandId
@@ -285,6 +288,7 @@ const DEFAULT_EDITOR_COMMANDS: readonly EditorCommand[] = [
   quoteAsBlock(),
   paragraph('style-epigraph', { kind: 'epigraph' }, () => i18n.t('cmd.styleEpigraph')),
   quoteAsInline(),
+  quoteTranslation(),
 ]
 
 /**
@@ -348,6 +352,26 @@ function quoteAsInline(): EditorCommand {
       if (edits) return void view.dispatch({ changes: edits, userEvent: 'input.format' })
       apply(view, toggleInlineQuote(inputOf(view)))
       return undefined
+    },
+  }
+}
+
+/** Adds a translation behind the block quote the caret is in, and puts the caret in it. */
+function quoteTranslation(): EditorCommand {
+  return {
+    id: 'quote-translation',
+    label: () => i18n.t('cmd.quoteTranslation'),
+    run: (view) => {
+      const quotes = view.state.field(quoteField)
+      const quote = blockQuoteAt(quotes, view.state.selection.main.head)
+      const made = quote ? addTranslation(view.state.doc.toString(), quotes, quote) : null
+      if (!made) return
+      view.dispatch({
+        changes: made.edit,
+        selection: { anchor: made.caret },
+        scrollIntoView: true,
+        userEvent: 'input.format',
+      })
     },
   }
 }

@@ -579,7 +579,7 @@ test('headers, footers and the page number are set with three places each', asyn
   }
 })
 
-test('tables have rules, a header and stripes; a block quote can have lines on its sides, a background and its source on a line of its own', async () => {
+test('tables have rules, a header and stripes; a block quote can have lines on its sides, a background, its source on a line of its own and its translation beside it', async () => {
   const { app, page } = await open()
   try {
     await openEditor(page)
@@ -624,6 +624,23 @@ test('tables have rules, a header and stripes; a block quote can have lines on i
     await expect(source.getByRole('radio', { name: 'Nach dem Zitat' })).toBeChecked()
     await source.getByRole('radio', { name: 'Eigene Zeile rechts' }).click()
     await expect.poll(toml).toContain('source_position = "line"')
+
+    // A translation: under its original (with its distance to it) or beside it (with the gap).
+    await choose(page, 'Übersetzung')
+    const position = editor(page).getByRole('radiogroup', { name: 'Stellung', exact: true })
+    await expect(position.getByRole('radio', { name: 'Unter dem Original' })).toBeChecked()
+    await expect(editor(page).locator('#prop-translation-above')).toHaveAttribute(
+      'data-value',
+      '0.75em',
+    )
+    await expect(editor(page).locator('#prop-translation-column_gap')).toHaveCount(0)
+    await position.getByRole('radio', { name: 'Neben dem Original' }).click()
+    await expect.poll(toml).toContain('translation_position = "side"')
+    await expect(editor(page).locator('#prop-translation-above')).toHaveCount(0)
+    await expect(editor(page).locator('#prop-translation-column_gap')).toHaveAttribute(
+      'data-value',
+      '1.5em',
+    )
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {
@@ -1208,7 +1225,7 @@ test('a value of a part is changed in the entry it is shown in', async () => {
   }
 })
 
-test('the elements are in groups that open and close: the headings under one entry, the quotes in three kinds', async () => {
+test('the elements are in groups that open and close: the headings under one entry, the quotes in four kinds', async () => {
   const { app, page } = await open()
   try {
     await page.getByRole('button', { name: 'Projektmenü' }).click()
@@ -1260,12 +1277,13 @@ test('the elements are in groups that open and close: the headings under one ent
     await inside('Überschriften').getByRole('button', { name: 'Überschrift 2' }).click()
     await expect(editor(page).getByRole('heading', { name: 'Überschrift 2' })).toBeVisible()
 
-    // The quotes: in the text, a block, an epigraph (whose source is a section of it). Only one group
-    // is open at a time: this one closes the headings.
+    // The quotes: in the text, a block, a translation, an epigraph (whose source is a section of
+    // it). Only one group is open at a time: this one closes the headings.
     await group('Zitate').click()
     await expect(inside('Zitate').getByRole('button')).toHaveText([
       'Zitat im Text',
       'Blockzitat',
+      'Übersetzung',
       'Epigraph',
     ])
     await expect(group('Überschriften')).toHaveAttribute('aria-expanded', 'false')
