@@ -10,8 +10,12 @@ export interface Area {
 export const DEFAULT_SIZE = { width: 1280, height: 800 }
 /** The small window of the welcome page, while no project is open. */
 export const LAUNCHER_SIZE = { width: 720, height: 440 }
-/** Smaller than this the columns, the toolbar and the text no longer fit together. */
-export const MIN_SIZE = { width: 1100, height: 700 }
+/**
+ * Smaller than this the columns, the toolbar and the text no longer fit together. 900 wide leaves
+ * room for a PDF beside the window on a laptop: the two left columns at their least and the
+ * editor's 420 px fit, the right sidebar steps aside, and the toolbar's named tools become icons.
+ */
+export const MIN_SIZE = { width: 900, height: 700 }
 /** How much of the window's title area must be on a screen for the saved place to count. */
 const VISIBLE = 120
 

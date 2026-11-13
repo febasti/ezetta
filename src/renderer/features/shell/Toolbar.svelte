@@ -28,6 +28,37 @@
       : 'heading',
   )
 
+  /**
+   * Beleg, Querverweis and Fußnote carry their names while the toolbar has room for them. In a
+   * narrower window they are icons like the other tools (the name stays the tooltip), so the bar
+   * still fits; it only scrolls when even that is not enough. `wide` is the width the toolbar
+   * needed with the names, measured when they no longer fit, to know when they fit again.
+   */
+  let bar: HTMLDivElement | undefined = $state()
+  let compact = $state(false)
+  let wide = 0
+  const fit = (): void => {
+    if (!bar) return
+    if (!compact) {
+      if (bar.scrollWidth > bar.clientWidth) {
+        wide = bar.scrollWidth
+        compact = true
+      }
+    } else if (bar.clientWidth >= wide) compact = false
+  }
+  $effect(() => {
+    if (!bar) return
+    const observer = new ResizeObserver(fit)
+    observer.observe(bar)
+    return () => observer.disconnect()
+  })
+  // The names are measured again in another language: they have other lengths.
+  $effect(() => {
+    void i18n.locale
+    compact = false
+    requestAnimationFrame(fit)
+  })
+
   /** Name of a command with its shortcut, for the tooltip. */
   function tip(id: EditorCommandId): string {
     const command = editorCommands.find((c) => c.id === id)!
@@ -37,7 +68,7 @@
   }
 </script>
 
-<div class="toolbar" role="toolbar" aria-label={i18n.t('toolbar.label')}>
+<div class="toolbar" role="toolbar" aria-label={i18n.t('toolbar.label')} bind:this={bar}>
   <div class="side left">
     <div class="group" role="group" aria-label={i18n.t('toolbar.panels')}>
       <ToolButton
@@ -180,7 +211,7 @@
       />
       <ToolButton
         icon="citation"
-        showLabel
+        showLabel={!compact}
         label={i18n.t('toolbar.citation')}
         title={tip('citation')}
         disabled={!canEdit}
@@ -188,7 +219,7 @@
       />
       <ToolButton
         icon="tag"
-        showLabel
+        showLabel={!compact}
         label={i18n.t('toolbar.crossRef')}
         title={tip('cross-reference')}
         disabled={!canEdit}
@@ -196,7 +227,7 @@
       />
       <ToolButton
         icon="asterisk"
-        showLabel
+        showLabel={!compact}
         label={i18n.t('toolbar.footnote')}
         title={tip('footnote')}
         disabled={!canEdit}

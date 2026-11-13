@@ -13,7 +13,7 @@ test.beforeEach(async () => {
 })
 test.afterEach(() => rm(sandbox.base, { recursive: true, force: true }))
 
-const SHEET = 'schreiben/grundlagen.typ'
+const SHEET = 'Schreiben/grundlagen.typ'
 const original = resolve('examples/de/content', SHEET)
 const copy = () => join(sandbox.userData, 'examples', 'de', 'content', SHEET)
 const hashOf = async (path: string) =>
@@ -48,7 +48,7 @@ async function closeProject(page: Page) {
 }
 
 async function type(page: Page, text: string) {
-  await page.locator('[role=treeitem][data-path="schreiben"]').click()
+  await page.locator('[role=treeitem][data-path="Schreiben"]').click()
   await page.locator(`[role=option][data-path="${SHEET}"]`).click()
   await expect(page.locator('.cm-content')).toBeVisible()
   await page.locator('.cm-content').click({ position: { x: 4, y: 4 } })

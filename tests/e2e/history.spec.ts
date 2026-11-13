@@ -265,7 +265,7 @@ test('the backup: not set up at first (the status bar says so), then a folder is
   const { app, page } = await launch(sandbox, { env: { EZETTA_TEST_BACKUP: backupDir } })
   try {
     await openSheet(page, 'methoden/design.typ')
-    const indicator = page.locator('footer').getByRole('button', { name: /Nicht gesichert/ })
+    const indicator = page.locator('footer').getByRole('button', { name: /Keine Sicherung/ })
     await expect(indicator).toBeVisible()
 
     // The indicator opens the backup tab, which explains and offers the one step.
@@ -297,7 +297,7 @@ test('the backup: not set up at first (the status bar says so), then a folder is
     expect((await readdir(backupDir)).length).toBeGreaterThanOrEqual(1)
     await page.keyboard.press('Escape')
     await expect(
-      page.locator('footer').getByRole('button', { name: /Nicht gesichert/ }),
+      page.locator('footer').getByRole('button', { name: /Keine Sicherung/ }),
     ).toBeVisible()
   } finally {
     await app.close()

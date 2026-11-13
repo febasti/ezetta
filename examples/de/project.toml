@@ -26,39 +26,39 @@ disabled_rules = []
 dictionary = "dictionary.txt"
 
 [order]
-"" = ["start", "schreiben", "ausgabe"]
-start = ["willkommen.typ", "aufbau.typ"]
-schreiben = ["grundlagen.typ", "belege.typ", "fussnoten.typ", "zitate.typ", "bilder.typ", "pruefen.typ", "ideen.typ"]
-ausgabe = ["export.typ", "sicherung.typ"]
+"" = ["Start", "Schreiben", "Ausgabe"]
+"Start" = ["willkommen.typ", "aufbau.typ"]
+"Schreiben" = ["grundlagen.typ", "belege.typ", "fussnoten.typ", "zitate.typ", "bilder.typ", "pruefen.typ", "ideen.typ"]
+"Ausgabe" = ["export.typ", "sicherung.typ"]
 ":material" = ["Notizen"]
 ":material/Notizen" = ["ideen.typ"]
 
-[items."start/willkommen.typ"]
+[items."Start/willkommen.typ"]
 status = "final"
 
-[items."start/aufbau.typ"]
+[items."Start/aufbau.typ"]
 status = "final"
 
-[items."schreiben/grundlagen.typ"]
+[items."Schreiben/grundlagen.typ"]
 status = "final"
 goal = 300
 
-[items."schreiben/belege.typ"]
+[items."Schreiben/belege.typ"]
 status = "final"
 
-[items."schreiben/fussnoten.typ"]
+[items."Schreiben/fussnoten.typ"]
 status = "revised"
 
-[items."schreiben/zitate.typ"]
+[items."Schreiben/zitate.typ"]
 status = "final"
 
-[items."schreiben/bilder.typ"]
+[items."Schreiben/bilder.typ"]
 status = "revised"
 
-[items."schreiben/ideen.typ"]
+[items."Schreiben/ideen.typ"]
 export = false
 
-[items."ausgabe/export.typ"]
+[items."Ausgabe/export.typ"]
 status = "final"
 
 [items.":titelei/abstract.typ"]

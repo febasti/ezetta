@@ -100,12 +100,20 @@ function tooltipFor(chip: GroupChip, config: CiteConfig): HTMLElement {
   return root
 }
 
+/**
+ * How a chip is drawn besides its citations: its editor is open (`active`), it is in the selection,
+ * and whether a bracket the writer typed stands right before or after it, as in "(@kuhn1962)": on
+ * that side the chip has no inner space, so the bracket hugs it as it hugs a word.
+ */
+export interface ChipFlags {
+  active: boolean
+  selected: boolean
+  bracketBefore?: boolean
+  bracketAfter?: boolean
+}
+
 /** The element of a chip: its text, the flag of a check mark, and the notes as its tooltip. */
-export function chipElement(
-  chip: GroupChip,
-  config: CiteConfig,
-  flags: { active: boolean; selected: boolean },
-): HTMLElement {
+export function chipElement(chip: GroupChip, config: CiteConfig, flags: ChipFlags): HTMLElement {
   const el = document.createElement('span')
   el.className =
     'cm-cite' +
@@ -114,7 +122,9 @@ export function chipElement(
     (chip.inSentence ? ' prose' : '') +
     (chip.checks.length > 0 ? ' check' : '') +
     (flags.active ? ' active' : '') +
-    (flags.selected ? ' selected' : '')
+    (flags.selected ? ' selected' : '') +
+    (flags.bracketBefore ? ' bracket-before' : '') +
+    (flags.bracketAfter ? ' bracket-after' : '')
   el.append(document.createTextNode(chip.text))
   if (chip.checks.length > 0) el.append(icon('flag-filled', 11, 'cm-cite-flag'))
   el.setAttribute('role', 'button')
@@ -135,7 +145,7 @@ export class CiteWidget extends WidgetType {
   constructor(
     private readonly chip: GroupChip,
     private readonly config: CiteConfig,
-    private readonly flags: { active: boolean; selected: boolean },
+    private readonly flags: ChipFlags,
   ) {
     super()
   }
@@ -145,6 +155,8 @@ export class CiteWidget extends WidgetType {
       sameData(other.chip, this.chip) &&
       other.flags.active === this.flags.active &&
       other.flags.selected === this.flags.selected &&
+      other.flags.bracketBefore === this.flags.bracketBefore &&
+      other.flags.bracketAfter === this.flags.bracketAfter &&
       other.config.labels === this.config.labels
     )
   }

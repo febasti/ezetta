@@ -29,6 +29,13 @@
 .cm-cite:hover {
   background: var(--color-selection);
 }
+/* A bracket typed right beside the chip hugs it, as it hugs a word: no inner space on that side. */
+.cm-cite.bracket-before {
+  padding-left: 0;
+}
+.cm-cite.bracket-after {
+  padding-right: 0;
+}
 .cm-cite.active,
 .cm-cite.selected,
 .cm-cite-needed.active,

@@ -276,7 +276,7 @@
   "backup.problem.inside": "Der Sicherungsordner darf nicht im Projekt liegen. Wähle einen Ordner außerhalb.",
   "backup.problem.unwritable": "In diesen Ordner kann nicht geschrieben werden. Wähle einen anderen.",
   "backup.failed": "Die letzte Sicherung ist fehlgeschlagen: {message}",
-  "statusbar.backup.none": "Nicht gesichert",
+  "statusbar.backup.none": "Keine Sicherung",
   "statusbar.backup.last": "Gesichert {when}",
   "statusbar.backup.running": "Sichert …",
   "statusbar.backup.problem": "Sicherung nicht erreichbar",

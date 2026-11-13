@@ -6,7 +6,7 @@ The second column, the *sheets*, shows the texts of the chosen group and everyth
 
 == Scrapsheets and material <sec-material>
 
-Not everything belongs in the finished work. A sheet you mark as a *scrapsheet* (context menu) stays in the project but does not go into the export and does not count. Whole folders that should stay out of the text you move into the *material* below the groups. Look at the sheet "ideas" in the folder "write" and at the material: they are in the project, but not in the PDF file.
+Not everything belongs in the finished work. A sheet you mark as a *scrapsheet* (context menu) stays in the project but does not go into the export and does not count. Whole folders that should stay out of the text you move into the *material* below the groups. Look at the sheet "ideas" in the folder "Write" and at the material: they are in the project, but not in the PDF file.
 
 == Goals and numbers <sec-goals>
 

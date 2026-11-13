@@ -52,6 +52,26 @@ async function openWith(content: string) {
   return open()
 }
 
+test('a chip in brackets the writer typed has no inner space beside them', async () => {
+  const { app, page } = await openWith(
+    'Nur das Jahr (#cite(<smith2020>, form: "year")) und frei @jones2019 im Satz.\n',
+  )
+  try {
+    const year = chips(page).filter({ hasText: '2020' })
+    await expect(year).toHaveClass(/bracket-before/)
+    await expect(year).toHaveClass(/bracket-after/)
+    const padding = await year.evaluate((el) => {
+      const style = getComputedStyle(el)
+      return [style.paddingLeft, style.paddingRight]
+    })
+    expect(padding).toEqual(['0px', '0px'])
+    const free = chips(page).filter({ hasText: 'Jones' })
+    await expect(free).not.toHaveClass(/bracket-/)
+  } finally {
+    await app.close()
+  }
+})
+
 test('draws citations as chips with author and year, and marks works that are not in the library', async () => {
   const { app, page } = await open()
   try {

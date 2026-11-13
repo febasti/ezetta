@@ -276,7 +276,7 @@
   "backup.problem.inside": "The backup folder must not be inside the project. Choose a folder outside it.",
   "backup.problem.unwritable": "That folder cannot be written to. Choose another one.",
   "backup.failed": "The last backup failed: {message}",
-  "statusbar.backup.none": "Not backed up",
+  "statusbar.backup.none": "No backup",
   "statusbar.backup.last": "Backed up {when}",
   "statusbar.backup.running": "Backing up …",
   "statusbar.backup.problem": "Backup folder not reachable",

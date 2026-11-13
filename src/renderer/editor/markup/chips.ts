@@ -12,6 +12,10 @@ import { RefWidget } from '../refWidget'
 import { mark } from './builder'
 import type { Builder, Call } from './builder'
 
+/** Brackets the writer types around a citation: the chip leaves out its inner space beside them. */
+const OPENING = new Set(['(', '['])
+const CLOSING = new Set([')', ']'])
+
 /**
  * Citations and cross-references, drawn as chips. Citations that print together are one chip, and
  * a place that still needs a citation (the comment `#cite-needed`) is a chip that says so. Like footnote
@@ -116,6 +120,8 @@ export class ChipMarkup {
       new CiteWidget(groupChipFor(group, this.settings), this.settings, {
         active: this.activeFrom === from,
         selected: b.selected(from, to),
+        bracketBefore: from > 0 && OPENING.has(b.doc.sliceString(from - 1, from)),
+        bracketAfter: CLOSING.has(b.doc.sliceString(to, to + 1)),
       }),
       from,
       to,

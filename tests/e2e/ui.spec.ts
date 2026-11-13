@@ -6,7 +6,7 @@ import { createSandbox, launch, launchAt, MOD, openSheet, TO_END } from './helpe
 import type { Sandbox } from './helpers'
 
 /** The window's least size (`MIN_SIZE` in `src/main/windowState.ts`). */
-const LEAST_SIZE = { width: 1100, height: 700 }
+const LEAST_SIZE = { width: 900, height: 700 }
 
 const SHEET = 'content/methoden/design.typ'
 const SAMPLE = `= Methoden

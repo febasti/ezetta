@@ -144,8 +144,31 @@ test('in the smallest window the editor keeps its width, nothing runs over, and 
     expect(small.editor).toBeGreaterThanOrEqual(400)
     // The right sidebar is narrower than the 520 px chosen, and gets more of them in a wider window.
     expect(small.right).toBeLessThan(520)
+
+    // The least window (900 px): the right sidebar steps aside, the editor still keeps its width,
+    // and the toolbar fits without scrolling, the named tools showing their icons only.
+    const toolbar = () =>
+      page.evaluate(() => {
+        const bar = document.querySelector('.toolbar')!
+        return {
+          overflow: bar.scrollWidth - bar.clientWidth,
+          labels: bar.querySelectorAll('.tool .label').length,
+        }
+      })
+    expect((await toolbar()).labels).toBe(3)
+    await resize(900, 700)
+    await expect.poll(async () => (await measure()).inner).toBe(900)
+    await expect.poll(async () => (await toolbar()).labels).toBe(0)
+    const least = await measure()
+    expect(least.scroll).toBeLessThanOrEqual(least.inner)
+    expect(least.editor).toBeGreaterThanOrEqual(400)
+    expect(least.right).toBe(0)
+    expect((await toolbar()).overflow).toBeLessThanOrEqual(0)
+    await expect(page.locator('.toolbar').getByRole('button', { name: 'Beleg' })).toBeVisible()
+
     await resize(1800, 900)
     await expect.poll(async () => (await measure()).right).toBeGreaterThan(small.right)
+    await expect.poll(async () => (await toolbar()).labels).toBe(3)
   } finally {
     await app.close()
   }
