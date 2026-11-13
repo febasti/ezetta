@@ -100,6 +100,23 @@ const SHEETS: Record<string, string> = {
   ].join('\n'),
 }
 
+/** A sheet with dividers: between two paragraphs, and right before a heading. */
+const TRENNER = [
+  '= Zusatz',
+  '',
+  `${LONG}`,
+  '',
+  '#divider()',
+  '',
+  `${LONG}`,
+  '',
+  '#divider()',
+  '',
+  '== Danach',
+  '',
+  `${LONG}`,
+].join('\n')
+
 const VARIANTS: {
   name: string
   template: string
@@ -818,6 +835,20 @@ const VARIANTS: {
     template: 'essay',
     options: { author: 'A. Autor' },
   },
+  // A divider between two passages, in each template's own look and in each kind of mark.
+  ...(['monographie', 'essay', 'bericht'] as const).map((template) => ({
+    name: `${template}-trenner`,
+    template,
+    options: {},
+    extraSheets: { 'zusatz/trenner.typ': TRENNER },
+  })),
+  ...(['line', 'space'] as const).map((mark) => ({
+    name: `monographie-trenner-${mark === 'line' ? 'linie' : 'abstand'}`,
+    template: 'monographie',
+    options: {},
+    sets: { divider: { divider_mark: mark, color: '#b00020' } },
+    extraSheets: { 'zusatz/trenner.typ': TRENNER },
+  })),
 ]
 
 let dir: string | null = null

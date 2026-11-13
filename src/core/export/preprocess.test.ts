@@ -125,3 +125,17 @@ describe('everything together', () => {
         expect(lines(run(input, { marks, comments }).text)).toBe(lines(input))
   })
 })
+
+describe('dividers', () => {
+  it('become the marker the template draws, on the same line', () => {
+    const input = 'Davor.\n\n#divider()\n\nDanach.\n'
+    const { text } = run(input)
+    expect(text).toBe('Davor.\n\n#metadata("divider")<divider>\n\nDanach.\n')
+    expect(lines(text)).toBe(lines(input))
+  })
+
+  it('leave a call with arguments or content, and a divider in raw text, as they are', () => {
+    for (const input of ['#divider(x)\n', '#divider()[Text]\n', '`#divider()`\n'])
+      expect(run(input).text).toBe(input)
+  })
+})

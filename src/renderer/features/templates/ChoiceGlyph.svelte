@@ -1,7 +1,8 @@
 <script lang="ts">
   /**
    * A choice of the template editor as a small picture, 22 × 16, in the colour of the text: where a
-   * caption stands, where a figure stands, where the source of a block quote stands, the rules of a table, the line above the footnotes. The choices of the page (a
+   * caption stands, where a figure stands, where the source of a block quote stands, the rules of a table, the line above the footnotes, the
+   * mark of a divider. The choices of the page (a
    * page upright or across, one page or two, the columns) are the app's icons instead, as wide. The
    * segmented control around it says the choice's name.
    */
@@ -116,6 +117,21 @@
           <rect class="fill" x="3.2" y="6.2" width="3.6" height="3.6" />
         {/if}
         <path class="stroke thin" d="M10 8h9" />
+      {/if}
+    {:else if prop === 'divider_mark'}
+      <!-- A break between two passages of text: what stands in it. -->
+      <rect class="fill soft" x="3" y="1.5" width="16" height="2" rx="1" />
+      <rect class="fill soft" x="3" y="12.5" width="16" height="2" rx="1" />
+      {#if value === 'asterisks'}
+        {#each [7, 11, 15] as x (x)}
+          <circle class="fill" cx={x} cy="8" r="1" />
+        {/each}
+      {:else if value === 'asterism'}
+        <circle class="fill" cx="11" cy="6.6" r="1" />
+        <circle class="fill" cx="9.4" cy="9.4" r="1" />
+        <circle class="fill" cx="12.6" cy="9.4" r="1" />
+      {:else if value === 'line'}
+        <path class="stroke" d="M7 8h8" />
       {/if}
     {/if}
   </svg>

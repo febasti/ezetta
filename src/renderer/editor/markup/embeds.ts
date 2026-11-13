@@ -1,3 +1,4 @@
+import { isDivider } from '@core/typst/dividers'
 import type { Formula } from '@core/typst/math'
 import type { SyntaxNode } from '@lezer/common'
 import { figureConfig, figureField } from '../figureState'
@@ -13,7 +14,8 @@ import type { TableConfig, TableView } from '../tableState'
 import { TableWidget } from '../tableWidget'
 import { mark } from './builder'
 import type { Builder, Call } from './builder'
-import { FootnoteMarker } from './widgets'
+import { labelsFacet } from './facets'
+import { DividerWidget, FootnoteMarker } from './widgets'
 
 /**
  * What is drawn as a widget in place of its source: formulas, tables, images, and footnote markers.
@@ -107,6 +109,22 @@ export class EmbedMarkup {
     const to = alone ? b.doc.lineAt(figure.end).to : figure.end
     const widget = new FigureWidget(figure, this.figureSettings, alone, b.selected(from, to))
     b.addWidget(widget, from, to, { from, to, block: alone }, alone)
+    return true
+  }
+
+  /**
+   * A divider is drawn as a divider when it is alone on its line; otherwise (text beside it) it stays
+   * source. In "Quelltext" its source shows.
+   */
+  divider({ node, name }: Call): boolean {
+    const { b } = this
+    if (name !== 'divider' || b.showSource) return false
+    if (!isDivider(node, (from, to) => b.doc.sliceString(from, to))) return false
+    if (!b.aloneOnLines(node.from, node.to)) return false
+    const line = b.doc.lineAt(node.from)
+    const label = b.state.facet(labelsFacet).divider ?? ''
+    const widget = new DividerWidget(label, b.selected(line.from, line.to), b.state.readOnly)
+    b.addWidget(widget, line.from, line.to, { from: line.from, to: line.to, block: true }, true)
     return true
   }
 

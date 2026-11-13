@@ -917,5 +917,10 @@
   "about.free": "Ezetta ist freie Software. Du darfst sie nach den Bedingungen der GNU General Public License, Version 3 oder einer späteren Version, nutzen, weitergeben und verändern.",
   "about.licenses": "Lizenzen der enthaltenen Software",
   "about.licenses.hint": "Ezetta enthält Typst, LanguageTool, eine Java-Laufzeit, Thesaurus-Dateien sowie Open-Source-Bibliotheken und -Schriften. Ihre Lizenzen stehen hier.",
-  "about.licenses.missing": "Die Liste der Lizenzen konnte nicht gelesen werden."
+  "about.licenses.missing": "Die Liste der Lizenzen konnte nicht gelesen werden.",
+  "cmd.divider": "Trenner einfügen",
+  "divider.label": "Trenner",
+  "slash.section.paragraph": "Absatz",
+  "slash.section.insert": "Einfügen",
+  "slash.divider": "Trenner"
 }

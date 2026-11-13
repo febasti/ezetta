@@ -7,7 +7,7 @@ Ezetta is in active development, and its first release (0.9) is a pre-release: e
 ## What it does
 
 - **Projects of sheets.** A text is split into sheets, ordered in groups that are folders on disk. Each sheet has a status and a word goal, and the statistics cover a sheet, a group or the whole project. An outline shows the headings of the whole project, numbered as the PDF numbers them.
-- **An editor over plain Typst.** Emphasis, headings, lists, links and quotes, figures and tables are shown styled, and their syntax stays out of the way. Nothing is stored in a hidden format, so every file also compiles without the app.
+- **An editor over plain Typst.** Emphasis, headings, lists, links and quotes, figures, tables and dividers are shown styled, and their syntax stays out of the way. A slash at the start of a line offers everything a paragraph can be and everything that can be inserted. Nothing is stored in a hidden format: every sheet is a Typst file that can be read and changed without the app.
 - **Citations** from a BibTeX file (from Zotero, for example), shown as chips, with a marker for places that still need one and a list of the works cited. Adding citations is easy from within Ezetta.
 - **Cross-references** to headings, figures, tables and formulas, which say what the PDF will print ("Abbildung 3", "Abschnitt 2.1").
 - **Footnotes, images, tables and formulas**, edited where they stand. Formulas are drawn by Typst itself.

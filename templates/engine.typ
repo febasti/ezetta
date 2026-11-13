@@ -359,6 +359,21 @@
       }
     }
   }
+  // A divider (`#divider()` in a sheet, which the export makes a marker labelled <divider>): a break
+  // between two passages, set apart by space above and below, drawn as three asterisks, an asterism,
+  // a short rule, or nothing (space only).
+  let dv = style.divider
+  show <divider>: _ => {
+    let ink = if dv.color == none { black } else { dv.color }
+    let mark = if dv.divider_mark == "line" {
+      line(length: dv.width, stroke: dv.rule_width + ink)
+    } else if dv.divider_mark == "asterism" {
+      text(..text-args(dv, italic: false), "⁂")
+    } else if dv.divider_mark == "asterisks" {
+      text(..text-args(dv, italic: false), [\*#h(1em)\*#h(1em)\*])
+    }
+    block(width: 100%, above: dv.above, below: dv.below, align(align-of(dv.align), mark))
+  }
   // Captions: above or below, with a mark after the number, aligned as the template says.
   let caption-mark(c) = if c.caption_separator == "period" { [. ] } else if c.caption_separator == "dash" { [ – ] } else if c.caption_separator == "space" { [ ] } else { [: ] }
   let caption-side(c) = if c.caption_position == "above" { top } else { bottom }

@@ -14,7 +14,7 @@ import {
 import type { NoteEditorHandle } from '../../editor/footnoteState'
 import { editor } from './editorSession.svelte'
 import { activeCiteField, citeConfig, citeField, missingField } from '../../editor/citeState'
-import { citeComplete } from './citeComplete'
+import { noteCompletion } from './completion'
 import { citeEditor, citeLabelsFacet } from './citeEditor'
 import { labelsFacet, markupExtension, showSourceFacet } from '../../editor/markup'
 import { cspNonceExtension, noBrowserProofing } from '../../editor/theme'
@@ -106,7 +106,7 @@ export function mountNoteEditor(host: HTMLElement, view: EditorView): NoteEditor
           ? [citeLabelsFacet.of(view.state.facet(citeLabelsFacet)!)]
           : []),
         citeEditor,
-        citeComplete,
+        noteCompletion,
         markupExtension({
           showSource: view.state.facet(showSourceFacet),
           labels: view.state.facet(labelsFacet),

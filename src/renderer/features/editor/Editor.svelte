@@ -39,7 +39,7 @@
   import { editorKeymap, listKeymap, paragraphKeymap, quoteKeymap } from './editorCommands'
   import { bibliography } from '../bibliography/bibliography.svelte'
   import { tableLabelsFacet, tableToolbar } from './tableToolbar'
-  import { citeComplete } from './citeComplete'
+  import { editorCompletion } from './completion'
   import { proof } from '../proof/proof.svelte'
   import { proofConfig, proofing } from './proofing'
   import { searchExtension } from '../../editor/search'
@@ -383,7 +383,7 @@
           missingField,
           cites.of(citeSettings()),
           citeEditor,
-          citeComplete,
+          editorCompletion,
           refField,
           refs.of(refSettings()),
           refEditor,

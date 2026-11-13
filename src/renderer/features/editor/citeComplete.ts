@@ -1,15 +1,13 @@
-import { autocompletion } from '@codemirror/autocomplete'
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete'
 import { syntaxTree } from '@codemirror/language'
 import { EditorSelection } from '@codemirror/state'
-import type { Extension } from '@codemirror/state'
 import { chipText, matchesQuery } from '@core/bib/cite'
 import { insideOpaque } from '@core/typst/edit'
 import { isCitableKey } from '@core/typst/citations'
 import { referenceText } from '@core/typst/targets'
 import type { NumberedTarget } from '@core/typst/targets'
 import { citeConfig } from '../../editor/citeState'
-import { TARGET_ICONS, icon } from '../../editor/icons'
+import { TARGET_ICONS } from '../../editor/icons'
 import type { IconName } from '../../editor/icons'
 import { refConfig, refField } from '../../editor/refState'
 import { labelFor } from './refEditor'
@@ -27,7 +25,7 @@ const WANTS_TARGET = /^(?:f(?:ig?)?|t(?:bl?)?|e(?:q)?|s(?:ec?)?)(?:-|$)/i
  * the cross-references too (the headings, figures, tables, and block formulas of the project): type
  * "abb" or "Methoden". A target without a label gets one when it is chosen.
  */
-function citeSource(context: CompletionContext): CompletionResult | null {
+export function citeSource(context: CompletionContext): CompletionResult | null {
   const match = context.matchBefore(/@[\p{L}\p{N}_:.-]*/u)
   if (!match) return null
   // `name@example.org` is not a citation, and neither is anything in code, math, or raw text.
@@ -109,20 +107,4 @@ function completionFor(target: NumberedTarget, text: string): Completion {
 }
 
 /** The icon before each option: a work of the bibliography, or the kind of target. */
-const OPTION_ICONS: Record<string, IconName> = { work: 'book', ...TARGET_ICONS }
-
-export const citeComplete: Extension = autocompletion({
-  override: [citeSource],
-  icons: false,
-  addToOptions: [
-    {
-      render: (completion) => {
-        const name = completion.type ? OPTION_ICONS[completion.type] : undefined
-        return name ? icon(name, 16, 'cm-completionKind') : null
-      },
-      // Before the label (CodeMirror's own icons sit at 20, the label at 50).
-      position: 20,
-    },
-  ],
-  defaultKeymap: true,
-})
+export const CITE_ICONS: Record<string, IconName> = { work: 'book', ...TARGET_ICONS }

@@ -8,6 +8,8 @@ export const showSourceFacet = Facet.define<boolean, boolean>({
 export interface MarkupLabels {
   /** Accessible label of a comment pill. */
   comment: (text: string) => string
+  /** Accessible label of a divider. */
+  divider?: string
 }
 
 export const labelsFacet = Facet.define<MarkupLabels, MarkupLabels>({

@@ -13,6 +13,7 @@ import {
   continueList,
   indentListItems,
   insertComment,
+  insertDivider,
   insertFootnote,
   linkAt,
   normalizeUrl,
@@ -71,6 +72,7 @@ export type EditorCommandId =
   | 'table'
   | 'formula'
   | 'formula-display'
+  | 'divider'
   | 'style-text'
   | 'style-heading-1'
   | 'style-heading-2'
@@ -244,6 +246,11 @@ const DEFAULT_EDITOR_COMMANDS: readonly EditorCommand[] = [
     id: 'inline-image',
     label: () => i18n.t('cmd.inlineImage'),
     run: (view) => chooseAndInsert(view, 'inline'),
+  },
+  {
+    id: 'divider',
+    label: () => i18n.t('cmd.divider'),
+    run: (view) => apply(view, insertDivider(inputOf(view))),
   },
   paragraph('style-text', { kind: 'text' }, () => i18n.t('cmd.styleText'), { key: '0', alt: true }),
   heading(1),

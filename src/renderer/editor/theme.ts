@@ -38,7 +38,7 @@ export const writingTheme = EditorView.theme({
     {
       backgroundColor: 'var(--color-selection)',
     },
-  // The menu that `@` opens (CodeMirror's completion list): the foundation's popover with the kit's
+  // The menus that `@` and `/` open (CodeMirror's completion list): the foundation's popover with the kit's
   // rows (kit/dom.css), the row the keys are on on the selection's ground.
   '.cm-tooltip.cm-tooltip-autocomplete': {
     overflow: 'hidden',
@@ -66,6 +66,18 @@ export const writingTheme = EditorView.theme({
   '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected]': {
     background: 'var(--color-selection)',
     color: 'var(--color-label)',
+  },
+  // The headings of the slash menu's groups ("Absatz", "Einfügen").
+  '.cm-tooltip.cm-tooltip-autocomplete > ul > completion-section': {
+    display: 'block',
+    padding: 'var(--sp-8) var(--sp-8) var(--sp-4)',
+    border: '0',
+    opacity: '1',
+    color: 'var(--color-label-tertiary)',
+    font: 'var(--type-caption)',
+  },
+  '.cm-tooltip.cm-tooltip-autocomplete > ul > completion-section:first-child': {
+    paddingTop: 'var(--sp-4)',
   },
   '.cm-completionKind': { flex: 'none', color: 'var(--color-label-tertiary)' },
   '.cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionKind': {

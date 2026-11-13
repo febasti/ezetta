@@ -1,5 +1,6 @@
 import type { Tree } from '@lezer/common'
 import { citationOverview } from '../typst/citations'
+import { DIVIDER_MARKER, scanDividers } from '../typst/dividers'
 import { scanFigures } from '../typst/figures'
 import { parseTypst } from '../typst/parser'
 import { scanCrossRefs } from '../typst/targets'
@@ -15,6 +16,7 @@ import { scanCrossRefs } from '../typst/targets'
  *    so it needs no numbering from the template.
  *  - An image path is made absolute from the project (`/assets/a.png`), because the copy lives in
  *    another folder than the sheet.
+ *  - A divider (`#divider()`) is not a function Typst knows: it becomes a marker the template draws.
  *  - A citation of a work the bibliography does not have becomes its key in brackets with a
  *    question mark, in the danger colour ("[unbekannt2000?]"): the compiler would stop the whole
  *    document at it, and the export lists it as a warning anyway.
@@ -141,6 +143,9 @@ export function preprocessSheet(
             (text.slice(from, to).match(/\n/g) ?? []).length,
           )}`,
         })
+
+  for (const divider of scanDividers(parsed, text))
+    edits.push({ from: divider.from, to: divider.to, insert: DIVIDER_MARKER })
 
   for (const figure of scanFigures(parsed, text)) {
     if (figure.empty) continue // a placeholder frame has no path, and prints as it is

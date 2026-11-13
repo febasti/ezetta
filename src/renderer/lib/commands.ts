@@ -271,6 +271,7 @@ const GROUP_OF: Record<string, CommandGroup> = {
   'editor-table': 'insert',
   'editor-formula': 'insert',
   'editor-formula-display': 'insert',
+  'editor-divider': 'insert',
   'editor-quote-inline': 'insert',
 }
 

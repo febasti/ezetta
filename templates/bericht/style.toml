@@ -99,6 +99,12 @@ border_gap = "0.9em"
 [element.epigraph]
 width = "65%"
 
+[element.divider]
+divider_mark = "line"
+width = "100%"
+rule_width = "0.6pt"
+color = "accent_secondary"
+
 [element.figure]
 above = "1em"
 below = "1em"

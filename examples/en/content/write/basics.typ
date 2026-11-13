@@ -5,6 +5,12 @@ While writing, the text stays what it is: paragraphs with headings. Styling is l
 The Enter key starts a new paragraph. A new line in the same paragraph, as in an address or a poem, comes with Shift and Enter, \
 like here.
 
+A slash at the start of a line opens a menu of everything a paragraph can be and everything that can be inserted: headings, lists, quotes, footnotes, images, tables, formulas and more. Further letters narrow it down, "/tab" to the table, for instance. It also has the divider, which sets two parts of a text apart, as here:
+
+#divider()
+
+How the divider prints, as three asterisks, as a rule or as space only, is decided by the template.
+
 == Headings and lists <sec-lists>
 
 Headings structure the text and appear in the outline and in the contents of the export. How they are numbered is decided by the template. Lists come with bullets and with numbers:

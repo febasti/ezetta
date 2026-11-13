@@ -5,6 +5,12 @@ Beim Schreiben bleibt der Text, was er ist: Absätze mit Überschriften. Das Ges
 Die Eingabetaste beginnt einen neuen Absatz. Eine neue Zeile im selben Absatz, etwa in einer Anschrift oder einem Gedicht, entsteht mit Umschalt und Eingabe, \
 so wie hier.
 
+Ein Schrägstrich am Anfang einer Zeile öffnet ein Menü mit allem, was ein Absatz sein kann und was sich einfügen lässt: Überschriften, Listen, Zitate, Fußnoten, Bilder, Tabellen, Formeln und mehr. Weitere Buchstaben grenzen es ein, „/tab“ etwa auf die Tabelle. Dort steht auch der Trenner, der zwei Teile eines Textes voneinander absetzt, wie hier:
+
+#divider()
+
+Wie der Trenner gedruckt wird, als drei Sternchen, als Linie oder nur als Abstand, bestimmt die Vorlage.
+
 == Überschriften und Listen <sec-listen>
 
 Überschriften gliedern den Text und erscheinen in der Gliederung und im Inhaltsverzeichnis des Exports. Wie sie nummeriert sind, bestimmt die Vorlage. Listen gibt es mit Punkten und mit Zahlen:

@@ -5,6 +5,7 @@ import { newId } from './ids'
 import { formulaSource } from './math'
 import { newTable, tableSource } from './tables'
 import { findFootnotes, footnoteAt } from './footnotes'
+import { DIVIDER_SOURCE } from './dividers'
 
 /**
  * Editing commands for the supported elements. Pure functions: they take the text,
@@ -912,6 +913,16 @@ export function insertTable(
   const columns = Math.max(1, Math.min(options.columns, 30))
   const label = newId('tbl', input.doc, options.random)
   return insertBlock(input, `${tableSource(newTable(rows, columns, label))} <${label}>`)
+}
+
+/**
+ * Inserts a divider (`#divider()`), a paragraph of its own like a figure: on the empty line the caret
+ * is on, or after its paragraph. The caret ends up after it. Does nothing in code, math, raw text, or
+ * comments.
+ */
+export function insertDivider(input: EditInput): EditResult {
+  if (insideOpaque(input.tree, input.to)) return noChange(input)
+  return insertBlock(input, DIVIDER_SOURCE)
 }
 
 /** What a new formula holds, so that something is there to see and to replace. */

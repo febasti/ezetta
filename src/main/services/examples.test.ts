@@ -35,6 +35,7 @@ const FEATURES: [name: string, pattern: RegExp][] = [
   ['small caps, subscript and superscript', /#smallcaps\[[\s\S]*#sub\[[\s\S]*#super\[/],
   ['a bullet list and a numbered one', /^- [\s\S]*^\+ /m],
   ['a link', /#link\("https:\/\/[^"]+"\)\[/],
+  ['a divider', /^#divider\(\)$/m],
   ['a highlight', /::\S[^:\n]*\S::/],
   ['a comment', /\/\* [^*]+\*\//],
   ['a citation with a page', /@[a-z]+\d{4}\[[^\]]+\]/],

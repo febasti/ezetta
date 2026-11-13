@@ -82,6 +82,10 @@ italic = true
 above = "1.2em"
 below = "1.8em"
 
+[element.divider]
+divider_mark = "asterism"
+color = "accent"
+
 [element.figure_caption]
 size = "0.88em"
 italic = true

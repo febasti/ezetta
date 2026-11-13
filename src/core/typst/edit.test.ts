@@ -8,6 +8,7 @@ import {
   insertComment,
   insertFigure,
   insertFormula,
+  insertDivider,
   insertTable,
   insertFootnote,
   linkAt,
@@ -539,6 +540,29 @@ describe('insertFootnote', () => {
     parseTypst(out).iterate({ enter: (n) => void names.push(n.name) })
     expect(names).toContain('Content')
     expect(out).toBe('Ein Satz.#footnote[]')
+  })
+})
+
+describe('insertDivider', () => {
+  it('puts a divider on the empty line the caret is on, with a blank line before the text after it', () => {
+    const input = parse('Erster Absatz.\n\n|\nZweiter Absatz.')
+    const result = insertDivider(input)
+    const out = applyChanges(input.doc, result)
+    expect(out).toBe('Erster Absatz.\n\n#divider()\n\nZweiter Absatz.')
+    // The caret is after it, where Enter starts the next paragraph.
+    expect(result.anchor).toBe('Erster Absatz.\n\n#divider()'.length)
+  })
+
+  it('in a paragraph, puts it after the paragraph, as a paragraph of its own', () => {
+    const input = parse('Ein Ab|satz,\nder weitergeht.\n\nDer nächste.')
+    expect(applyChanges(input.doc, insertDivider(input))).toBe(
+      'Ein Absatz,\nder weitergeht.\n\n#divider()\n\nDer nächste.',
+    )
+  })
+
+  it('does nothing in code, math, raw text or a comment', () => {
+    for (const source of ['$x |+ y$', '`co|de`', '/* No|tiz */'])
+      expect(insertDivider(parse(source)).changes).toEqual([])
   })
 })
 

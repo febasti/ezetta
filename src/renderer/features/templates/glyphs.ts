@@ -10,4 +10,5 @@ export const GLYPHS: Readonly<Record<string, readonly string[]>> = {
   placement: ['bottom', 'margin'],
   number_style: ['inline', 'hanging'],
   marker: ['default', 'bullet', 'dash', 'circle', 'square'],
+  divider_mark: ['asterisks', 'asterism', 'line', 'space'],
 }

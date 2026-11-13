@@ -101,6 +101,7 @@ export function editorMenuItems(
         command(view, 'table'),
         command(view, 'formula'),
         command(view, 'formula-display'),
+        command(view, 'divider'),
         command(view, 'comment'),
       ],
     },

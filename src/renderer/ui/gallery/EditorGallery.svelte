@@ -3,8 +3,8 @@
 
   /**
    * What the editor draws inside CodeMirror, as plain DOM with the same classes (cite.css, refs.css,
-   * notes.css, figures.css, tables.css, quotes.css and the DOM kit, kit/dom.css), in its states. A
-   * change to those files shows here; the screenshot tests catch it.
+   * notes.css, figures.css, dividers.css, tables.css, quotes.css and the DOM kit, kit/dom.css), in
+   * its states. A change to those files shows here; the screenshot tests catch it.
    */
 </script>
 
@@ -46,6 +46,18 @@
       <button type="button" class="cm-quote-hint">45 Wörter – als Blockzitat setzen</button>
       <button type="button" class="cm-quote-source-add">+ Quelle hinzufügen</button>
     </p>
+  </div>
+
+  <h2>Dividers</h2>
+  <div class="writing">
+    <p>Ein Absatz vor dem Trenner.</p>
+    <div class="cm-divider" role="separator" aria-label="Trenner">
+      <span class="cm-divider-mark">*&emsp;*&emsp;*</span>
+    </div>
+    <p>Und einer danach. Ein gewählter Trenner:</p>
+    <div class="cm-divider selected" role="separator" aria-label="Trenner">
+      <span class="cm-divider-mark">*&emsp;*&emsp;*</span>
+    </div>
   </div>
 
   <h2>Notes in the margin</h2>

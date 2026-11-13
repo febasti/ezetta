@@ -138,6 +138,12 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     dotted: { de: 'Gepunktet', en: 'Dotted' },
     none: { de: 'Keine', en: 'None' },
   },
+  divider_mark: {
+    asterisks: { de: 'Sternchen (* * *)', en: 'Asterisks (* * *)' },
+    asterism: { de: 'Asterismus (⁂)', en: 'Asterism (⁂)' },
+    line: { de: 'Linie', en: 'Rule' },
+    space: { de: 'Nur Abstand', en: 'Space only' },
+  },
   math_font: {
     new_computer_modern: { de: 'New Computer Modern Math', en: 'New Computer Modern Math' },
     libertinus: { de: 'Libertinus Math', en: 'Libertinus Math' },
@@ -396,6 +402,7 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
       'dotted',
       'none',
     ]),
+    prop('divider_mark', 'enum', 'Zeichen', 'Mark', ['asterisks', 'asterism', 'line', 'space']),
     prop('number_side', 'enum', 'Nummernstellung', 'Number position', ['right', 'left']),
     prop('radius', 'length', 'Eckenradius', 'Corner radius'),
     prop('accent', 'color', 'Akzentfarbe', 'Accent colour'),
@@ -569,9 +576,14 @@ const SHOWN_WHEN: Readonly<Record<string, (values: Readonly<Record<string, unkno
     // The gap between columns only when there is more than one.
     column_gap: (v) => v['columns'] !== '1',
     separator_style: (v) => v['placement'] !== 'margin',
-    rule_width: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
+    rule_width: (v) =>
+      v['placement'] !== 'margin' &&
+      v['separator_style'] !== 'none' &&
+      (v['divider_mark'] === undefined || v['divider_mark'] === 'line'),
     rule_length: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
     separator_color: (v) => v['placement'] !== 'margin' && v['separator_style'] !== 'none',
+    // A divider's rule: its length and weight only when it is drawn as a rule.
+    width: (v) => v['divider_mark'] === undefined || v['divider_mark'] === 'line',
     // The border of an image: the rest only once it has a width.
     frame_color: hasFrame,
     frame_radius: hasFrame,
@@ -596,6 +608,10 @@ const LABELS_FOR: Readonly<Record<string, Readonly<Record<string, { de: string; 
   },
   header: DIVIDER_LABELS,
   footer: DIVIDER_LABELS,
+  divider: {
+    width: { de: 'Länge der Linie', en: 'Length of the rule' },
+    rule_width: { de: 'Stärke der Linie', en: 'Weight of the rule' },
+  },
   table_caption: {
     caption_gap: { de: 'Abstand zur Tabelle', en: 'Distance to the table' },
     caption_fit: { de: 'Auf Tabellenbreite begrenzen', en: 'Limit to the width of the table' },
@@ -686,6 +702,13 @@ export const PROP_SECTIONS: readonly {
   /** The elements this section is for; absent: every element with one of its properties. */
   only?: readonly string[]
 }[] = [
+  {
+    id: 'divider',
+    de: 'Trenner',
+    en: 'Divider',
+    props: ['divider_mark', 'width', 'rule_width'],
+    only: ['divider'],
+  },
   {
     id: 'type',
     de: 'Schrift',
@@ -1110,6 +1133,24 @@ export const ELEMENTS: readonly ElementDef[] = [
     'Epigraph source',
     [...TEXT, 'above'],
     { size: '1em', italic: false, above: '0.5em' },
+  ),
+  // A break in the text between two passages (`#divider()`): three asterisks, an asterism, a short
+  // rule, or space only, with space above and below.
+  el(
+    'divider',
+    'body',
+    'text',
+    'Trenner',
+    'Divider',
+    ['divider_mark', 'font', 'size', 'color', 'align', 'width', 'rule_width', 'above', 'below'],
+    {
+      divider_mark: 'asterisks',
+      align: 'center',
+      width: '25%',
+      rule_width: '0.5pt',
+      above: '1.4em',
+      below: '1.4em',
+    },
   ),
   el(
     'figure',

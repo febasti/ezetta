@@ -46,7 +46,7 @@ export function build(state: EditorState): Built {
 
   const call = (c: Call): void => {
     if (chips.longRef(c) || chips.longCite(c)) return
-    if (embeds.table(c) || embeds.figure(c) || embeds.footnote(c)) return
+    if (embeds.table(c) || embeds.figure(c) || embeds.footnote(c) || embeds.divider(c)) return
     if (quotes.inline(c) || quotes.block(c)) return
     if (text.link(c) || text.format(c)) return
     text.call(c)

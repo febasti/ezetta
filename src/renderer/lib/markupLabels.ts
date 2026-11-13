@@ -4,4 +4,7 @@ import type { MarkupLabels } from '../editor/markup'
 /** Texts the markup decorations need from the i18n layer. */
 export const markupLabels: MarkupLabels = {
   comment: (text) => i18n.t('comment.label', { text }),
+  get divider() {
+    return i18n.t('divider.label')
+  },
 }

@@ -1,3 +1,4 @@
+import { EditorSelection } from '@codemirror/state'
 import { WidgetType } from '@codemirror/view'
 import type { EditorView } from '@codemirror/view'
 import { icon } from '../icons'
@@ -36,6 +37,58 @@ export class CommentPill extends WidgetType {
 
   override ignoreEvent(): boolean {
     return false
+  }
+}
+
+/**
+ * A divider (`#divider()` on a line of its own): three asterisks in the middle of the column, as the
+ * break between two passages looks in most books (how it prints is the template's). A click chooses
+ * it, as Backspace next to it does: it is drawn marked, and Backspace or Delete removes it.
+ */
+export class DividerWidget extends WidgetType {
+  constructor(
+    private readonly label: string,
+    private readonly selected: boolean,
+    private readonly readOnly: boolean,
+  ) {
+    super()
+  }
+
+  override eq(other: DividerWidget): boolean {
+    return (
+      other.label === this.label &&
+      other.selected === this.selected &&
+      other.readOnly === this.readOnly
+    )
+  }
+
+  override toDOM(view: EditorView): HTMLElement {
+    const root = document.createElement('div')
+    root.className = 'cm-divider' + (this.selected ? ' selected' : '')
+    root.setAttribute('role', 'separator')
+    root.setAttribute('aria-label', this.label)
+    const mark = document.createElement('span')
+    mark.className = 'cm-divider-mark'
+    mark.textContent = '*\u2003*\u2003*'
+    root.append(mark)
+    if (!this.readOnly)
+      root.addEventListener('mousedown', (event) => {
+        event.preventDefault()
+        // The divider may have moved since this element was made, so ask where it is now.
+        const from = view.posAtDOM(root)
+        const line = view.state.doc.lineAt(from)
+        view.dispatch({ selection: EditorSelection.range(line.from, line.to) })
+        view.focus()
+      })
+    return root
+  }
+
+  override get estimatedHeight(): number {
+    return 48
+  }
+
+  override ignoreEvent(): boolean {
+    return true
   }
 }
 
