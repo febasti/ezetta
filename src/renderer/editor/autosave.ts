@@ -1,8 +1,12 @@
 export type SaveState = 'saved' | 'unsaved' | 'saving' | 'error'
 
 export interface AutosaverOptions {
-  /** Writes the content. Resolves true on success; false (or a throw) is a failure. */
-  write: (path: string, content: string) => Promise<boolean>
+  /**
+   * Writes the content. Resolves true on success; false (or a throw) is a failure, tried again in a
+   * moment. `held`: not written, and not to be tried again by itself (the file changed on disk, and
+   * the writer decides); the text stays pending.
+   */
+  write: (path: string, content: string) => Promise<boolean | 'held'>
   onState: (state: SaveState) => void
   delayMs?: number
   retryMs?: number
@@ -88,13 +92,16 @@ export class Autosaver {
     this.job = null
     this.set('saving')
     this.chain = this.chain.then(async () => {
-      let saved: boolean
+      let saved: boolean | 'held'
       try {
         saved = await this.options.write(job.path, job.read())
       } catch {
         saved = false
       }
-      if (saved) {
+      if (saved === 'held') {
+        this.job ??= job
+        this.set('unsaved')
+      } else if (saved) {
         if (!this.job) this.set('saved')
       } else {
         this.job ??= job // keep it for the retry

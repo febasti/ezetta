@@ -71,6 +71,7 @@ export type IpcErrorCode =
   | 'not_an_image'
   | 'too_large'
   | 'not_a_bibliography'
+  | 'conflict'
   | 'io'
 
 export interface IpcError {
@@ -222,8 +223,29 @@ export const ipc = {
       z.object({ url: z.string().max(2000) }).strict(),
       empty,
     ),
-    /** The renderer answers `app.flushRequested` with this once unsaved text is written. */
-    flushDone: defineInvoke('app:flush-done', empty, empty),
+    /**
+     * The renderer answers `app.flushRequested` with this once unsaved text is written. When some
+     * could not be written, `unsaved` holds the question the main process asks before the window
+     * closes (in the writer's language): go back to the text, or close and lose the changes.
+     */
+    flushDone: defineInvoke(
+      'app:flush-done',
+      z
+        .object({
+          unsaved: z
+            .object({
+              message: z.string().max(300),
+              detail: z.string().max(1000),
+              cancel: z.string().max(100),
+              discard: z.string().max(100),
+            })
+            .strict()
+            .nullable()
+            .optional(),
+        })
+        .strict(),
+      empty,
+    ),
     /** Shows a context menu as the system's own, and answers with the item chosen (null if none). */
     popupMenu: defineInvoke('app:popup-menu', popupMenuRequestSchema, popupMenuResultSchema),
     /** Sets the menu bar (macOS; elsewhere there is none). */
@@ -484,10 +506,31 @@ export const ipc = {
         .strict(),
       mathResult,
     ),
+    /**
+     * Writes a sheet. `base` is the `contentHash` of the text the content was made from: when the
+     * file changed on disk since, the save fails with `conflict`, unless `overwrite`, which first
+     * puts the text on disk into the trash as a copy (`kept`).
+     */
     writeSheet: defineInvoke(
       'project:write-sheet',
-      z.object({ path: relPath, content: z.string().max(50_000_000) }).strict(),
-      z.object({ words: z.number(), footnoteWords: z.number() }).strict(),
+      z
+        .object({
+          path: relPath,
+          content: z.string().max(50_000_000),
+          base: z.number().int().nonnegative().optional(),
+          overwrite: z.boolean().optional(),
+        })
+        .strict(),
+      z
+        .object({
+          words: z.number(),
+          footnoteWords: z.number(),
+          kept: z
+            .object({ name: z.string().max(400), trashed: z.boolean() })
+            .strict()
+            .nullable(),
+        })
+        .strict(),
     ),
   },
   export: {

@@ -179,6 +179,8 @@
   "editor.externalChange": "The file was changed outside the app.",
   "editor.reload": "Reload",
   "editor.keepMine": "Keep my version",
+  "editor.keptInTrash": "Your version is saved. The one changed outside the app is in the trash as “{name}”.",
+  "editor.keptBeside": "Your version is saved. The one changed outside the app is next to it as “{name}”.",
   "editor.orphaned": "The file was moved or deleted. Your text stays visible here but is not saved.",
   "cmd.find": "Find",
   "cmd.findReplace": "Find and replace",
@@ -618,6 +620,7 @@
   "cite.pickerEmpty": "The bibliography is empty. Put BibTeX entries in the project's bibliography file.",
   "cite.pickerNone": "No work found.",
   "error.not_a_bibliography": "This is not a BibTeX file, or it cannot be read.",
+  "error.conflict": "The file was changed outside the app.",
   "cite.form.none": "Not printed",
   "cite.check": "To check",
   "cite.checkNoteLabel": "Note for checking",
@@ -927,5 +930,9 @@
   "slash.section.insert": "Insert",
   "slash.divider": "Divider",
   "cmd.lineBreak": "Insert line break",
-  "slash.lineBreak": "Line break"
+  "slash.lineBreak": "Line break",
+  "quit.unsaved.message": "Your latest changes could not be saved.",
+  "quit.unsaved.detail": "The sheet “{name}” could not be written. The disk may be full, or the folder out of reach. If you close now, the changes are lost.",
+  "quit.unsaved.cancel": "Back to the text",
+  "quit.unsaved.discard": "Discard changes"
 }

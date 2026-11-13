@@ -11,6 +11,9 @@ import { analyzeSheet } from '@core/typst/text'
 import { Autosaver } from '../../editor/autosave'
 import type { SaveState } from '../../editor/autosave'
 import { call } from '../../lib/api'
+import { notify } from '../../lib/ui.svelte'
+import { i18n } from '../../i18n/i18n.svelte'
+import { contentHash } from '@core/project/contentHash'
 import type { MenuItem } from '../../lib/menu.svelte'
 import { isSameOrBelow, rebase } from '@core/project/paths'
 import { paragraphMenu, runEditorCommand } from './editorCommands'
@@ -77,16 +80,64 @@ class EditorStore {
   private handle: EditorHandle | null = null
   private opening = 0
   private statsTimer: ReturnType<typeof setTimeout> | null = null
+  /**
+   * The sheet's text as the editor last knew it on disk (read or written), as a `contentHash`. A
+   * save sends it, so a file that another program changed meanwhile is not overwritten unseen.
+   */
+  private base: { path: string; hash: number } | null = null
+  /** The writer chose to keep their version: the next save writes over the file on disk. */
+  private overwriteNext = false
 
   private saver = new Autosaver({
-    write: async (path, content) => {
-      const result = await window.api.project.writeSheet({ path, content })
-      if (!result.ok && (result.error.code === 'not_found' || result.error.code === 'invalid_path'))
-        this.orphaned = true
-      return result.ok
-    },
+    write: (path, content) => this.write(path, content),
     onState: (state) => (this.saveState = state),
   })
+
+  /**
+   * One save of the autosaver. While a conflict is open, a save is not made by the timer (the
+   * autosaver is paused) but only when the writer moves on (another sheet, quitting): then their
+   * text is written, and the file's text on disk goes to the trash as a copy, which a notice names.
+   */
+  private async write(path: string, content: string): Promise<boolean | 'held'> {
+    const base = this.base?.path === path ? this.base.hash : undefined
+    const overwrite = this.conflict || this.overwriteNext
+    const result = await window.api.project.writeSheet({ path, content, base, overwrite })
+    if (!result.ok) {
+      if (result.error.code === 'conflict') {
+        // Another program changed the file since it was read: the writer decides.
+        if (this.path === path) {
+          this.conflict = true
+          this.saver.pause()
+        }
+        return 'held'
+      }
+      if (result.error.code === 'not_found' || result.error.code === 'invalid_path')
+        this.orphaned = true
+      return false
+    }
+    this.base = { path, hash: contentHash(content) }
+    if (overwrite && this.path === path) {
+      // This save settled the conflict in favour of the writer's text: saving goes on as usual.
+      this.overwriteNext = false
+      if (this.conflict) {
+        this.conflict = false
+        this.saver.resume()
+      }
+    }
+    const kept = result.value.kept
+    if (kept)
+      notify(
+        'info',
+        i18n.t(kept.trashed ? 'editor.keptInTrash' : 'editor.keptBeside', { name: kept.name }),
+        12_000,
+      )
+    return true
+  }
+
+  /** Text that could not be written: what is left after a flush when saving failed. */
+  get hasUnsaved(): boolean {
+    return this.saver.hasPending
+  }
 
   setIssues(issues: readonly ProofIssue[]): void {
     this.issues = issues
@@ -152,6 +203,8 @@ class EditorStore {
   }
 
   private load(path: string, content: string): void {
+    this.base = { path, hash: contentHash(content) }
+    this.overwriteNext = false
     this.path = path
     this.initial = content
     this.mountKey += 1
@@ -168,6 +221,8 @@ class EditorStore {
     this.initialCursor = undefined
     this.conflict = false
     this.orphaned = false
+    this.overwriteNext = false
+    this.base = null
     this.saver.discard()
     this.mountKey += 1
   }
@@ -288,6 +343,8 @@ class EditorStore {
     if (result === null) return
     this.saver.discard() // also resumes autosave
     this.conflict = false
+    this.overwriteNext = false
+    this.base = { path: this.path, hash: contentHash(result.content) }
     this.initial = result.content
     this.handle?.setContent(result.content)
     this.liveStats = analyzeSheet(result.content)
@@ -296,6 +353,7 @@ class EditorStore {
   /** Keeps the text in the editor and writes it over the file on disk. */
   keepMine(): void {
     this.conflict = false
+    this.overwriteNext = true
     this.saver.resume()
     this.edited()
   }
@@ -316,6 +374,8 @@ class EditorStore {
   pathChanged(from: string, to: string): void {
     if (this.path !== null && isSameOrBelow(this.path, from))
       this.path = rebase(this.path, from, to)
+    if (this.base !== null && isSameOrBelow(this.base.path, from))
+      this.base = { ...this.base, path: rebase(this.base.path, from, to) }
   }
 
   isAffected(path: string): boolean {

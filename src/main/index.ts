@@ -12,6 +12,7 @@ import {
   launchServer,
 } from './services/languageTool'
 import { createHandlers } from './ipc/handlers'
+import type { UnsavedQuestion } from './ipc/handlers'
 import { registerIpc } from './ipc/register'
 import { installApplicationMenu, setApplicationMenu } from './menu'
 import { popupNativeMenu } from './services/nativeMenu'
@@ -57,20 +58,47 @@ let mainWindow: BrowserWindow | undefined
 /** The window's page, while there is one: a closed window's `webContents` throws when read. */
 const contents = (): Electron.WebContents | undefined =>
   mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : undefined
-let resolveFlush: (() => void) | null = null
+let resolveFlush: ((unsaved: UnsavedQuestion | null) => void) | null = null
 /** Set once the quit sequence has written unsaved text, so quitting can go ahead. */
 let quitFlushed = false
+/** The flush that is running: a quit while a window is closing waits for the same answer. */
+let flushing: Promise<boolean> | null = null
 
-/** Asks the renderer to write unsaved text, and waits for its answer (at most a few seconds). */
-function requestFlush(window: BrowserWindow): Promise<void> {
-  return new Promise<void>((resolve) => {
-    const timer = setTimeout(resolve, 3000)
-    resolveFlush = () => {
+/**
+ * Asks the renderer to write unsaved text, and waits for its answer (at most a few seconds: a page
+ * that does not answer cannot save anything either). When some text could not be written, the
+ * writer is asked whether to go back to it or to close and lose it. Resolves true when the window
+ * may close.
+ */
+function requestFlush(window: BrowserWindow): Promise<boolean> {
+  flushing ??= new Promise<UnsavedQuestion | null>((resolve) => {
+    const timer = setTimeout(() => resolve(null), 3000)
+    resolveFlush = (unsaved) => {
       clearTimeout(timer)
-      resolve()
+      resolveFlush = null
+      resolve(unsaved)
     }
     sendEvent(window.webContents, events.app.flushRequested, {})
   })
+    .then(async (unsaved) => {
+      if (!unsaved || window.isDestroyed()) return true
+      const { response } = await dialog.showMessageBox(window, {
+        type: 'warning',
+        message: unsaved.message,
+        detail: unsaved.detail,
+        buttons: [unsaved.cancel, unsaved.discard],
+        defaultId: 0,
+        cancelId: 0,
+      })
+      return response === 1
+    })
+    // A dialog that cannot be shown must not keep the window from ever closing.
+    .catch((cause) => {
+      log('could not ask about unsaved text', cause)
+      return true
+    })
+    .finally(() => (flushing = null))
+  return flushing
 }
 
 /** The window a dialog belongs to, while there is one. */
@@ -282,7 +310,7 @@ void app.whenReady().then(async () => {
       exporter,
       templates,
       synonyms: (request) => lookupSynonyms({ morph, thesaurus }, request),
-      flushDone: () => resolveFlush?.(),
+      flushDone: (unsaved) => resolveFlush?.(unsaved),
       openExternal: (url) => shell.openExternal(url),
       reveal: (absPath) => shell.showItemInFolder(absPath),
       about: async () => ({
@@ -362,12 +390,13 @@ void app.whenReady().then(async () => {
     if (quitFlushed) return
     event.preventDefault()
     const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
-    void (window ? requestFlush(window) : Promise.resolve())
-      .then(() => host.close())
-      .finally(() => {
+    void (window ? requestFlush(window) : Promise.resolve(true)).then((go) => {
+      if (!go) return // the writer went back to the text: no quit
+      void host.close().finally(() => {
         quitFlushed = true
         app.quit()
       })
+    })
   })
 })
 

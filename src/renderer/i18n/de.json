@@ -179,6 +179,8 @@
   "editor.externalChange": "Die Datei wurde außerhalb der App geändert.",
   "editor.reload": "Neu laden",
   "editor.keepMine": "Meine Version behalten",
+  "editor.keptInTrash": "Deine Version ist gespeichert. Die außerhalb der App geänderte liegt im Papierkorb als „{name}“.",
+  "editor.keptBeside": "Deine Version ist gespeichert. Die außerhalb der App geänderte liegt daneben als „{name}“.",
   "editor.orphaned": "Die Datei wurde verschoben oder gelöscht. Dein Text bleibt hier sichtbar, wird aber nicht gespeichert.",
   "cmd.find": "Suchen",
   "cmd.findReplace": "Suchen und Ersetzen",
@@ -618,6 +620,7 @@
   "cite.pickerEmpty": "Die Bibliographie ist leer. Lege BibTeX-Einträge in der Bibliographie-Datei des Projekts ab.",
   "cite.pickerNone": "Kein Werk gefunden.",
   "error.not_a_bibliography": "Das ist keine BibTeX-Datei, oder sie lässt sich nicht lesen.",
+  "error.conflict": "Die Datei wurde außerhalb der App geändert.",
   "cite.form.none": "Nicht gedruckt",
   "cite.check": "Zu prüfen",
   "cite.checkNoteLabel": "Notiz zur Prüfung",
@@ -927,5 +930,9 @@
   "slash.section.insert": "Einfügen",
   "slash.divider": "Trenner",
   "cmd.lineBreak": "Zeilenumbruch einfügen",
-  "slash.lineBreak": "Zeilenumbruch"
+  "slash.lineBreak": "Zeilenumbruch",
+  "quit.unsaved.message": "Deine letzten Änderungen konnten nicht gespeichert werden.",
+  "quit.unsaved.detail": "Der Abschnitt „{name}“ ließ sich nicht schreiben. Vielleicht ist der Datenträger voll oder der Ordner nicht erreichbar. Wenn du jetzt schließt, gehen die Änderungen verloren.",
+  "quit.unsaved.cancel": "Zurück zum Text",
+  "quit.unsaved.discard": "Änderungen verwerfen"
 }

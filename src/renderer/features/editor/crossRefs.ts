@@ -1,6 +1,7 @@
 import { EditorSelection } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { analyzeSheet } from '@core/typst/text'
+import { contentHash } from '@core/project/contentHash'
 import { parseTypst } from '@core/typst/parser'
 import { labelEdit, labelsIn, newLabel, scanTargets, supplementsFor } from '@core/typst/targets'
 import type { NumberedTarget } from '@core/typst/targets'
@@ -30,7 +31,10 @@ export async function labelInOtherSheet(
   const label = newLabel(here.kind, here.title, new Set([...taken, ...labelsIn(text)]))
   const edit = labelEdit(here, label)
   const next = text.slice(0, edit.from) + edit.insert + text.slice(edit.to)
-  const written = await call(window.api.project.writeSheet({ path: target.path, content: next }))
+  // Only over the text just read: a change made meanwhile by another program is not overwritten.
+  const written = await call(
+    window.api.project.writeSheet({ path: target.path, content: next, base: contentHash(text) }),
+  )
   if (!written) return null
   // The watcher reports the change in a moment; the chip should not wait for it.
   project.noteTargets(target.path, analyzeSheet(next).targets)

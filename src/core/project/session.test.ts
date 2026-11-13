@@ -4,6 +4,7 @@ import { MATERIAL } from './paths'
 import { exportOrder, findNode } from './tree'
 import type { GroupNode, SheetNode } from './tree'
 import { ProjectSession } from './session'
+import { contentHash } from './contentHash'
 import type { Outcome } from './session'
 import { defaultProfile } from '../export/profile'
 import { parseTemplate } from '../export/template'
@@ -146,6 +147,69 @@ describe('reading and writing sheets', () => {
       expect(await session.readSheet(path), path).toMatchObject({ ok: false })
       expect(await session.writeSheet(path, 'x'), path).toMatchObject({ ok: false })
     }
+  })
+
+  it('refuses to write over a file that changed on disk since its text was read', async () => {
+    const fs = project()
+    const session = await open(fs)
+    const read = expectOk(await session.readSheet('methoden/design.typ'))
+    fs.put('content/methoden/design.typ', 'Von einem anderen Programm.')
+    expect(
+      await session.writeSheet('methoden/design.typ', 'Meins.', { base: contentHash(read) }),
+    ).toMatchObject({ ok: false, error: { code: 'conflict' } })
+    expect(fs.files.get('content/methoden/design.typ')).toBe('Von einem anderen Programm.')
+    expect(fs.trashed).toEqual([])
+  })
+
+  it('writes when the file on disk is still the text it was made from, or already the same', async () => {
+    const fs = project()
+    const session = await open(fs)
+    const read = expectOk(await session.readSheet('methoden/design.typ'))
+    const first = expectOk(
+      await session.writeSheet('methoden/design.typ', 'Eins.', { base: contentHash(read) }),
+    )
+    expect(first.kept).toBeNull()
+    // The same text on disk as the save brings is no conflict, whatever the base.
+    fs.put('content/methoden/design.typ', 'Zwei.')
+    expectOk(
+      await session.writeSheet('methoden/design.typ', 'Zwei.', { base: contentHash('Eins.') }),
+    )
+    expect(fs.files.get('content/methoden/design.typ')).toBe('Zwei.')
+  })
+
+  it('overwrites a changed file only after putting its text into the trash as a copy', async () => {
+    const fs = project()
+    const session = await open(fs)
+    const read = expectOk(await session.readSheet('methoden/design.typ'))
+    fs.put('content/methoden/design.typ', 'Von einem anderen Programm.')
+    const { kept } = expectOk(
+      await session.writeSheet('methoden/design.typ', 'Meins.', {
+        base: contentHash(read),
+        overwrite: true,
+      }),
+    )
+    expect(kept).toMatchObject({ trashed: true })
+    expect(kept!.name).toMatch(/^design \d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2}\.typ$/)
+    expect(fs.files.get('content/methoden/design.typ')).toBe('Meins.')
+    expect(fs.trashedText.get(`content/methoden/${kept!.name}`)).toBe('Von einem anderen Programm.')
+    expect(fs.files.has(`content/methoden/${kept!.name}`)).toBe(false)
+  })
+
+  it('leaves the copy next to the sheet when the trash cannot take it', async () => {
+    const fs = project()
+    const session = await open(fs)
+    const read = expectOk(await session.readSheet('methoden/design.typ'))
+    fs.put('content/methoden/design.typ', 'Fremd.')
+    fs.failTrash = () => true
+    const { kept } = expectOk(
+      await session.writeSheet('methoden/design.typ', 'Meins.', {
+        base: contentHash(read),
+        overwrite: true,
+      }),
+    )
+    expect(kept).toMatchObject({ trashed: false })
+    expect(fs.files.get(`content/methoden/${kept!.name}`)).toBe('Fremd.')
+    expect(fs.files.get('content/methoden/design.typ')).toBe('Meins.')
   })
 
   it('reports a failed write as an error and keeps the old file', async () => {

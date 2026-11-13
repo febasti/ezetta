@@ -5,6 +5,10 @@ export class MemoryFs implements FileSystem {
   readonly files = new Map<string, string>()
   readonly dirs = new Set<string>([''])
   readonly trashed: string[] = []
+  /** The text of each file that went to the trash, by its path. */
+  readonly trashedText = new Map<string, string>()
+  /** When set, moving a path matching this predicate to the trash throws. */
+  failTrash: ((path: string) => boolean) | null = null
   /** Binary files (images), by path. */
   readonly bytes = new Map<string, Uint8Array>()
   /** When set, the next write to a path matching this predicate throws, to test failure handling. */
@@ -97,7 +101,10 @@ export class MemoryFs implements FileSystem {
 
   async trash(path: string): Promise<void> {
     if (!(await this.exists(path))) throw new Error(`ENOENT: ${path}`)
+    if (this.failTrash?.(path)) throw new Error(`no trash for ${path}`)
     this.trashed.push(path)
+    const text = this.files.get(path)
+    if (text !== undefined) this.trashedText.set(path, text)
     this.files.delete(path)
     for (const file of [...this.files.keys()])
       if (file.startsWith(`${path}/`)) this.files.delete(file)

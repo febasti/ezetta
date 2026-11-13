@@ -46,8 +46,11 @@ export function setLauncherMode(
 }
 
 export interface WindowHooks {
-  /** Resolves once the renderer has written unsaved text. Called before the window closes. */
-  requestFlush: (window: BrowserWindow) => Promise<void>
+  /**
+   * Asks the renderer to write unsaved text before the window closes. Resolves true when the window
+   * may close: everything was written, or the writer chose to let go of what could not be.
+   */
+  requestFlush: (window: BrowserWindow) => Promise<boolean>
   /** False while the app is quitting: the quit sequence has already flushed. */
   shouldFlushOnClose: () => boolean
   /** The window entered or left full screen. */
@@ -149,7 +152,8 @@ export function createMainWindow(
     keepPlace()
     if (flushed || !hooks.shouldFlushOnClose()) return
     event.preventDefault()
-    void hooks.requestFlush(window).finally(() => {
+    void hooks.requestFlush(window).then((close) => {
+      if (!close) return // the writer went back to the text: the next close asks again
       flushed = true
       if (!window.isDestroyed()) window.close()
     })

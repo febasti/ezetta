@@ -47,6 +47,7 @@ import { parseBibtex } from '../bib/bibtex'
 import type { BibLibrary } from '../bib/bibtex'
 import type { FootnoteRestart } from '../typst/footnotes'
 import { withWord } from '../proof/issues'
+import { contentHash } from './contentHash'
 
 export type OpErrorCode =
   | 'not_a_project'
@@ -60,6 +61,7 @@ export type OpErrorCode =
   | 'not_an_image'
   | 'too_large'
   | 'not_a_bibliography'
+  | 'conflict'
   | 'io'
 
 export interface OpError {
@@ -133,22 +135,36 @@ export interface RefreshResult {
   externallyChanged: string[]
 }
 
-/** Small non-cryptographic string hash (cyrb53) to notice content changes without keeping copies. */
 /** An absolute path (a file outside the project), as opposed to one relative to the project. */
 export const isExternalPath = (path: string): boolean =>
   path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path)
 
-function hash(text: string): number {
-  let h1 = 0xdeadbeef
-  let h2 = 0x41c6ce57
-  for (let i = 0; i < text.length; i += 1) {
-    const c = text.charCodeAt(i)
-    h1 = Math.imul(h1 ^ c, 2654435761)
-    h2 = Math.imul(h2 ^ c, 1597334677)
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
-  return 4294967296 * (2097151 & h2) + (h1 >>> 0)
+/** Where the text of a file that a save overwrote went: into the system trash, or, when the trash
+ * could not take it, next to the sheet. `name` is the copy's file name. */
+export interface KeptCopy {
+  name: string
+  trashed: boolean
+}
+
+/** How a save of a sheet checks the file on disk first. */
+export interface WriteOptions {
+  /**
+   * The `contentHash` of the text the new content was made from. When the file on disk is no longer
+   * that text (another program changed it), the save is refused with `conflict`. Without it the
+   * file is written as it is.
+   */
+  base?: number
+  /** Writes even when the file changed: its text on disk is kept first as a copy in the trash. */
+  overwrite?: boolean
+}
+
+/** `2026-11-13 15-40-07`: a moment in a form a file name can hold on every system. */
+function fileStamp(date: Date): string {
+  const two = (n: number): string => String(n).padStart(2, '0')
+  return (
+    `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())} ` +
+    `${two(date.getHours())}-${two(date.getMinutes())}-${two(date.getSeconds())}`
+  )
 }
 
 async function scanDir(fs: FileSystem, path: string): Promise<DiskDir> {
@@ -341,19 +357,60 @@ export class ProjectSession {
 
   // --- writing sheet content ------------------------------------------------------------------
 
-  async writeSheet(path: string, content: string): Promise<Outcome<SheetStats>> {
+  /**
+   * Writes a sheet. With `base` the file on disk is read first: when another program changed it
+   * since the text was read, the save is refused (`conflict`), or with `overwrite` its text on disk
+   * is kept as a copy in the system trash before the new one is written. Nothing is ever lost
+   * without a copy.
+   */
+  async writeSheet(
+    path: string,
+    content: string,
+    options: WriteOptions = {},
+  ): Promise<Outcome<SheetStats & { kept: KeptCopy | null }>> {
     return this.serial(async () => {
       const checked = this.checkSheetPath(path)
       if (checked) return checked
+      const file = projectFile(path)
+      let kept: KeptCopy | null = null
       try {
-        await this.fs.writeFileAtomic(projectFile(path), content)
+        if (options.base !== undefined) {
+          const disk = await this.fs.readFile(file).catch(() => null)
+          if (disk !== null && disk !== content && contentHash(disk) !== options.base) {
+            if (!options.overwrite) return fail('conflict', path)
+            kept = await this.keepAside(file, disk)
+          }
+        }
+        await this.fs.writeFileAtomic(file, content)
       } catch (cause) {
         return fail('io', String(cause))
       }
       const stats = this.remember(path, content)
       this.revision += 1
-      return ok(stats)
+      return ok({ ...stats, kept })
     })
+  }
+
+  /**
+   * Keeps the text of a file that is about to be overwritten: as a copy next to it, named after it
+   * and the moment (`s-k4x9tm 2026-11-13 15-40-07.typ`), which then goes to the system trash. If the
+   * trash cannot take it, the copy stays in the folder, where the writer sees it as a sheet.
+   */
+  private async keepAside(file: string, text: string): Promise<KeptCopy> {
+    const folder = dirname(file)
+    const stem = basename(file).slice(0, -SHEET_EXT.length)
+    const stamp = fileStamp(new Date())
+    let name = `${stem} ${stamp}${SHEET_EXT}`
+    for (let n = 2; await this.fs.exists(join(folder, name)); n += 1)
+      name = `${stem} ${stamp} ${n}${SHEET_EXT}`
+    const copy = join(folder, name)
+    await this.fs.writeFileAtomic(copy, text)
+    try {
+      await this.fs.trash(copy)
+      return { name, trashed: true }
+    } catch {
+      return { name, trashed: false }
+    }
   }
 
   // --- images ---------------------------------------------------------------------------------
@@ -847,7 +904,7 @@ export class ProjectSession {
         continue
       }
       const previous = this.hashes.get(sheet)
-      const next = hash(content)
+      const next = contentHash(content)
       this.remember(sheet, content)
       if (previous !== undefined && previous !== next) externallyChanged.push(sheet)
     }
@@ -865,7 +922,7 @@ export class ProjectSession {
     } catch {
       /* no bibliography yet */
     }
-    const stamp = text === '' ? '' : `${text.length}:${hash(text)}`
+    const stamp = text === '' ? '' : `${text.length}:${contentHash(text)}`
     if (path === this.bibliography.path && stamp === this.bibliography.stamp) return
     this.bibliography = { path, stamp, library: parseBibtex(text) }
   }
@@ -1013,7 +1070,7 @@ export class ProjectSession {
   private remember(path: string, content: string): SheetStats {
     const stats = analyzeSheet(content)
     this.stats.set(path, stats)
-    this.hashes.set(path, hash(content))
+    this.hashes.set(path, contentHash(content))
     return stats
   }
 
@@ -1065,7 +1122,6 @@ export class ProjectSession {
     )
   }
 
-  /** Validates the name for a new or renamed item in `parent`. `except` is the item being renamed. */
   /** A generated sheet name that nothing in the folder has. */
   private async generatedName(parent: string): Promise<string> {
     const tried = new Set<string>()
@@ -1080,6 +1136,7 @@ export class ProjectSession {
     }
   }
 
+  /** Validates the name for a new or renamed item in `parent`. `except` is the item being renamed. */
   private async checkNewName(
     parent: string,
     name: string,

@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
@@ -545,6 +545,81 @@ test('warns instead of overwriting when the open sheet has unsaved edits and cha
     await expect(page.locator('.cm-content')).toContainText('Fremd.')
     await expect(page.locator('.cm-content')).not.toContainText('Meins')
   } finally {
+    await app.close()
+  }
+})
+
+test('keeps both versions when the writer moves to another sheet while a conflict is open', async () => {
+  const { app, page } = await launch(sandbox)
+  try {
+    await openSheet(page, 'methoden', 'methoden/auswertung.typ')
+    await page.locator('.cm-content').click()
+    await page.keyboard.type('Meins ')
+    await writeFile(join(sandbox.projectDir, 'content/methoden/auswertung.typ'), 'Fremd.\n')
+    await expect(page.getByRole('alert')).toContainText('außerhalb der App geändert')
+    // Opening another sheet writes the writer's text, and the other version goes to the trash.
+    await row(page, 'methoden/design.typ').click()
+    await expect(page.getByRole('status').filter({ hasText: 'im Papierkorb' })).toBeVisible()
+    expect(await read('content/methoden/auswertung.typ')).toContain('Meins')
+    const names = await readdir(join(sandbox.projectDir, 'content/methoden'))
+    expect(names.filter((name) => name.startsWith('auswertung '))).toEqual([]) // not left behind
+  } finally {
+    await app.close()
+  }
+})
+
+test('a save never overwrites a file that changed on disk since the editor read it', async () => {
+  const { app, page } = await launch(sandbox)
+  try {
+    await openSheet(page, 'methoden', 'methoden/auswertung.typ')
+    // A save made from the text as it was read, after another program changed the file.
+    await writeFile(join(sandbox.projectDir, 'content/methoden/auswertung.typ'), 'Fremd.\n')
+    const result = await page.evaluate(() =>
+      window.api.project.writeSheet({
+        path: 'methoden/auswertung.typ',
+        content: 'Alt.',
+        base: 0,
+      }),
+    )
+    expect(result).toMatchObject({ ok: false, error: { code: 'conflict' } })
+    expect(await read('content/methoden/auswertung.typ')).toBe('Fremd.\n')
+  } finally {
+    await app.close()
+  }
+})
+
+test('asks before closing when text could not be saved, and stays open on "back to the text"', async () => {
+  test.skip(process.platform === 'win32', 'a read-only folder needs POSIX permissions')
+  const folder = join(sandbox.projectDir, 'content/methoden')
+  const { app, page } = await launch(sandbox)
+  try {
+    // The system dialog cannot be clicked from a test: it is answered here, and the questions kept.
+    await app.evaluate(({ dialog }) => {
+      const asked: string[] = []
+      ;(globalThis as { asked?: string[] }).asked = asked
+      ;(globalThis as { answer?: number }).answer = 0
+      dialog.showMessageBox = (async (_window: unknown, options: { message: string }) => {
+        asked.push(options.message)
+        return { response: (globalThis as { answer?: number }).answer ?? 0, checkboxChecked: false }
+      }) as typeof dialog.showMessageBox
+    })
+    await openSheet(page, 'methoden', 'methoden/auswertung.typ')
+    await chmod(folder, 0o555) // nothing can be written in the folder now
+    await page.locator('.cm-content').click()
+    await page.keyboard.type('Verloren? ')
+    await expect(page.locator('.save')).toContainText('fehlgeschlagen')
+
+    const close = () =>
+      app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.close())
+    const asked = () => app.evaluate(() => (globalThis as { asked?: string[] }).asked ?? [])
+    await close()
+    await expect.poll(asked).toEqual(['Deine letzten Änderungen konnten nicht gespeichert werden.'])
+    // "Back to the text": the window stays, and the text is still there to be saved.
+    await expect(page.locator('.cm-content')).toContainText('Verloren?')
+    await chmod(folder, 0o755)
+    await expect.poll(() => read('content/methoden/auswertung.typ')).toContain('Verloren?')
+  } finally {
+    await chmod(folder, 0o755).catch(() => undefined)
     await app.close()
   }
 })

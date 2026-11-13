@@ -13,6 +13,14 @@ import type { SettingsStore } from '../services/settings'
 import type { createExporter } from '../services/exporter'
 import type { createTemplateStore } from '../services/templateStore'
 
+/** What the renderer asks when unsaved text could not be written and the window is closing. */
+export interface UnsavedQuestion {
+  message: string
+  detail: string
+  cancel: string
+  discard: string
+}
+
 export interface HandlerDeps {
   host: ProjectHost
   settings: SettingsStore
@@ -21,8 +29,8 @@ export interface HandlerDeps {
   exporter: ReturnType<typeof createExporter>
   templates: ReturnType<typeof createTemplateStore>
   synonyms: (request: LookupRequest) => Promise<LookupResult>
-  /** Called when the renderer reports that unsaved text was written. */
-  flushDone: () => void
+  /** Called when the renderer reports that unsaved text was written, or could not be (`unsaved`). */
+  flushDone: (unsaved: UnsavedQuestion | null) => void
   openExternal: (url: string) => Promise<void>
   /** Shows a file in the system's file manager. */
   reveal: (absPath: string) => void
@@ -101,8 +109,8 @@ export function createHandlers({
         return {}
       },
       windowChrome: () => windowChrome(),
-      flushDone: () => {
-        flushDone()
+      flushDone: ({ unsaved }) => {
+        flushDone(unsaved ?? null)
         return {}
       },
     },
@@ -200,9 +208,11 @@ export function createHandlers({
       readBibliography: () => host.session().library(),
       renderMath: ({ source, display, font }) => math.render(source, display, font),
       addImage: async ({ name, data }) => unwrap(await host.session().addAsset(name, data)),
-      writeSheet: async ({ path, content }) => {
-        const { words, footnoteWords } = unwrap(await host.session().writeSheet(path, content))
-        return { words, footnoteWords }
+      writeSheet: async ({ path, content, base, overwrite }) => {
+        const { words, footnoteWords, kept } = unwrap(
+          await host.session().writeSheet(path, content, { base, overwrite }),
+        )
+        return { words, footnoteWords, kept }
       },
     },
     export: {

@@ -5,12 +5,14 @@ import type { SaveState } from './autosave'
 let writes: [string, string][]
 let states: SaveState[]
 let fail: boolean
+let held: boolean
 let gate: Promise<void> | null
 
 function make(): Autosaver {
   return new Autosaver({
     write: async (path, content) => {
       if (gate) await gate
+      if (held) return 'held'
       if (fail) return false
       writes.push([path, content])
       return true
@@ -26,6 +28,7 @@ beforeEach(() => {
   writes = []
   states = []
   fail = false
+  held = false
   gate = null
 })
 afterEach(() => vi.useRealTimers())
@@ -72,6 +75,21 @@ describe('Autosaver', () => {
     fail = false
     await vi.advanceTimersByTimeAsync(3000)
     expect(writes).toEqual([['x.typ', 'text']])
+    expect(saver.state).toBe('saved')
+  })
+
+  it('keeps held text pending without trying again by itself, until a flush writes it', async () => {
+    const saver = make()
+    held = true
+    saver.edit('x.typ', () => 'mine')
+    await vi.advanceTimersByTimeAsync(800)
+    expect(saver.state).toBe('unsaved')
+    expect(saver.hasPending).toBe(true)
+    held = false
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(writes).toEqual([]) // no retry by the timer
+    await saver.flush()
+    expect(writes).toEqual([['x.typ', 'mine']])
     expect(saver.state).toBe('saved')
   })
 

@@ -142,8 +142,22 @@ class ProjectStore {
       if (externallyChanged.length > 0) this.contentStamp += 1
       editor.onProjectChanged(externallyChanged, (path) => this.node(path)?.kind === 'sheet')
     })
+    // The window is closing: write what is unsaved. What could not be written (a full disk, a
+    // folder that is gone) is not given up silently: the question goes back with the answer.
     window.api.on.app.flushRequested(() => {
-      void editor.flush().finally(() => void window.api.app.flushDone({}))
+      void editor.flush().finally(() => {
+        const path = editor.path
+        const unsaved =
+          editor.hasUnsaved && path !== null
+            ? {
+                message: i18n.t('quit.unsaved.message'),
+                detail: i18n.t('quit.unsaved.detail', { name: this.sheetLabel(path) }),
+                cancel: i18n.t('quit.unsaved.cancel'),
+                discard: i18n.t('quit.unsaved.discard'),
+              }
+            : null
+        void window.api.app.flushDone({ unsaved })
+      })
     })
     const current = await call(window.api.project.current({}))
     if (current?.snapshot) this.apply(current.snapshot, true)
