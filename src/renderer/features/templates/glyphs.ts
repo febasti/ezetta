@@ -5,6 +5,7 @@ export const GLYPHS: Readonly<Record<string, readonly string[]>> = {
   columns: ['1', '2', '3'],
   break_before: ['none', 'page', 'odd'],
   caption_position: ['below', 'above'],
+  source_position: ['after', 'line'],
   border_style: ['rows', 'booktabs', 'grid', 'none'],
   placement: ['bottom', 'margin'],
   number_style: ['inline', 'hanging'],

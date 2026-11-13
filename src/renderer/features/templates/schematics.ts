@@ -275,7 +275,8 @@ export const HEADINGS: Readonly<Record<string, readonly string[]>> = Object.from
 
 /**
  * The values of a block quote that its own editor sets (`QuotePage.svelte`): the space around it, its
- * indents, its padding, its ground and its lines, so the panel's rows leave them out.
+ * indents, its padding, its ground, its lines and where its source stands, so the panel's rows leave
+ * them out.
  */
 export const QUOTES: Readonly<Record<string, readonly string[]>> = {
   quote: [
@@ -292,6 +293,7 @@ export const QUOTES: Readonly<Record<string, readonly string[]>> = {
     'border_color',
     'border_thickness',
     'border_gap',
+    'source_position',
   ],
 }
 

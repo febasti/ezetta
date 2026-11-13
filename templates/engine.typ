@@ -283,7 +283,7 @@
   // Quotes, figures, tables, footnotes.
   // A quote in the text is set by Typst. A block quote is indented, in the quote size, in the
   // quotation marks of the language with `quotes: true` (the project setting), and its source (the
-  // attribution) follows on a line of its own at the right. An epigraph is a block quote with the
+  // attribution) follows its last word or stands on a line of its own at the right. An epigraph is a block quote with the
   // label <epigraph>: set apart at the right, its source under it.
   show quote.where(block: false): set text(..text-args(style.quote_inline))
   show quote.where(block: true): it => {
@@ -310,10 +310,17 @@
       ))
     } else {
       let q = style.quote
+      // The source follows the last word of the quote (after its closing mark), or stands on a line of
+      // its own at the right. With citations in footnotes it always follows the last word: a line of
+      // its own would hold nothing but the note's number.
+      let after = q.source_position != "line" or meta.at("note_citations", default: false)
       let content = spaced(q.line_height, {
         set text(..text-args(q))
-        if it.quotes == true { quote(it.body) } else { it.body }
-        if source != none { align(right, source) }
+        let body = if it.quotes == true { quote(it.body) } else { it.body }
+        if source == none { body } else if after { body + [ ] + source } else {
+          body
+          align(right, source)
+        }
       })
       // Lines on any side, a background, and padding make the quote a box of its own. A side with a
       // line keeps its distance to the text, a side without one the padding.

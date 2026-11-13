@@ -72,6 +72,8 @@
         aria-hidden="true"
       >
         {@render text([100, 100, 62])}
+        <!-- The source: after the last word, or on a line of its own at the right. -->
+        <span class="source" class:own={values['source_position'] === 'line'}></span>
       </div>
       <div class="indent">
         <label class="short" for="prop-{element.id}-indent_right">{name('indent_right')}</label>
@@ -151,12 +153,29 @@
   }
   /* The quote: set in by its indents, with its ground and its lines. */
   .quote {
+    position: relative;
     flex: 1;
     min-width: 0;
     padding: var(--sp-12) var(--sp-8);
   }
   .quote.filled {
     background: var(--color-control);
+  }
+  /* The source after the last word: at the end of the quote's last line. */
+  .source {
+    position: absolute;
+    right: calc(var(--sp-8) + 20%);
+    bottom: var(--sp-12);
+    width: 14%;
+    height: var(--sp-4);
+    border-radius: var(--r-sm);
+    background: var(--color-label-secondary);
+  }
+  /* On a line of its own, at the right, under the last line. */
+  .source.own {
+    position: static;
+    display: block;
+    margin: var(--sp-8) 0 0 auto;
   }
   /* Nothing to see of the quote's box: its place is dashed. */
   .quote.plain {

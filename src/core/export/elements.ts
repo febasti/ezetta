@@ -170,6 +170,10 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     page: { de: 'Neue Seite', en: 'New page' },
     odd: { de: 'Neue rechte Seite (mit Leerseite)', en: 'New right-hand page (with a blank page)' },
   },
+  source_position: {
+    after: { de: 'Nach dem Zitat', en: 'After the quote' },
+    line: { de: 'Eigene Zeile rechts', en: 'Own line, at the right' },
+  },
   caption_position: {
     below: { de: 'Unter dem Objekt', en: 'Below' },
     above: { de: 'Über dem Objekt', en: 'Above' },
@@ -397,6 +401,7 @@ export const PROPS: Record<string, PropDef> = Object.fromEntries(
     prop('accent', 'color', 'Akzentfarbe', 'Accent colour'),
     prop('accent_secondary', 'color', 'Zweitfarbe', 'Second colour'),
     prop('caption_position', 'enum', 'Stellung', 'Position', ['below', 'above']),
+    prop('source_position', 'enum', 'Quelle', 'Source', ['after', 'line']),
     prop('caption_separator', 'enum', 'Zeichen nach der Nummer', 'Mark after the number', [
       'colon',
       'period',
@@ -715,6 +720,7 @@ export const PROP_SECTIONS: readonly {
       'line_height',
       'paragraph_spacing',
       'width',
+      'source_position',
     ],
   },
   {
@@ -1063,9 +1069,11 @@ export const ELEMENTS: readonly ElementDef[] = [
       'fill',
       'padding',
       ...BORDER_PROPS,
+      'source_position',
     ],
     {
       size: '0.95em',
+      source_position: 'after',
       indent_left: '1.2em',
       indent_right: '1.2em',
       above: '1em',

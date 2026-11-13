@@ -782,6 +782,8 @@
             control={controlOf}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
           />
+          <!-- Where the source stands: after the last word, or on a line of its own at the right. -->
+          <div class="rows">{@render row(element, 'source_position')}</div>
           {@render quoteLooks(element, values)}
         {/if}
         {#if headings}

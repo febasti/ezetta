@@ -579,7 +579,7 @@ test('headers, footers and the page number are set with three places each', asyn
   }
 })
 
-test('tables have rules, a header and stripes; a block quote can have lines on its sides and a background', async () => {
+test('tables have rules, a header and stripes; a block quote can have lines on its sides, a background and its source on a line of its own', async () => {
   const { app, page } = await open()
   try {
     await openEditor(page)
@@ -619,6 +619,11 @@ test('tables have rules, a header and stripes; a block quote can have lines on i
     await expect.poll(toml).toContain('padding = "0.5em"')
     await expect.poll(toml).toContain('border_left = true')
     await expect.poll(toml).toContain('border_top = true')
+    // The source follows the quote's last word, or stands on a line of its own at the right.
+    const source = editor(page).getByRole('radiogroup', { name: 'Quelle', exact: true })
+    await expect(source.getByRole('radio', { name: 'Nach dem Zitat' })).toBeChecked()
+    await source.getByRole('radio', { name: 'Eigene Zeile rechts' }).click()
+    await expect.poll(toml).toContain('source_position = "line"')
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {

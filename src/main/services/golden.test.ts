@@ -108,6 +108,8 @@ const VARIANTS: {
   marks?: ExportProfile['marks']
   hyphenate?: ExportProfile['hyphenate']
   binding?: ExportProfile['binding']
+  /** The citation style, when it is not APA. */
+  citationStyle?: string
   /** Values set on top of the template's style, as a writer's own template would. */
   sets?: Sets
   /** Sheets added to the fixture for this variant, by path under `content/`. */
@@ -168,6 +170,21 @@ const VARIANTS: {
     },
   },
   { name: 'monographie-bindung', template: 'monographie', options: {}, binding: '1.5cm' },
+  // The source of a block quote on a line of its own; in the second the citations are footnotes, and
+  // the source follows the quote's last word all the same.
+  {
+    name: 'monographie-quelle-zeile',
+    template: 'monographie',
+    options: {},
+    sets: { quote: { source_position: 'line' } },
+  },
+  {
+    name: 'monographie-quelle-fussnote',
+    template: 'monographie',
+    options: {},
+    citationStyle: 'chicago-notes',
+    sets: { quote: { source_position: 'line' } },
+  },
   {
     name: 'monographie-pruef',
     template: 'monographie',
@@ -855,7 +872,7 @@ async function exportPages(variant: (typeof VARIANTS)[number]): Promise<string[]
       }
     : bundled
   const profile: ExportProfile = {
-    ...defaultProfile('apa-7'),
+    ...defaultProfile(variant.citationStyle ?? 'apa-7'),
     template: variant.template,
     comments: variant.comments ?? 'remove',
     marks: variant.marks ?? 'hide',

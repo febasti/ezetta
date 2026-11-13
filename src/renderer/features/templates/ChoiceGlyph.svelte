@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * A choice of the template editor as a small picture, 22 × 16, in the colour of the text: where a
-   * caption stands, where a figure stands, the rules of a table, the line above the footnotes. The choices of the page (a
+   * caption stands, where a figure stands, where the source of a block quote stands, the rules of a table, the line above the footnotes. The choices of the page (a
    * page upright or across, one page or two, the columns) are the app's icons instead, as wide. The
    * segmented control around it says the choice's name.
    */
@@ -51,6 +51,16 @@
     {:else if prop === 'caption_position'}
       <rect class="fill soft" x="5" y={value === 'above' ? 6 : 2} width="12" height="8" rx="1" />
       <rect class="fill" x="5" y={value === 'above' ? 2 : 12} width="12" height="2" rx="1" />
+    {:else if prop === 'source_position'}
+      <!-- The lines of a quote and its source: after the last word, or on a line of its own at the right. -->
+      <path class="stroke thin" d="M3 3h16M3 6.5h16" />
+      {#if value === 'after'}
+        <path class="stroke thin" d="M3 10h9" />
+        <rect class="fill" x="13.5" y="9" width="5.5" height="2" rx="1" />
+      {:else}
+        <path class="stroke thin" d="M3 10h9" />
+        <rect class="fill" x="13.5" y="12.5" width="5.5" height="2" rx="1" />
+      {/if}
     {:else if prop === 'border_style'}
       {#if value === 'rows'}
         <path class="stroke" d="M3 2.5h16M3 6.5h16M3 10h16M3 13.5h16" />
