@@ -103,6 +103,38 @@ test('a line break from the slash menu makes the line the next one of the paragr
   }
 })
 
+test('Escape closes the slash menu and takes the slash and what was typed after it away', async () => {
+  const { app, page } = await open()
+  try {
+    const menu = page.locator('.cm-tooltip-autocomplete')
+    await page.keyboard.type('/')
+    // The slash menu has a look of its own: its icons on tiles.
+    await expect(menu).toHaveClass(/cm-slash-menu/)
+    await expect(menu.locator('.cm-slash-icon').first()).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeHidden()
+    await expect.poll(read).not.toContain('/')
+    // With letters typed after the slash, they go too; the letters typed are marked in the names.
+    await page.keyboard.type('/bi')
+    await expect(menu.locator('.cm-completionMatchedText').first()).toHaveText('Bi')
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeHidden()
+    await page.keyboard.type('Weiter.')
+    await expect.poll(read).toContain('\nWeiter.')
+    expect(await read()).not.toContain('/')
+
+    // The `@` menu is not the slash menu, and Escape there leaves what was typed.
+    await page.keyboard.type(' @')
+    await expect(menu).toBeVisible()
+    await expect(menu).not.toHaveClass(/cm-slash-menu/)
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeHidden()
+    await expect.poll(read).toContain('Weiter. @')
+  } finally {
+    await app.close()
+  }
+})
+
 test('a slash inside a line is text, and so is one followed by what no item is called', async () => {
   const { app, page } = await open()
   try {

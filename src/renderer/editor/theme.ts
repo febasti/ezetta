@@ -90,6 +90,42 @@ export const writingTheme = EditorView.theme({
     font: 'var(--type-caption)',
     fontStyle: 'normal',
   },
+  // The slash menu: wider and taller than the `@` menu, its names in the text's weight with the
+  // letters typed marked in the accent, each icon on a small tile (on the window's ground, the icon in
+  // the accent, on the row the keys are on), and a hairline between its two groups.
+  '.cm-tooltip.cm-tooltip-autocomplete.cm-slash-menu > ul': {
+    minWidth: 'calc(var(--sp-32) * 9)',
+    maxHeight: 'calc(var(--row-single) * 12)',
+    scrollbarWidth: 'thin',
+  },
+  '.cm-tooltip.cm-tooltip-autocomplete.cm-slash-menu > ul > li': {
+    paddingLeft: 'var(--sp-4)',
+  },
+  '.cm-slash-menu .cm-completionLabel': { font: 'var(--type-body)' },
+  '.cm-slash-menu .cm-completionMatchedText': {
+    textDecoration: 'none',
+    color: 'var(--color-accent)',
+  },
+  '.cm-slash-icon': {
+    display: 'flex',
+    flex: 'none',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 'var(--control-sm)',
+    height: 'var(--control-sm)',
+    borderRadius: 'var(--r-sm)',
+    background: 'var(--color-control)',
+    color: 'var(--color-label-secondary)',
+  },
+  '.cm-slash-icon .cm-completionKind': { color: 'inherit' },
+  '.cm-tooltip.cm-tooltip-autocomplete.cm-slash-menu > ul > li[aria-selected] .cm-slash-icon': {
+    background: 'var(--color-window)',
+    color: 'var(--color-accent)',
+  },
+  '.cm-tooltip.cm-tooltip-autocomplete.cm-slash-menu > ul > completion-section:not(:first-child)': {
+    marginTop: 'var(--sp-4)',
+    borderTop: '1px solid var(--color-separator)',
+  },
   '.cm-tooltip.cm-completionInfo': {
     maxWidth: '24em',
     padding: 'var(--sp-8) var(--sp-12)',

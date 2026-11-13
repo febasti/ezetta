@@ -1,9 +1,11 @@
+import { closeCompletion, completionStatus, currentCompletions } from '@codemirror/autocomplete'
 import type {
   Completion,
   CompletionContext,
   CompletionResult,
   CompletionSection,
 } from '@codemirror/autocomplete'
+import type { EditorView } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
 import { insideOpaque } from '@core/typst/edit'
 import type { IconName } from '../../editor/icons'
@@ -200,6 +202,19 @@ const SECTIONS: Record<SlashItem['section'], () => CompletionSection> = {
 /** An option of the menu, with the icon drawn before it (`completion.ts`). */
 export interface SlashCompletion extends Completion {
   icon: IconName
+  /** Marks an option of the slash menu, so the menu can be told from the `@` menu. */
+  slash: true
+}
+
+/** Whether a completion is one of the slash menu's. */
+export const isSlash = (completion: Completion | undefined): completion is SlashCompletion =>
+  !!completion && (completion as Partial<SlashCompletion>).slash === true
+
+/** Where the typed letters stand in an option's name, to be marked: the first place they occur, or nowhere (found by another word). */
+function matchIn(label: string, query: string): readonly number[] {
+  if (query === '') return []
+  const at = label.normalize('NFC').toLowerCase().indexOf(query.normalize('NFC').toLowerCase())
+  return at < 0 ? [] : [at, at + query.length]
 }
 
 /** Keys without Cmd or Ctrl, as the system writes them (⇧↩ on a Mac, Shift+Enter elsewhere). */
@@ -216,6 +231,7 @@ function completionOf(item: SlashItem, label: string): SlashCompletion {
     label,
     ...(detail ? { detail } : {}),
     icon: item.icon,
+    slash: true,
     section: SECTIONS[item.section](),
     apply: (view, _completion, from, to) => {
       // The slash and what was typed after it go; the command then acts where they were.
@@ -251,6 +267,31 @@ export function slashSource(context: CompletionContext): CompletionResult | null
     from: match.from,
     options,
     filter: false,
+    getMatch: (option) => matchIn(option.label, query),
     update: (_result, _from, _to, next) => slashSource(next),
   }
+}
+
+/**
+ * Escape while the slash menu is open closes it and takes the slash and what was typed after it away:
+ * they were for the menu, and a slash left alone at the start of a line is an unfinished term list to
+ * Typst, which stops the export. (A slash whose letters no item answers closes the menu by itself and
+ * stays, as text.)
+ */
+export function dismissSlash(view: EditorView): boolean {
+  const { state } = view
+  if (completionStatus(state) !== 'active' || !isSlash(currentCompletions(state)[0])) return false
+  const head = state.selection.main.head
+  const line = state.doc.lineAt(head)
+  const typed = /^\s*(\/[\p{L}\p{N}-]*)$/u.exec(state.sliceDoc(line.from, head))
+  closeCompletion(view)
+  if (typed) {
+    const from = head - typed[1]!.length
+    view.dispatch({
+      changes: { from, to: head },
+      selection: { anchor: from },
+      userEvent: 'delete.backward',
+    })
+  }
+  return true
 }
