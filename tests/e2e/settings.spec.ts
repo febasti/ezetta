@@ -82,8 +82,12 @@ test('the app keeps a log, with the errors of the page, and the Info tab shows i
     await page.keyboard.press(`${MOD}+,`)
     await dialog(page).getByRole('tab', { name: 'Info' }).click()
     await dialog(page).getByRole('button', { name: 'Protokolldatei zeigen' }).click()
+    // Both sides resolved: on Windows the temporary folder may come in its short 8.3 form.
     await expect
-      .poll(() => app.evaluate(() => (globalThis as { shown?: string[] }).shown ?? []))
+      .poll(async () => {
+        const shown = await app.evaluate(() => (globalThis as { shown?: string[] }).shown ?? [])
+        return Promise.all(shown.map((path) => realpath(path)))
+      })
       .toEqual([await realpath(logPath)])
   } finally {
     await app.close()
