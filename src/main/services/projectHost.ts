@@ -83,6 +83,12 @@ export class ProjectHost {
     backupError: string | null
   } | null = null
   private lastSent = ''
+  /**
+   * Opening and closing run one after the other. Two openings at once (a double click on a recent
+   * project, a restore while another opens) would otherwise both close the same project and both
+   * set up their own, and the one set up first would keep its watcher and timers running unseen.
+   */
+  private lifecycle: Promise<unknown> = Promise.resolve()
 
   constructor(private readonly deps: ProjectHostDeps) {}
 
@@ -117,13 +123,15 @@ export class ProjectHost {
     } catch (cause) {
       throw new IpcFailure('io', String(cause))
     }
-    const session = await ProjectSession.create(
-      createRootedFs(path, this.deps.trashItem),
-      basename(path),
-      language,
-    )
-    if (!session.ok) throw fromError(session.error)
-    return this.attach(path, session.value)
+    return this.inTurn(async () => {
+      const session = await ProjectSession.create(
+        createRootedFs(path, this.deps.trashItem),
+        basename(path),
+        language,
+      )
+      if (!session.ok) throw fromError(session.error)
+      return this.attachNow(path, session.value)
+    })
   }
 
   /**
@@ -171,7 +179,12 @@ export class ProjectHost {
     return unwrap(await session.addAsset(basename(source), bytes)).path
   }
 
-  async openPath(path: string): Promise<ProjectSnapshot> {
+  /** Opens the project in `path`; an opening asked for later is opened after this one. */
+  openPath(path: string): Promise<ProjectSnapshot> {
+    return this.inTurn(() => this.openNow(path))
+  }
+
+  private async openNow(path: string): Promise<ProjectSnapshot> {
     try {
       if (!(await stat(path)).isDirectory()) throw new Error('not a folder')
     } catch {
@@ -180,7 +193,7 @@ export class ProjectHost {
     }
     const session = await ProjectSession.open(createRootedFs(path, this.deps.trashItem))
     if (!session.ok) throw fromError(session.error)
-    return this.attach(path, session.value)
+    return this.attachNow(path, session.value)
   }
 
   /**
@@ -208,7 +221,18 @@ export class ProjectHost {
     return { status: 'opened', snapshot: await this.openPath(outcome.path) }
   }
 
-  async close(): Promise<void> {
+  close(): Promise<void> {
+    return this.inTurn(() => this.closeNow())
+  }
+
+  /** Runs `job` after every opening and closing before it has finished. */
+  private inTurn<T>(job: () => Promise<T>): Promise<T> {
+    const run = this.lifecycle.then(job, job)
+    this.lifecycle = run.catch(() => undefined)
+    return run
+  }
+
+  private async closeNow(): Promise<void> {
     const current = this.open_
     if (current) {
       // The last state of the project is kept as a version, before anything else lets go of it.
@@ -361,8 +385,8 @@ export class ProjectHost {
     return this.snapshot()!
   }
 
-  private async attach(root: string, session: ProjectSession): Promise<ProjectSnapshot> {
-    await this.close()
+  private async attachNow(root: string, session: ProjectSession): Promise<ProjectSnapshot> {
+    await this.closeNow()
     const watch = this.deps.watch ?? watchProject
     const watcher = watch(root, (paths) => void this.onDiskChange(session, paths), {
       onError: (cause) => this.deps.log('watcher error', cause),

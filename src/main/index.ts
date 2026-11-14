@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { delimiter, join } from 'node:path'
 import { app, BrowserWindow, dialog, nativeTheme, shell } from 'electron'
@@ -24,6 +25,8 @@ import {
   stopCompilers,
 } from './services/exporter'
 import { createTemplateStore } from './services/templateStore'
+import { createLogFile } from './services/logFile'
+import type { LogFile } from './services/logFile'
 import { createMorph, launchMorph, prepareMorph } from './services/morph'
 import { createThesaurusStore } from './services/thesaurus'
 import { lookupSynonyms } from '@core/thesaurus/lookup'
@@ -51,8 +54,13 @@ const devUrl = devEnv('ELECTRON_RENDERER_URL')
 const devOrigin = devUrl ? (originOf(devUrl) ?? undefined) : undefined
 const trustedOrigins = devOrigin ? [APP_ORIGIN, devOrigin] : [APP_ORIGIN]
 
-const log = (message: string, cause?: unknown): void =>
+/** The log in the app's data folder; set up once the app is ready (the data folder is known then). */
+let logFile: LogFile | null = null
+const log = (message: string, cause?: unknown): void => {
   console.error(`[main] ${message}`, cause ?? '')
+  logFile?.write(message, cause)
+}
+process.on('unhandledRejection', (cause) => log('unhandled rejection', cause))
 
 let mainWindow: BrowserWindow | undefined
 /** The window's page, while there is one: a closed window's `webContents` throws when read. */
@@ -165,6 +173,24 @@ if (background) {
 }
 
 void app.whenReady().then(async () => {
+  logFile = createLogFile(join(app.getPath('userData'), 'logs'))
+  logFile.write(
+    `start ${app.getVersion()} (${process.platform} ${process.arch}, Electron ${process.versions.electron})`,
+  )
+  // What the pages report as errors, and processes that end unexpectedly, go to the log too.
+  app.on('web-contents-created', (_event, page) => {
+    page.on('console-message', (message) => {
+      if (message.level === 'error')
+        logFile?.write(`[page] ${message.message}`, `(${message.sourceId}:${message.lineNumber})`)
+    })
+  })
+  app.on('render-process-gone', (_event, _page, details) =>
+    log(`page process gone: ${details.reason} (exit code ${details.exitCode})`),
+  )
+  app.on('child-process-gone', (_event, details) =>
+    log(`${details.type} process gone: ${details.reason} (exit code ${details.exitCode})`),
+  )
+
   const settings = new SettingsStore(app.getPath('userData'))
   await settings.load()
 
@@ -313,6 +339,12 @@ void app.whenReady().then(async () => {
       flushDone: (unsaved) => resolveFlush?.(unsaved),
       openExternal: (url) => shell.openExternal(url),
       reveal: (absPath) => shell.showItemInFolder(absPath),
+      revealLog: () => {
+        if (!logFile) return
+        // A log that was never written is made, so the file manager has something to show.
+        if (!existsSync(logFile.path)) logFile.write('log shown')
+        shell.showItemInFolder(logFile.path)
+      },
       about: async () => ({
         version: app.getVersion(),
         notices: await readFile(resourceDir('THIRD-PARTY-NOTICES.txt'), 'utf8').catch(() => ''),

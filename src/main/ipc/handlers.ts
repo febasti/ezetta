@@ -45,6 +45,8 @@ export interface HandlerDeps {
   setMenu: (menu: AppMenu) => void
   /** The app's version and the text of its third-party notices. */
   about: () => Promise<{ version: string; notices: string }>
+  /** Shows the app's log file in the system's file manager. */
+  revealLog: () => void
   /** The app's theme changed (or is told at the start). */
   setAppearance: (theme: 'light' | 'dark' | 'sepia') => void
   /** The window is the launcher (no project open) or a project's window. */
@@ -66,6 +68,7 @@ export function createHandlers({
   popupMenu,
   setMenu,
   about,
+  revealLog,
   setAppearance,
   setWindowMode,
   windowChrome,
@@ -103,6 +106,10 @@ export function createHandlers({
         return {}
       },
       about: () => about(),
+      revealLog: () => {
+        revealLog()
+        return {}
+      },
       launchBehavior: () => ({ reopenLast: settings.reopensLastProject() }),
       setLaunchBehavior: async ({ reopenLast }) => {
         await settings.setReopenLastProject(reopenLast)

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte'
   import { call } from '../../lib/api'
   import { i18n } from '../../i18n/i18n.svelte'
+  import Button from '../../ui/kit/Button.svelte'
   import Section from '../../ui/kit/Section.svelte'
 
   /**
@@ -26,6 +27,12 @@
     {#if version}<p class="version">{i18n.t('about.version', { version })}</p>{/if}
   </div>
   <p class="free">{i18n.t('about.free')}</p>
+</Section>
+<Section title={i18n.t('about.log')}>
+  <p class="hint">{i18n.t('about.log.hint')}</p>
+  <Button size="sm" onclick={() => void call(window.api.app.revealLog({}))}>
+    {i18n.t('about.log.show')}
+  </Button>
 </Section>
 <Section title={i18n.t('about.licenses')}>
   <p class="hint">{i18n.t('about.licenses.hint')}</p>

@@ -273,6 +273,8 @@ export const ipc = {
       empty,
       z.object({ version: z.string().max(100), notices: z.string().max(2_000_000) }).strict(),
     ),
+    /** Shows the app's log file in the file manager, to send it along with a report of a problem. */
+    revealLog: defineInvoke('app:reveal-log', empty, empty),
     /** The window is the small fixed launcher while no project is open, and the project's window otherwise. */
     setWindowMode: defineInvoke(
       'app:set-window-mode',

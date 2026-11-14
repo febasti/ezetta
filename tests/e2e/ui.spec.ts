@@ -167,10 +167,13 @@ test('the toolbar is compact: icons alone, with a name beside the icon only wher
     await expect(tool(page, 'Betont')).toHaveAttribute('title', /Betont \(.+\)/)
     await expect(tool(page, 'Überschrift')).toHaveAttribute('title', /nächste Ebene/)
     expect((await page.locator('.toolbar').boundingBox())!.height).toBeLessThan(52)
-    // The same at a narrow width: nothing is hidden or dropped.
+    // At a narrow width the three are icons too, and nothing is hidden, dropped or scrolled away.
     await page.setViewportSize({ width: 900, height: 700 })
-    await expect(labels).toHaveCount(3)
+    await expect(labels).toHaveCount(0)
     await expect(tool(page, 'Betont')).toBeVisible()
+    await expect(tool(page, 'Fußnote')).toHaveAttribute('title', /Fußnote/)
+    const bar = page.locator('.toolbar')
+    expect(await bar.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0)
   } finally {
     await app.close()
   }

@@ -21,6 +21,8 @@ let pickedBackup: string | null = null
 let pickedZip: string | null = null
 let pickedRestoreTo: string | null = null
 const externalWatched: string[][] = []
+/** Watchers set up and not yet closed. */
+let liveWatchers = 0
 
 const backupEvents: BackupStatusDto[] = []
 /** One store for the test, as the app has one for all projects (a host made later sees what an earlier one saved). */
@@ -47,9 +49,14 @@ function makeHost(options: { versions?: boolean; backups?: boolean } = {}): Proj
     log: vi.fn(),
     watch: (_root, cb) => {
       onChange = cb
+      liveWatchers += 1
+      let closed = false
       return {
         setExternal: (paths) => void externalWatched.push([...paths]),
-        close: async () => undefined,
+        close: async () => {
+          if (!closed) liveWatchers -= 1
+          closed = true
+        },
       }
     },
   })
@@ -63,6 +70,7 @@ beforeEach(async () => {
   backupEvents.length = 0
   settings = new SettingsStore(join(base, 'userdata'))
   externalWatched.length = 0
+  liveWatchers = 0
   pickedBib = null
   trashed.length = 0
   onChange = null
@@ -78,6 +86,17 @@ describe('ProjectHost', () => {
     expect(snapshot?.title).toBe('Beispielprojekt')
     expect(snapshot?.totalSheets).toBe(1)
     expect(host.root).toBe(projectDir)
+  })
+
+  it('keeps one watcher when two projects are opened at once', async () => {
+    const other = join(base, 'other')
+    await cp(fixture, other, { recursive: true })
+    const host = makeHost()
+    await Promise.all([host.openPath(projectDir), host.openPath(other), host.openPath(projectDir)])
+    expect(liveWatchers).toBe(1)
+    expect(host.root).toBe(projectDir)
+    await host.close()
+    expect(liveWatchers).toBe(0)
   })
 
   it('returns null when the dialog is cancelled', async () => {

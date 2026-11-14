@@ -19,6 +19,7 @@ import { citeConfig } from '../../editor/citeState'
 import { footnoteField } from '../../editor/footnoteState'
 import { refConfig, refField, resolve } from '../../editor/refState'
 import { fullTree, sourceText } from '../../editor/source'
+import { RecentMap } from '../../lib/recentMap'
 import { proofTip } from './proofTip'
 import type { ProofLabels } from './proofTip'
 
@@ -88,6 +89,7 @@ const redrawEffect = StateEffect.define<null>()
 const DELAY_MS = 900
 /** Units sent at a time: small, so the marks of a long sheet come in as they are found. */
 const CHUNK = 16
+/** Units whose answers are kept; those shown are used on every check, the longest unused go first. */
 const CACHE_LIMIT = 4000
 
 /** What citations and cross-references stand for in the sentence the checker reads. */
@@ -114,7 +116,7 @@ export function standInsOf(state: EditorState): StandIns {
 
 class ProofPlugin {
   private timer: ReturnType<typeof setTimeout> | undefined
-  private readonly cache = new Map<string, CheckerMatch[]>()
+  private readonly cache = new RecentMap<string, CheckerMatch[]>(CACHE_LIMIT)
   /** Units the checker did not answer: left alone until the next full recheck. */
   private readonly unanswered = new Set<string>()
   private running = false
@@ -208,11 +210,12 @@ class ProofPlugin {
         const chunk = missing.slice(i, i + CHUNK)
         const results = await config.check(chunk)
         if (results === null) return // the checker is not ready; the state change checks again
-        if (this.cache.size > CACHE_LIMIT) this.cache.clear()
         chunk.forEach((unit, at) => {
           const found = results[at] ?? null
-          if (found === null) this.unanswered.add(this.key(config, unit))
-          else this.cache.set(this.key(config, unit), found)
+          if (found === null) {
+            if (this.unanswered.size >= CACHE_LIMIT) this.unanswered.clear()
+            this.unanswered.add(this.key(config, unit))
+          } else this.cache.set(this.key(config, unit), found)
         })
         // The text went on while the checker worked: its results are kept, and the text is read again.
         if (view.state.doc !== state.doc) {

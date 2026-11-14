@@ -1,4 +1,4 @@
-import { readFile, rm, writeFile } from 'node:fs/promises'
+import { readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
@@ -59,6 +59,32 @@ test('the Info tab names the license and lists the software that ships with the 
     await expect(notices).toContainText('OpenThesaurus')
     await expect(notices).toContainText('Marginalia')
     await expect(notices).toContainText('SIL OPEN FONT LICENSE')
+  } finally {
+    await app.close()
+  }
+})
+
+test('the app keeps a log, with the errors of the page, and the Info tab shows it', async () => {
+  const { app, page } = await open()
+  try {
+    const logPath = join(sandbox.userData, 'logs', 'ezetta.log')
+    await page.evaluate(() => console.error('a problem the page reported'))
+    await expect
+      .poll(() => readFile(logPath, 'utf8').catch(() => ''))
+      .toContain('[page] a problem the page reported')
+    expect(await readFile(logPath, 'utf8')).toMatch(/ start \d+\.\d+\.\d+ \(/)
+
+    await app.evaluate(({ shell }) => {
+      const shown: string[] = []
+      ;(globalThis as { shown?: string[] }).shown = shown
+      shell.showItemInFolder = (path: string) => void shown.push(path)
+    })
+    await page.keyboard.press(`${MOD}+,`)
+    await dialog(page).getByRole('tab', { name: 'Info' }).click()
+    await dialog(page).getByRole('button', { name: 'Protokolldatei zeigen' }).click()
+    await expect
+      .poll(() => app.evaluate(() => (globalThis as { shown?: string[] }).shown ?? []))
+      .toEqual([await realpath(logPath)])
   } finally {
     await app.close()
   }

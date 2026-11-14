@@ -4,7 +4,7 @@ import { extname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { net, protocol } from 'electron'
 import { buildCsp } from './security/csp'
-import { isInside } from './security/paths'
+import { isInside, realFileInside } from './security/paths'
 
 export const APP_SCHEME = 'app'
 export const APP_HOST = 'renderer'
@@ -60,18 +60,19 @@ export function handleAppProtocol(rendererRoot: string): void {
 }
 
 /** Serves images from the open project's folder as `project-asset://project/<relative path>`.
- * Anything that resolves outside the project root is rejected. With no project open, nothing is
+ * Anything that resolves outside the project root, also through a link, is rejected. With no project open, nothing is
  * served. */
 export function handleAssetProtocol(getProjectRoot: () => string | null): void {
   protocol.handle(ASSET_SCHEME, async (request) => {
     try {
       const projectRoot = getProjectRoot()
       if (!projectRoot) return notFound()
-      const root = resolve(projectRoot)
-      const file = resolve(join(root, decodeURIComponent(new URL(request.url).pathname)))
-      if (!isInside(root, file) || !IMAGE_TYPES.has(extname(file).toLowerCase())) {
+      const pathname = decodeURIComponent(new URL(request.url).pathname)
+      if (!IMAGE_TYPES.has(extname(pathname).toLowerCase()))
         return new Response('Forbidden', { status: 403 })
-      }
+      // Links are followed before the check, so one in the project cannot reach a file outside it.
+      const file = await realFileInside(projectRoot, pathname)
+      if (!file) return new Response('Forbidden', { status: 403 })
       return await net.fetch(pathToFileURL(file).toString())
     } catch {
       return notFound()
