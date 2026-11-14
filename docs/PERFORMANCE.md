@@ -84,6 +84,14 @@ big thing is the Java process of LanguageTool.
   times a second. A plain `<input>` without any of our code does the same, so it is Chromium's, not
   the editor's (a CSS-free caret blink was tried and made no difference, and was removed). No
   animation runs otherwise; an idle app uses 0.1 % CPU.
+- **Investigated, nothing to do:** after every autosave the watcher sees the file, and the project
+  is scanned again and its tree rebuilt and compared: 2 ms in all on the large project (the tree
+  itself 0.3 ms), so it was left as it is, simple and always right.
+- **Investigated, nothing to do:** the renderer is one script of 1.1 MB. Chromium parses it in
+  about 3 ms and compiles what runs in about 3 ms more (a trace of a reload, the editor ready after
+  48 ms), since functions are compiled only when first called. Loading the template editor and the
+  version dialog on demand would save a millisecond or two of a 0.58 s start, and give both a
+  loading state and a way to fail; the script stays one file.
 - **Memory over time:** the renderer's resident size grows by about 70 MB over the first hundred
   sheet switches and then stays level (50 switches at a time, seven rounds); the JavaScript heap
   grows by 2 KB a switch (10.4 MB to 11.3 MB over 350), which is not worth chasing.
