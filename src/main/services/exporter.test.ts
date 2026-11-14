@@ -291,12 +291,12 @@ describe('the thumbnails', () => {
       log: () => undefined,
     })
 
-  it('are the last page, which is the text where a template has a title page and contents', async () => {
+  it('are the first page, the text, with no title page or contents before it', async () => {
     const seen = { runs: 0, options: [] as unknown[] }
     const result = await make(pagesCompiler(3, seen)).thumbnail('monographie', 'de')
-    expect(Buffer.from(result.png!, 'base64').length).toBe(PNG.length + 3)
+    expect(Buffer.from(result.png!, 'base64').length).toBe(PNG.length + 1)
     // Small, and not in the project's folder.
-    expect(seen.options[0]).toMatchObject({ preview: true, ppi: 72 })
+    expect(seen.options[0]).toMatchObject({ preview: true, ppi: 96 })
   })
 
   it('are made once for a template that did not change, and again for another language', async () => {

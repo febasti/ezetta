@@ -11,8 +11,8 @@ import {
   PREVIEW_PAGE_PATTERN,
   buildExport,
 } from '@core/export/build'
-import { sampleSheet, sampleTitle } from '@core/export/sample'
-import type { SampleLanguage } from '@core/export/sample'
+import { miniature } from '@core/export/miniature'
+import type { SampleLanguage } from '@core/export/miniature'
 import type { PreparedExport } from '@core/project/session'
 import { parseDiagnostics } from '@core/export/diagnostics'
 import type { Diagnostic } from '@core/export/diagnostics'
@@ -190,8 +190,8 @@ export type Compiler = (cwd: string, options?: CompileOptions) => Promise<Compil
 /** The resolution of the preview's pages: sharp on a high-resolution screen, about 150 KB a page. */
 const PREVIEW_PPI = 150
 
-/** A thumbnail is shown about 130 pixels wide, twice that on a high-resolution screen. */
-const THUMBNAIL_PPI = 72
+/** A thumbnail is a taster 9 cm wide shown about 115 pixels wide, three times that on a sharp screen. */
+const THUMBNAIL_PPI = 96
 
 /** How many thumbnails are kept: one per template and look, so a few dozen is plenty. */
 const THUMBNAIL_CACHE = 64
@@ -420,19 +420,29 @@ export function createExporter(deps: ExporterDeps): {
     // A folder of its own outside every project: the compiler reads only inside its root.
     const root = await mkdtemp(join(tmpdir(), 'ezetta-thumbnail-'))
     try {
+      // A taster of the template on a small page, its name as the chapter heading, set larger than
+      // life (`core/export/miniature.ts`).
+      const name = template.info.name[language]
+      const styleFile = template.files.find((file) => file.path === 'style.toml')
+      const mini = miniature(parseStyle(styleFile?.content ?? '').style, name, language)
+      const files = template.files.map((file) =>
+        file === styleFile
+          ? { ...file, content: setsToToml(mergeSets(parseSets(file.content), mini.sets)) }
+          : file,
+      )
       const built = buildExport({
-        title: sampleTitle(language),
+        title: name,
         language,
-        sheets: [{ path: 'sample.typ', text: sampleSheet(language) }],
+        sheets: [{ path: 'sample.typ', text: mini.sheet }],
         profile: {
           name: 'Thumbnail',
           template: template.info.id,
           citationStyle: CITATION_STYLES[0]!.id,
           marks: 'hide',
           comments: 'remove',
-          options: resolveOptions(template.info, {}),
+          options: resolveOptions(template.info, mini.options),
         },
-        template,
+        template: { ...template, files },
         prelude,
         bibliography: null,
         blockQuoteMarks: false,
@@ -452,10 +462,10 @@ export function createExporter(deps: ExporterDeps): {
         .map((f) => /^p-(\d+)\.png$/.exec(f))
         .flatMap((m) => (m ? [Number(m[1])] : []))
         .sort((a, b) => a - b)
-      // The last page: a title page and contents, where a template has them, come before the text.
-      const last = pages[pages.length - 1]
-      if (run.code !== 0 || last === undefined) return { png: null }
-      const png = (await readFile(join(root, PREVIEW_DIR, `p-${last}.png`))).toString('base64')
+      // The first page: the taster has no title page and no contents before the text.
+      const first = pages[0]
+      if (run.code !== 0 || first === undefined) return { png: null }
+      const png = (await readFile(join(root, PREVIEW_DIR, `p-${first}.png`))).toString('base64')
       if (thumbnails.size >= THUMBNAIL_CACHE) thumbnails.delete(thumbnails.keys().next().value!)
       thumbnails.set(key, png)
       return { png }

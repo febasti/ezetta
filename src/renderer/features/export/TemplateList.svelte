@@ -13,7 +13,7 @@
   <div class="grid" role="group" aria-label={i18n.t('templates.list')}>
     {#each exporting.list as t (t.id)}
       {@const selected = t.id === exporting.selectedId}
-      <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a template is the picture of its first page, a control of its own -->
+      <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a template is a taster of its page, a control of its own -->
       <button
         type="button"
         class="card"
@@ -23,7 +23,7 @@
         disabled={exporting.busy}
         onclick={() => void exporting.select(t.id)}
       >
-        <span class="page">
+        <span class="page" class:waiting={!exporting.thumbnails[t.id]}>
           {#if exporting.thumbnails[t.id]}
             <img src={exporting.thumbnails[t.id]} alt="" draggable="false" />
           {/if}
@@ -122,20 +122,22 @@
     outline: none;
     box-shadow: 0 0 0 3px var(--color-focus);
   }
-  /* The top of the page is shown, wider than the card, so headings and text can be told apart. */
+  /* A taster of the template: a small page cut from its text, its name as the heading
+   * (`core/export/miniature.ts`); until it is drawn, a blank one of the same shape. */
   .page {
     display: block;
-    height: 76px;
     overflow: hidden;
     border-radius: var(--r-sm);
     background: var(--color-paper);
     box-shadow: var(--shadow-paper);
   }
+  .page.waiting {
+    aspect-ratio: 90 / 63;
+  }
   .page img {
     display: block;
-    width: 130%;
-    max-width: none;
-    margin: -3% 0 0 -15%;
+    width: 100%;
+    height: auto;
     pointer-events: none;
   }
   .name {
