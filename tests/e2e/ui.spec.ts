@@ -310,7 +310,9 @@ async function alignment(page: Page) {
     const scroller = document.querySelector('.cm-scroller') as HTMLElement
     return {
       caretOffset: cursor.left - native.left,
-      scrollbar: scroller.offsetWidth - scroller.clientWidth,
+      overflows: scroller.scrollHeight > scroller.clientHeight,
+      // The app's own scrollbar floats over the text and takes no room.
+      room: scroller.offsetWidth - scroller.clientWidth,
     }
   })
 }
@@ -333,13 +335,52 @@ for (const [name, lines] of [
         // The cursor is drawn in CodeMirror's next measure cycle, so wait for it to settle.
         await expect.poll(async () => Math.abs((await alignment(page)).caretOffset)).toBeLessThan(1)
         const a = await alignment(page)
-        if (lines > 50) expect(a.scrollbar).toBeGreaterThan(0)
+        expect(a.overflows).toBe(lines > 50)
+        expect(a.room).toBe(0)
       }
     } finally {
       await app.close()
     }
   })
 }
+
+test('the scrollbar floats over the text clear of its edges, shows while scrolling, and can be dragged @pointer', async () => {
+  const text = Array.from({ length: 120 }, (_, i) => `Zeile ${i + 1} mit etwas Text.`).join('\n\n')
+  sandbox = await createSandbox({ [SHEET]: `= Titel\n\n${text}\n` })
+  const { app, page } = await open()
+  try {
+    const scroller = page.locator('.cm-scroller')
+    const rail = page.locator('.cm-editor > .k-scroll-rail')
+    const thumb = rail.locator('.k-scroll-thumb')
+    await page.locator('.cm-content').getByText('Zeile 1 mit').click()
+    const box = (await scroller.boundingBox())!
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.wheel(0, 600)
+    await expect(rail).toHaveClass(/visible/)
+    // The thumb lies inside the area, off its right edge, and moves down as the text does.
+    const at = (await thumb.boundingBox())!
+    expect(at.x + at.width).toBeLessThan(box.x + box.width)
+    expect(at.y).toBeGreaterThan(box.y)
+    expect(at.y + at.height).toBeLessThan(box.y + box.height)
+    // It fades out a moment after the scrolling stops.
+    await page.mouse.move(box.x + box.width / 2, box.y + 10)
+    await expect(rail).not.toHaveClass(/visible/)
+    // Dragging the thumb scrolls the text.
+    await page.mouse.wheel(0, 10)
+    await expect(rail).toHaveClass(/visible/)
+    const grip = (await thumb.boundingBox())!
+    const before = await scroller.evaluate((el) => el.scrollTop)
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2 + 80, { steps: 4 })
+    await page.mouse.up()
+    expect(await scroller.evaluate((el) => el.scrollTop)).toBeGreaterThan(before + 100)
+    // The focus stays in the text.
+    await expect(page.locator('.cm-editor')).toHaveClass(/cm-focused/)
+  } finally {
+    await app.close()
+  }
+})
 
 test('the toolbar switches the sidebars, and the project menu is in the groups column', async () => {
   const { app, page } = await open()

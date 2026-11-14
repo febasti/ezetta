@@ -133,8 +133,7 @@
     position: absolute;
     z-index: 2;
     top: var(--sp-12);
-    /* The text is centered left of the scrollbar: stay off it. */
-    right: calc(var(--sp-16) + var(--scrollbar-w, 0px));
+    right: var(--sp-16);
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;

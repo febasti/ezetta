@@ -17,6 +17,7 @@
   import ListRow from '../../ui/kit/ListRow.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import TextField from '../../ui/kit/TextField.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   /**
    * The shortcuts of the app's commands: each command with the shortcut it has now. A
@@ -166,7 +167,7 @@
     </Callout>
   {/if}
 
-  <div class="list" tabindex="-1">
+  <div class="list" use:scrollbar tabindex="-1">
     {#each groups as { group, items } (group)}
       <Section title={i18n.t(`shortcuts.group.${group}`)}>
         <div role="list">

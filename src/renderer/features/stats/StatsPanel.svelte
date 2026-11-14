@@ -8,6 +8,7 @@
   import Section from '../../ui/kit/Section.svelte'
   import { project } from '../sidebar/project.svelte'
   import { stats, WORDS_PER_MINUTE, WORDS_PER_PAGE } from './stats.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   const num = (n: number): string => formatNumber(n, i18n.locale)
   const minutes = (words: number): string => {
@@ -31,7 +32,7 @@
 </script>
 
 <div class="stats" role="tabpanel" aria-labelledby="right-tab-stats">
-  <div class="body">
+  <div class="body" use:scrollbar>
     <Section title={i18n.t('stats.sheet')}>
       {#if sheet}
         <p class="big">{i18n.t('stats.words', { count: num(sheet.counts.words) })}</p>

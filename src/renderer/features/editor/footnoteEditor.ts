@@ -18,6 +18,7 @@ import { noteCompletion } from './completion'
 import { citeEditor, citeLabelsFacet } from './citeEditor'
 import { labelsFacet, markupExtension, showSourceFacet } from '../../editor/markup'
 import { cspNonceExtension, noBrowserProofing } from '../../editor/theme'
+import { overlayScrollbars } from '../../editor/overlayScrollbars'
 import { typstLanguage } from '../../editor/typst'
 
 /** Extra key bindings for the note editor (the formatting commands), supplied by the editor so this
@@ -85,6 +86,7 @@ export function mountNoteEditor(host: HTMLElement, view: EditorView): NoteEditor
       extensions: [
         drawSelection(),
         EditorView.lineWrapping,
+        overlayScrollbars,
         Prec.high(
           keymap.of([
             ...view.state.facet(noteKeymapFacet),

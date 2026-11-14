@@ -4,6 +4,7 @@
   import type { MenuItem } from '../../lib/menu.svelte'
   import Icon from '../../ui/Icon.svelte'
   import { exporting } from './export.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   const lang = $derived(i18n.locale)
 
@@ -73,6 +74,7 @@
   <!-- The empty part of the list has a menu of its own: a template from a file. -->
   <div
     class="grid"
+    use:scrollbar
     role="group"
     aria-label={i18n.t('templates.list')}
     oncontextmenu={(e) => e.target === e.currentTarget && openContextMenu(e, [loadItem()])}

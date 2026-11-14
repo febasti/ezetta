@@ -7,6 +7,7 @@
   import TextField from '../../ui/kit/TextField.svelte'
   import { synonymDialog as dialog } from './thesaurus.svelte'
   import { ARTICLE } from './synonyms'
+  import { scrollbar } from '../../ui/scrollbar'
 
   /** Typing looks the word up after a short pause; Return looks it up at once. */
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -45,7 +46,7 @@
         <p class="replaces">{i18n.t('thesaurus.replaces', { word: dialog.word })}</p>
       </div>
 
-      <div class="results" aria-live="polite" aria-busy={dialog.busy}>
+      <div class="results" use:scrollbar aria-live="polite" aria-busy={dialog.busy}>
         {#if dialog.busy && !dialog.result}
           <EmptyState icon="book" busy title={i18n.t('thesaurus.loading')} />
         {:else if dialog.failed}

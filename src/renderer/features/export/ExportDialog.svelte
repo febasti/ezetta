@@ -14,6 +14,7 @@
   import ExportPanel from './ExportPanel.svelte'
   import { EXPORT, OPTIONS, exporting } from './export.svelte'
   import TemplateList from './TemplateList.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   const lang = $derived(i18n.locale)
   const detail = $derived(exporting.detail)
@@ -140,7 +141,7 @@
         <TemplateList />
       </aside>
 
-      <nav class="elements" aria-label={i18n.t('templates.elements')}>
+      <nav class="elements" use:scrollbar aria-label={i18n.t('templates.elements')}>
         <h3>{i18n.t('export.group')}</h3>
         {@render row(
           'file-export',
@@ -200,7 +201,7 @@
         )}
       </nav>
 
-      <div class="properties">
+      <div class="properties" use:scrollbar>
         {#if panel === EXPORT}
           <ExportPanel />
         {:else}
@@ -208,7 +209,7 @@
         {/if}
       </div>
 
-      <section class="pages" aria-label={i18n.t('preview.title')}>
+      <section class="pages" use:scrollbar aria-label={i18n.t('preview.title')}>
         {#if preview.status === 'error'}
           <p class="empty problem" role="alert">
             {preview.noCompiler ? i18n.t('preview.noCompiler') : i18n.t('preview.failed')}
@@ -306,11 +307,14 @@
     overflow-y: auto;
     padding-right: var(--sp-8);
   }
-  /* The pages lie on the panel's ground, as on a desk. */
+  /* The pages lie on the panel's ground, as on a desk. A clear border as deep as the rounded corner
+     keeps the ends of the scrollbars out of the corners (macOS draws them to the very edge); the
+     panel's ground runs under it, and the pages' padding is less by as much. */
   .pages {
     flex: 1;
     min-width: 0;
     overflow: auto;
+    border: var(--r-lg) solid transparent;
     border-radius: var(--r-lg);
     background: var(--color-panel);
   }
@@ -319,7 +323,7 @@
     flex-direction: column;
     align-items: center;
     gap: var(--sp-24);
-    padding: var(--sp-24);
+    padding: calc(var(--sp-24) - var(--r-lg));
   }
   .sheets.dim {
     opacity: 0.6;

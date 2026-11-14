@@ -25,10 +25,10 @@
   import { footnoteConfig, footnoteField } from '../../editor/footnoteState'
   import { footnoteMargin } from '../../editor/footnoteMargin'
   import { markupExtension } from '../../editor/markup'
-  import { watchScrollbarWidth } from '../../editor/scrollbar'
   import { sourceText } from '../../editor/source'
   import { focusExtension } from '../../editor/focus'
   import { cspNonceExtension, noBrowserProofing, writingTheme } from '../../editor/theme'
+  import { overlayScrollbars } from '../../editor/overlayScrollbars'
   import { typstLanguage } from '../../editor/typst'
   import { i18n } from '../../i18n/i18n.svelte'
   import { call } from '../../lib/api'
@@ -475,6 +475,7 @@
           noteKeymapFacet.of(editorKeymap()),
           focus.of(focusSettings()),
           writingTheme,
+          overlayScrollbars,
           ...cspNonceExtension(),
           noBrowserProofing(lang, label),
           // Typing the closing == of ==text== turns it into a comment, and typing the closing
@@ -600,7 +601,6 @@
         effects: EditorView.scrollIntoView(created.state.selection.main, { y: 'center' }),
       })
     }
-    const stopWatching = watchScrollbarWidth(created, (width) => (ui.scrollbarWidth = width))
     return () => {
       editor.setNotes([])
       editor.setIssues([])
@@ -608,7 +608,6 @@
       clearTimeout(citationsTimer)
       editor.setCitations(null)
       ui.column = null
-      stopWatching()
       editor.detach(handle)
       view = undefined
       created.destroy()

@@ -148,12 +148,11 @@
     position: absolute;
     z-index: 3;
     top: var(--sp-12);
-    /* The text is centered left of the scrollbar: stay off it. */
-    right: calc(var(--sp-16) + var(--scrollbar-w, 0px));
+    right: var(--sp-16);
     display: flex;
     flex-direction: column;
     gap: var(--sp-8);
-    width: min(520px, calc(100% - var(--sp-32) - var(--scrollbar-w, 0px)));
+    width: min(520px, calc(100% - var(--sp-32)));
     padding: var(--sp-8);
     border-radius: var(--r-lg);
     background: var(--color-window);

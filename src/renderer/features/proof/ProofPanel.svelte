@@ -15,6 +15,7 @@
   import { editor } from '../editor/editorSession.svelte'
   import { project } from '../sidebar/project.svelte'
   import { CATEGORIES, proof, proofWaiting } from './proof.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   const issues = $derived(editor.issues)
   const disabledCategories = $derived(project.snapshot?.proofing.disabledCategories ?? [])
@@ -138,7 +139,7 @@
     {/if}
   </header>
 
-  <div class="body">
+  <div class="body" use:scrollbar>
     {#if !editor.path}
       <EmptyState icon="file" title={i18n.t('proof.noSheet')} />
     {:else if waiting}

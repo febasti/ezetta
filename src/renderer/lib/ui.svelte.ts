@@ -102,8 +102,6 @@ export const ui = $state({
   footnoteMode: footnoteModeFromStore(),
   /** Where the text column sits while the margin column is shown, for the header to line up with. */
   column: null as { left: number; width: number } | null,
-  /** Width of the editor's scrollbar, so the header above it can line up with the text. */
-  scrollbarWidth: 0,
 })
 
 /** Showing a column of the sidebar leaves the Gliederung, which stands in their place. */

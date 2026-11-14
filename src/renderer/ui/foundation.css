@@ -143,6 +143,9 @@
     var(--color-window)
   );
   --color-focus: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  /* The app's own scrollbar (ui/scrollbar.ts): the thumb, and the thumb under the pointer. */
+  --color-scrollbar: color-mix(in srgb, var(--color-label) 32%, transparent);
+  --color-scrollbar-active: color-mix(in srgb, var(--color-label) 50%, transparent);
   /* A sheet of paper is white in every theme, as it prints: the export's pages, the pictures of the
    * templates. Its shadow lifts it a little off the desk it lies on. The ink on it is black, in every
    * theme, until the type says another colour (a sample of type). */

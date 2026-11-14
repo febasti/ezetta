@@ -8,6 +8,7 @@
   import Switch from '../../ui/kit/Switch.svelte'
   import TextField from '../../ui/kit/TextField.svelte'
   import { project } from '../sidebar/project.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   /**
    * The title page fields: the title, the authors (name and affiliation, in the order they print),
@@ -87,7 +88,7 @@
   }
 </script>
 
-<div class="scroll">
+<div class="scroll" use:scrollbar>
   <div class="page">
     <h1>{i18n.t('titelei.details')}</h1>
 

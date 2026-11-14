@@ -8,6 +8,7 @@
   import { project } from '../sidebar/project.svelte'
   import { literature } from './literature.svelte'
   import LiteratureRow from './LiteratureRow.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   const SCOPES = ['sheet', 'group', 'project'] as const
 
@@ -34,7 +35,7 @@
     </p>
   </header>
 
-  <div class="body">
+  <div class="body" use:scrollbar>
     {#if open}
       <Section title={i18n.t('literature.open.title')}>
         {#if summary.missing.length > 0}

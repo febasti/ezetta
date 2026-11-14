@@ -4,6 +4,7 @@
   import { i18n } from '../../i18n/i18n.svelte'
   import Button from '../../ui/kit/Button.svelte'
   import Section from '../../ui/kit/Section.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   /**
    * What the app is: its name and version, the license it is released under, and the notices of the
@@ -39,7 +40,7 @@
   {#if notices === ''}
     <p class="hint">{i18n.t('about.licenses.missing')}</p>
   {:else if notices !== null}
-    <pre class="notices" aria-label={i18n.t('about.licenses')}>{notices}</pre>
+    <pre class="notices" use:scrollbar aria-label={i18n.t('about.licenses')}>{notices}</pre>
   {/if}
 </Section>
 
@@ -71,11 +72,15 @@
   .notices {
     max-height: 260px;
     margin: 0;
-    padding: var(--sp-8) var(--sp-12);
+    /* A clear border as deep as the rounded corner keeps the scrollbar's ends out of the corners;
+       the frame is the outline. */
+    padding: calc(var(--sp-8) - var(--r-md)) calc(var(--sp-12) - var(--r-md));
     overflow: auto;
+    border: var(--r-md) solid transparent;
     border-radius: var(--r-md);
+    outline: 1px solid var(--color-field-border);
+    outline-offset: -1px;
     background: var(--color-field);
-    border: 1px solid var(--color-field-border);
     color: var(--color-label);
     font: var(--type-caption);
     font-family: var(--font-mono);

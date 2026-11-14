@@ -49,9 +49,12 @@ export const writingTheme = EditorView.theme({
     color: 'var(--color-label)',
     font: 'var(--type-body)',
   },
+  // The list scrolls inside the menu's rounded corners: a clear band above and below it as deep as
+  // the corner keeps the scrollbar's ends whole (macOS draws it to the very edge of the list).
   '.cm-tooltip.cm-tooltip-autocomplete > ul': {
     maxHeight: '16em',
-    padding: 'var(--sp-4)',
+    padding: '0 var(--sp-4)',
+    borderBlock: 'var(--r-lg) solid transparent',
     font: 'var(--type-body)',
   },
   '.cm-tooltip.cm-tooltip-autocomplete > ul > li': {
@@ -96,7 +99,6 @@ export const writingTheme = EditorView.theme({
   '.cm-tooltip.cm-tooltip-autocomplete.cm-slash-menu > ul': {
     minWidth: 'calc(var(--sp-32) * 9)',
     maxHeight: 'calc(var(--row-single) * 12)',
-    scrollbarWidth: 'thin',
   },
   '.cm-tooltip.cm-tooltip-autocomplete.cm-slash-menu > ul > li': {
     paddingLeft: 'var(--sp-4)',

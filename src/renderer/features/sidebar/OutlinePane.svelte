@@ -9,6 +9,7 @@
   import { headingNumbering } from '../export/numbering.svelte'
   import OutlineList from './OutlineList.svelte'
   import { project } from './project.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   /**
    * The Gliederung: the structure of the document as the headings in the text make it,
@@ -31,7 +32,7 @@
       · <span class="warn">{i18n.t('outline.skippedCount', { count: skipped })}</span>
     {/if}
   </p>
-  <div class="body">
+  <div class="body" use:scrollbar>
     {#if entries.length === 0}
       <EmptyState icon="list-tree" title={i18n.t('outline.empty')} />
     {:else}

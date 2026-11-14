@@ -14,6 +14,7 @@
   import { project } from './project.svelte'
   import SheetRow from './SheetRow.svelte'
   import TiteleiList from './TiteleiList.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   const group = $derived(project.currentGroup)
 
@@ -134,6 +135,7 @@
     </header>
     <div
       class="rows"
+      use:scrollbar
       role="listbox"
       tabindex="-1"
       aria-multiselectable="true"

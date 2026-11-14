@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte'
   import IconButton from './IconButton.svelte'
+  import { scrollbar } from '../scrollbar'
 
   /**
    * A dialog: the window's ground with the large radius and the float shadow, over a light scrim.
@@ -72,7 +73,7 @@
       {#if headerAction}<span class="action">{@render headerAction()}</span>{/if}
       <IconButton icon="x" label={closeLabel} onclick={onclose} />
     </header>
-    <div class="body">{@render children()}</div>
+    <div class="body" use:scrollbar>{@render children()}</div>
     {#if footer}<footer>{@render footer()}</footer>{/if}
   </div>
 {/snippet}
@@ -106,7 +107,9 @@
     align-items: center;
     padding-top: var(--sp-24);
   }
+  /* Positioned: the scrollbar of its body lies in it (ui/scrollbar.ts). */
   .dialog {
+    position: relative;
     display: flex;
     flex-direction: column;
     max-width: 100%;
@@ -158,6 +161,12 @@
     min-height: 0;
     overflow-y: auto;
     padding: var(--sp-8) var(--inset-dialog) var(--inset-dialog);
+  }
+  /* Without a footer the body reaches the dialog's rounded corner: a clear band as deep as the corner
+     keeps the end of its scrollbar inside the dialog (macOS draws it to the very edge). */
+  .body:last-child {
+    padding-bottom: calc(var(--inset-dialog) - var(--r-lg));
+    border-bottom: var(--r-lg) solid transparent;
   }
   footer {
     display: flex;

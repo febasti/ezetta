@@ -20,6 +20,7 @@ import type { FootnoteConfig } from './footnoteState'
 import { markupExtension } from './markup'
 import type { MarkupLabels } from './markup'
 import { cspNonceExtension, noBrowserProofing, writingTheme } from './theme'
+import { overlayScrollbars } from './overlayScrollbars'
 import { typstLanguage } from './typst'
 
 export interface FlowHandlers {
@@ -222,6 +223,7 @@ export function createFlowView(options: {
       },
     }),
     writingTheme,
+    overlayScrollbars,
     flowTheme,
     ...cspNonceExtension(),
     noBrowserProofing(options.lang, options.label),

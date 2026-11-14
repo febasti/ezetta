@@ -15,7 +15,7 @@ import { join, relative } from 'node:path'
 const ROOT = 'src/renderer'
 const FOUNDATION = join(ROOT, 'ui/foundation.css')
 /** Set at run time by the app's code, not in a style sheet. */
-const RUNTIME = new Set(['--scrollbar-w', '--col-left', '--col-width', '--chrome-inset', '--depth'])
+const RUNTIME = new Set(['--col-left', '--col-width', '--chrome-inset', '--depth'])
 const SPACING = new Set(['0', '0px', '1px', '2px', '4px', '8px', '12px', '16px', '24px', '32px'])
 
 const defines = (css) => new Set([...css.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]))

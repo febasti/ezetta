@@ -10,6 +10,7 @@
   import GroupRow from './GroupRow.svelte'
   import { project } from './project.svelte'
   import { projectMenuItems } from './projectMenu'
+  import { scrollbar } from '../../ui/scrollbar'
 
   let overMaterial = $state(false)
   /** Only folders can be dropped in the material. */
@@ -57,7 +58,7 @@
       onclick={() => void project.createGroup()}
     />
   </header>
-  <div class="rows" role="tree" aria-label={i18n.t('sidebar.groups')} data-rows>
+  <div class="rows" use:scrollbar role="tree" aria-label={i18n.t('sidebar.groups')} data-rows>
     <!-- The Titelei: the title page fields and the texts before the document, a place of its own above the groups. Its icon and name stand where the root's folder and name do. -->
     <ListRow
       title={i18n.t('titelei.title')}

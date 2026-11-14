@@ -10,6 +10,7 @@
   import FormRow from '../../ui/kit/FormRow.svelte'
   import TextField from '../../ui/kit/TextField.svelte'
   import { project } from './project.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   /**
    * Edits a group of the sidebar in one place: its name, the colour of its symbol, and the
@@ -138,7 +139,7 @@
           placeholder={i18n.t('icon.find')}
         />
         <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="scroll" bind:this={symbols} onkeydown={onSymbolKeydown}>
+        <div class="scroll" use:scrollbar bind:this={symbols} onkeydown={onSymbolKeydown}>
           {#each sections as section (section.id)}
             <div class="section" role="group" aria-label={i18n.t(`icon.section.${section.id}`)}>
               <span class="heading">{i18n.t(`icon.section.${section.id}`)}</span>

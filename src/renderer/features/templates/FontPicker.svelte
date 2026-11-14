@@ -5,6 +5,7 @@
   import Icon from '../../ui/Icon.svelte'
   import Popover from '../../ui/kit/Popover.svelte'
   import TextField from '../../ui/kit/TextField.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   /**
    * The font of an element, as a menu: a button that shows the family it is set in, and opens a list of
@@ -171,7 +172,13 @@
           onvalue={search}
           onkeydown={keydown}
         />
-        <ul class="list" id={listId} role="listbox" aria-label={i18n.t('templates.font.search')}>
+        <ul
+          class="list"
+          use:scrollbar
+          id={listId}
+          role="listbox"
+          aria-label={i18n.t('templates.font.search')}
+        >
           {#each entries as entry, index (entry.key)}
             <!-- The press is taken before the search loses the focus, so the choice is not lost. -->
             <li

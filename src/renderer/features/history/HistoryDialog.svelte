@@ -14,6 +14,7 @@
   import BackupPanel from './BackupPanel.svelte'
   import { backup } from './backup.svelte'
   import { history } from './history.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   const dayKey = (time: number): string => new Date(time).toDateString()
   /** The versions with a heading before the first of each day. */
@@ -105,7 +106,13 @@
       </div>
 
       {#if history.tab === 'backup'}
-        <div id="history-panel" class="panel" role="tabpanel" aria-labelledby="history-tab-backup">
+        <div
+          id="history-panel"
+          class="panel"
+          use:scrollbar
+          role="tabpanel"
+          aria-labelledby="history-tab-backup"
+        >
           <BackupPanel />
         </div>
       {:else}
@@ -208,7 +215,7 @@
               {/each}
             </nav>
 
-            <section class="detail" aria-live="polite">
+            <section class="detail" use:scrollbar aria-live="polite">
               {#if history.selected}
                 <h3 class="when">
                   {fullDate(history.selected.time)}
@@ -234,7 +241,7 @@
                       </Checkbox>
                     {/if}
                   </div>
-                  <ul class="files" aria-label={i18n.t('history.changes')}>
+                  <ul class="files" use:scrollbar aria-label={i18n.t('history.changes')}>
                     {#each sheets as file (file.path)}
                       <li class="file">
                         <ListRow
@@ -311,6 +318,7 @@
                       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                       <pre
                         class="text selectable"
+                        use:scrollbar
                         tabindex="0"
                         aria-label={i18n.t(
                           'history.diff',
@@ -534,8 +542,10 @@
     flex: 1;
     min-height: 8em;
     margin: 0;
-    padding: var(--sp-12) var(--sp-16);
+    /* A clear border as deep as the rounded corner keeps the scrollbar's ends out of the corners. */
+    padding: calc(var(--sp-12) - var(--r-md)) calc(var(--sp-16) - var(--r-md));
     overflow: auto;
+    border: var(--r-md) solid transparent;
     border-radius: var(--r-md);
     background: var(--color-panel);
     color: var(--color-label);

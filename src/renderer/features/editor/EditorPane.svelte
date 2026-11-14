@@ -18,7 +18,6 @@
 
 <main
   class="pane"
-  style:--scrollbar-w="{ui.scrollbarWidth}px"
   style:--col-left={ui.column ? `${ui.column.left}px` : undefined}
   style:--col-width={ui.column ? `${ui.column.width}px` : undefined}
 >

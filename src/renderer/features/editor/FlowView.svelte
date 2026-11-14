@@ -13,7 +13,6 @@
   import { basename } from '@core/project/paths'
   import { onDestroy, untrack } from 'svelte'
   import { createFlowView } from '../../editor/flowView'
-  import { watchScrollbarWidth } from '../../editor/scrollbar'
   import type { FlowView } from '../../editor/flowView'
   import { i18n } from '../../i18n/i18n.svelte'
   import { call } from '../../lib/api'
@@ -26,7 +25,6 @@
   let flow: FlowView | null = null
   let status = $state<'loading' | 'ready' | 'empty'>('loading')
   let ticket = 0
-  let stopWatching: (() => void) | null = null
 
   const key = $derived(project.flowPaths.join('\u0000'))
   const title = $derived(
@@ -110,7 +108,6 @@
       handlers: { open: (path, offset) => void project.openSheet(path, offset) },
     })
     flow.view.scrollDOM.scrollTop = scroll
-    stopWatching = watchScrollbarWidth(flow.view, (width) => (ui.scrollbarWidth = width))
     status = 'ready'
   }
 
@@ -121,8 +118,6 @@
   })
 
   function release(): void {
-    stopWatching?.()
-    stopWatching = null
     flow?.destroy()
     flow = null
   }

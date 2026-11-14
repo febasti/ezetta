@@ -7,6 +7,7 @@
   import { groupMenuItems } from './groupMenu'
   import { project } from './project.svelte'
   import SheetRow from './SheetRow.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   const titelei = $derived(project.titelei)
   const names = $derived(
@@ -35,7 +36,7 @@
       </button>
     {/if}
   </header>
-  <div class="rows">
+  <div class="rows" use:scrollbar>
     <!-- The title page fields: a card like a sheet's, with the title and the authors for its text. -->
     <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a card of the sidebar that opens the form of the title page fields -->
     <button

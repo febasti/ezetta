@@ -4,6 +4,7 @@
   import { editor } from './editorSession.svelte'
   import { mountNoteEditor } from './footnoteEditor'
   import { mountNoteText } from './noteText'
+  import { scrollbar } from '../../ui/scrollbar'
 
   /** Writes the open note in its row: the small editor takes the place of the text. */
   function write(host: HTMLElement) {
@@ -31,7 +32,7 @@
 
 <!-- Lists the footnotes of the open sheet in order, and writes each one in place (mode "Fußnotenliste").
      It also takes the place of the margin column when the window is too narrow for it. -->
-<section class="panel" aria-label={i18n.t('footnote.panel')}>
+<section class="panel" use:scrollbar aria-label={i18n.t('footnote.panel')}>
   <h2>
     {i18n.t('footnote.panel')} <span class="count">{editor.notes.length}</span>
   </h2>

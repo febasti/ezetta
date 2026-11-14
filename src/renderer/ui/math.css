@@ -88,10 +88,14 @@
   background: var(--color-panel);
   cursor: default;
 }
-.cm-editor .cm-tooltip.cm-math-editor {
+/* When it scrolls (in a low window), a clear border as deep as the rounded corner keeps the ends of
+ * its scrollbar out of the corners; the padding is less by as much, so it looks the same. */
+.cm-editor .cm-tooltip.k-popover.cm-math-editor {
   width: 360px;
   max-height: calc(100vh - var(--sp-32));
   overflow-y: auto;
+  border-block: var(--r-lg) solid transparent;
+  padding-block: calc(var(--sp-12) - var(--r-lg));
 }
 .k-field.cm-math-source-field {
   box-sizing: border-box;

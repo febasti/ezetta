@@ -231,3 +231,40 @@
 .k-row.active {
   background: var(--color-selection);
 }
+
+/* The app's own scrollbar (ui/scrollbar.ts): the system's is hidden, and a thin thumb floats over the
+ * area's right edge, clear of its corners. The rail is the bar's reach for the pointer; it lies in
+ * the area's positioned ancestor, its right edge on the area's (the script places it). It shows
+ * while the area scrolls and fades out after; the thumb widens under the pointer. */
+.k-scroll {
+  scrollbar-width: none;
+}
+.k-scroll-rail {
+  position: absolute;
+  z-index: 1;
+  width: var(--sp-12);
+  translate: -100% 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity calc(var(--duration) * 2);
+}
+.k-scroll-rail.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.k-scroll-thumb {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  width: 6px;
+  border-radius: 999px;
+  background: var(--color-scrollbar);
+  transition:
+    width var(--duration),
+    background var(--duration);
+}
+.k-scroll-rail:hover .k-scroll-thumb,
+.k-scroll-rail.dragging .k-scroll-thumb {
+  width: 8px;
+  background: var(--color-scrollbar-active);
+}

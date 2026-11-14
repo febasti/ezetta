@@ -6,6 +6,7 @@
   import logoDark from '../../assets/logo-dark.png'
   import { backup } from '../history/backup.svelte'
   import { project } from '../sidebar/project.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
 
   const open = (path: string) => (event: KeyboardEvent) => {
     if (event.key !== 'Enter' && event.key !== ' ') return
@@ -25,7 +26,7 @@
 <!-- As the source lists of the system and of note apps: the recent projects at the left, and at the
   right the name with what can be started, one row each between hairlines. -->
 <main class="welcome">
-  <nav class="recent" aria-label={i18n.t('welcome.recent')}>
+  <nav class="recent" use:scrollbar aria-label={i18n.t('welcome.recent')}>
     {#if project.recent.length}
       <ul>
         {#each project.recent as recent (recent.path)}
