@@ -46,11 +46,58 @@ async function choose(page: Page, name: string) {
     if ((await groups.nth(i).getAttribute('aria-expanded')) === 'false') await groups.nth(i).click()
   await entry.click()
 }
-/** The button of the templates column; a built-in template's note offers the same one. */
-const copyButton = (page: Page) =>
-  editor(page)
-    .getByRole('complementary', { name: 'Vorlagen' })
-    .getByRole('button', { name: 'Kopie anlegen …' })
+/** The button of a built-in template's note; the menu of a template offers the same. */
+const copyButton = (page: Page) => editor(page).getByRole('button', { name: 'Kopie anlegen …' })
+/** The note of a built-in template: gone when a template of the writer's own is chosen. */
+const readOnlyNote = (page: Page) =>
+  editor(page).getByText('Mitgelieferte Vorlagen lassen sich nicht ändern')
+/**
+ * Starts the app with the system's menus, caught. The menu of a template opens in the export
+ * dialog, which is modal: the app's own menu, which the tests use elsewhere, cannot be clicked
+ * beside it, and a test cannot click a system menu. So the menu is caught, and an item is chosen
+ * through its own click.
+ */
+async function openWithMenus(env: Record<string, string> = {}) {
+  const opened = await open({ ...env, EZETTA_HTML_MENUS: '0' })
+  await opened.app.evaluate(({ Menu }) => {
+    const seen: unknown[] = []
+    ;(globalThis as unknown as { __menus: unknown[] }).__menus = seen
+    Menu.prototype.popup = function (options?: { callback?: () => void }) {
+      ;(this as unknown as { __close: () => void }).__close = () => options?.callback?.()
+      seen.push(this)
+    }
+  })
+  return opened
+}
+type App = Awaited<ReturnType<typeof open>>['app']
+/** Right-clicks a template and gives the items of its menu, by label: whether each can be chosen. */
+async function menuOf(page: Page, app: App, name: string): Promise<Record<string, boolean>> {
+  const count = () =>
+    app.evaluate(() => (globalThis as unknown as { __menus: unknown[] }).__menus.length)
+  const before = await count()
+  await card(page, name).click({ button: 'right' })
+  await expect.poll(count).toBeGreaterThan(before)
+  return app.evaluate(() => {
+    const menus = (
+      globalThis as unknown as { __menus: { items: { label: string; enabled: boolean }[] }[] }
+    ).__menus
+    return Object.fromEntries(
+      menus
+        .at(-1)!
+        .items.filter((i) => i.label)
+        .map((i) => [i.label, i.enabled]),
+    )
+  })
+}
+/** Chooses an item of the last menu, and closes it, as the system does. */
+async function chooseInMenu(app: App, label: string): Promise<void> {
+  await app.evaluate((_electron, wanted) => {
+    type Shown = { items: { label: string; click: () => void }[]; __close: () => void }
+    const menu = (globalThis as unknown as { __menus: Shown[] }).__menus.at(-1)!
+    menu.items.find((i) => i.label === wanted)!.click()
+    menu.__close()
+  }, label)
+}
 const prompt = (page: Page) => page.getByRole('dialog', { name: 'Kopie anlegen' })
 /** Sets a colour: a click on it opens the colours, and its value is typed at their foot. */
 async function setColor(page: Page, id: string, value: string) {
@@ -88,7 +135,7 @@ test('quitting stops the compiler, which would go on writing into the project', 
 })
 
 test('a bundled template is read-only; a copy of it can be changed, and the preview follows', async () => {
-  const { app, page } = await open()
+  const { app, page } = await openWithMenus()
   try {
     await openEditor(page)
     await expect(cards(page)).toHaveText([
@@ -107,7 +154,14 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
     const size = editor(page).getByLabel('Größe', { exact: true })
     await expect(size).toHaveAttribute('data-value', '2em')
     await expect(size).toBeDisabled()
-    await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeDisabled()
+    // The menu of a bundled template offers a copy, and nothing that would change it.
+    expect(await menuOf(page, app, 'Monographie')).toEqual({
+      'Kopie anlegen …': true,
+      'Umbenennen …': false,
+      'Als Datei speichern …': false,
+      'Aus Datei laden …': true,
+      'Löschen …': false,
+    })
 
     // The pages of the preview come from the compiler.
     const pages = editor(page).locator('img.page')
@@ -125,7 +179,26 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
     await prompt(page).getByLabel('Name der Vorlage').fill('Meine Arbeit')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await expect(card(page, 'Meine Arbeit')).toHaveAttribute('aria-current', 'true')
-    await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
+    await expect(readOnlyNote(page)).toHaveCount(0)
+    // Its menu has all of it; the list has no buttons of its own any more.
+    expect(Object.values(await menuOf(page, app, 'Meine Arbeit'))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ])
+    // F2 on a template of the writer's own renames it, as a row of the sidebar.
+    await card(page, 'Meine Arbeit').focus()
+    await page.keyboard.press('F2')
+    const renaming = page.getByRole('dialog', { name: 'Vorlage umbenennen' })
+    await expect(renaming).toBeVisible()
+    await renaming.getByRole('button', { name: 'Abbrechen' }).click()
+    await expect(
+      editor(page).getByRole('complementary', { name: 'Vorlagen' }).getByRole('button', {
+        name: 'Umbenennen …',
+      }),
+    ).toHaveCount(0)
     await expect(size).toBeEnabled()
     await expect(size).toHaveAttribute('data-value', '2em')
     // What the copy does not set itself is shown as inherited.
@@ -262,13 +335,13 @@ test('any font of the system can be chosen, and what it lacks is greyed out and 
 
 test('a template is saved as a file and loaded again, as a template of its own', async () => {
   const file = join(sandbox.base, 'Weitergabe.ezetta-template')
-  const first = await open({ EZETTA_TEST_TEMPLATE_EXPORT: file })
+  const first = await openWithMenus({ EZETTA_TEST_TEMPLATE_EXPORT: file })
   try {
     await openEditor(first.page)
     // A bundled template needs no file: it is in every copy of the app.
-    await expect(
-      editor(first.page).getByRole('button', { name: 'Als Datei speichern …' }),
-    ).toBeDisabled()
+    expect((await menuOf(first.page, first.app, 'Monographie'))['Als Datei speichern …']).toBe(
+      false,
+    )
     await copyButton(first.page).click()
     await prompt(first.page).getByLabel('Name der Vorlage').fill('Zum Teilen')
     await prompt(first.page).getByRole('button', { name: 'OK' }).click()
@@ -279,7 +352,8 @@ test('a template is saved as a file and loaded again, as a template of its own',
     await expect
       .poll(() => readFile(style('zum-teilen'), 'utf8').catch(() => ''))
       .toContain('9.5pt')
-    await editor(first.page).getByRole('button', { name: 'Als Datei speichern …' }).click()
+    await menuOf(first.page, first.app, 'Zum Teilen')
+    await chooseInMenu(first.app, 'Als Datei speichern …')
     await expect(first.page.getByText('Vorlage gespeichert')).toBeVisible()
     expect((await readFile(file)).subarray(0, 2).toString()).toBe('PK')
   } finally {
@@ -288,11 +362,12 @@ test('a template is saved as a file and loaded again, as a template of its own',
 
   // Another machine: its own data folder, the same file.
   await rm(join(sandbox.userData, 'templates'), { recursive: true, force: true })
-  const second = await open({ EZETTA_TEST_TEMPLATE_IMPORT: file })
+  const second = await openWithMenus({ EZETTA_TEST_TEMPLATE_IMPORT: file })
   try {
     await openEditor(second.page)
     await expect(cards(second.page)).toHaveCount(6)
-    await editor(second.page).getByRole('button', { name: 'Aus Datei laden …' }).click()
+    await menuOf(second.page, second.app, 'Monographie')
+    await chooseInMenu(second.app, 'Aus Datei laden …')
     await expect(second.page.getByText('Vorlage „Zum Teilen“ hinzugefügt')).toBeVisible()
     await expect(card(second.page, 'Zum Teilen')).toHaveAttribute('aria-current', 'true')
     await choose(second.page, 'Fließtext')
@@ -312,7 +387,7 @@ test('a heading is aligned with radio buttons and can have a line above and belo
     await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Mit Linien')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
-    await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
+    await expect(readOnlyNote(page)).toHaveCount(0)
     await choose(page, 'Überschrift 2')
 
     // The alignment is a group of radio buttons; left is what the headings have.
@@ -358,7 +433,7 @@ test('the letter case of headings is chosen with radio buttons, and the properti
     await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Versalien')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
-    await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
+    await expect(readOnlyNote(page)).toHaveCount(0)
     await choose(page, 'Überschrift 2')
 
     // The properties of a heading are in groups with a title each.
@@ -420,7 +495,7 @@ test('headings are numbered in the format and to the depth of the template, and 
     await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Römisch')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
-    await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
+    await expect(readOnlyNote(page)).toHaveCount(0)
 
     // Chapters in roman numerals, and numbers down to level 1 only.
     await choose(page, 'Überschrift 1 (Kapitel)')
@@ -453,7 +528,7 @@ test('every text element has a font, and headings a letter spacing', async () =>
     await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Schriften')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
-    await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
+    await expect(readOnlyNote(page)).toHaveCount(0)
 
     // Elements that had no font before: each shows the one it takes from the body text.
     for (const name of ['Blockzitat', 'Abbildung', 'Tabelle', 'Fußnote', 'Inhaltsverzeichnis']) {
@@ -498,7 +573,7 @@ test('the text can be set in columns, with a gap, and figures can span them', as
     await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Zweispaltig')
     await prompt(page).getByRole('button', { name: 'OK' }).click()
-    await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
+    await expect(readOnlyNote(page)).toHaveCount(0)
 
     await choose(page, 'Papier und Ränder')
     for (const title of ['Format', 'Ränder']) {
@@ -535,7 +610,7 @@ async function makeCopy(page: Page, name: string) {
   await copyButton(page).click()
   await prompt(page).getByLabel('Name der Vorlage').fill(name)
   await prompt(page).getByRole('button', { name: 'OK' }).click()
-  await expect(editor(page).getByRole('button', { name: 'Umbenennen …' })).toBeEnabled()
+  await expect(readOnlyNote(page)).toHaveCount(0)
 }
 
 test('headers, footers and the page number are set with three places each', async () => {

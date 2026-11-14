@@ -1,16 +1,82 @@
 <script lang="ts">
   import { i18n } from '../../i18n/i18n.svelte'
+  import { openContextMenu } from '../../lib/menu.svelte'
+  import type { MenuItem } from '../../lib/menu.svelte'
   import Icon from '../../ui/Icon.svelte'
-  import IconButton from '../../ui/kit/IconButton.svelte'
   import { exporting } from './export.svelte'
 
   const lang = $derived(i18n.locale)
-  const readOnly = $derived(exporting.detail?.builtin ?? true)
+
+  type Entry = (typeof exporting.list)[number]
+
+  /** Makes a template the chosen one, unless it is: what a menu does is done to the chosen one. */
+  const chosen = (t: Entry): Promise<void> =>
+    t.id === exporting.selectedId ? Promise.resolve() : exporting.select(t.id)
+
+  /** Loading a template from a file: the menu of the list, and the last item of a template's menu. */
+  const loadItem = (): MenuItem => ({
+    label: i18n.t('templates.file.load'),
+    disabled: exporting.busy,
+    onselect: () => void exporting.importFile(),
+  })
+
+  /**
+   * The menu of a template, on a right click: a copy of any template; renaming, saving as a file and
+   * deleting only a template of the writer's own (a bundled one is in every copy of the app). The
+   * template is chosen first, as a row of the sidebar is.
+   */
+  function menuOf(t: Entry): MenuItem[] {
+    const ready = chosen(t)
+    const then = (action: () => Promise<void>) => () => void ready.then(action)
+    const own = !t.builtin && !exporting.busy
+    return [
+      {
+        label: i18n.t('templates.duplicate'),
+        disabled: exporting.busy,
+        onselect: then(() => exporting.duplicate()),
+      },
+      {
+        label: i18n.t('templates.rename'),
+        disabled: !own,
+        onselect: then(() => exporting.rename()),
+      },
+      {
+        label: i18n.t('templates.file.save'),
+        disabled: !own,
+        onselect: then(() => exporting.exportFile()),
+      },
+      { separator: true },
+      loadItem(),
+      { separator: true },
+      {
+        label: i18n.t('templates.remove'),
+        disabled: !own,
+        danger: true,
+        onselect: then(() => exporting.remove()),
+      },
+    ]
+  }
+
+  /** F2 renames a template of the writer's own and Delete deletes it, as in the sidebar. */
+  function onKey(event: KeyboardEvent, t: Entry): void {
+    if (t.builtin || exporting.busy) return
+    if (event.key === 'F2') void chosen(t).then(() => exporting.rename())
+    else if (event.key === 'Delete' || event.key === 'Backspace')
+      void chosen(t).then(() => exporting.remove())
+    else return
+    event.preventDefault()
+  }
 </script>
 
 <div class="templates">
   <h3>{i18n.t('templates.title')}</h3>
-  <div class="grid" role="group" aria-label={i18n.t('templates.list')}>
+  <!-- The empty part of the list has a menu of its own: a template from a file. -->
+  <div
+    class="grid"
+    role="group"
+    aria-label={i18n.t('templates.list')}
+    oncontextmenu={(e) => e.target === e.currentTarget && openContextMenu(e, [loadItem()])}
+  >
     {#each exporting.list as t (t.id)}
       {@const selected = t.id === exporting.selectedId}
       <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a template is a taster of its page, a control of its own -->
@@ -22,6 +88,8 @@
         title={t.builtin ? `${t.name[lang]} · ${i18n.t('templates.builtin')}` : t.name[lang]}
         disabled={exporting.busy}
         onclick={() => void exporting.select(t.id)}
+        oncontextmenu={(e) => openContextMenu(e, menuOf(t))}
+        onkeydown={(e) => onKey(e, t)}
       >
         <span class="page" class:waiting={!exporting.thumbnails[t.id]}>
           {#if exporting.thumbnails[t.id]}
@@ -35,44 +103,6 @@
         </span>
       </button>
     {/each}
-  </div>
-
-  <div class="actions">
-    <IconButton
-      size="sm"
-      icon="copy"
-      label={i18n.t('templates.duplicate')}
-      disabled={exporting.busy}
-      onclick={() => void exporting.duplicate()}
-    />
-    <IconButton
-      size="sm"
-      icon="pencil"
-      label={i18n.t('templates.rename')}
-      disabled={readOnly || exporting.busy}
-      onclick={() => void exporting.rename()}
-    />
-    <IconButton
-      size="sm"
-      icon="trash"
-      label={i18n.t('templates.remove')}
-      disabled={readOnly || exporting.busy}
-      onclick={() => void exporting.remove()}
-    />
-    <IconButton
-      size="sm"
-      icon="file-import"
-      label={i18n.t('templates.file.load')}
-      disabled={exporting.busy}
-      onclick={() => void exporting.importFile()}
-    />
-    <IconButton
-      size="sm"
-      icon="file-export"
-      label={i18n.t('templates.file.save')}
-      disabled={readOnly || exporting.busy}
-      onclick={() => void exporting.exportFile()}
-    />
   </div>
 </div>
 
@@ -157,14 +187,5 @@
     display: inline-flex;
     flex: none;
     color: var(--color-label-tertiary);
-  }
-  .actions {
-    display: flex;
-    flex: none;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--sp-4);
-    padding-top: var(--sp-8);
-    border-top: 1px solid var(--color-separator);
   }
 </style>
