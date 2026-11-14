@@ -16,6 +16,8 @@ import '@fontsource/libertinus-serif/latin-700-italic.css'
 import '@fontsource/libertinus-sans/latin-400.css'
 import '@fontsource/libertinus-sans/latin-400-italic.css'
 import '@fontsource/libertinus-sans/latin-700.css'
+// „ re-encoded: the Latin files draw it empty. After the faces above.
+import './lowQuote.css'
 // IBM Plex Mono: Latin and Latin Extended, regular, semibold and bold.
 import '@fontsource/ibm-plex-mono/latin-400.css'
 import '@fontsource/ibm-plex-mono/latin-400-italic.css'

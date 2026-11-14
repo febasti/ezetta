@@ -15,6 +15,8 @@ import type { Builder, Call } from './builder'
 /** Brackets the writer types around a citation: the chip leaves out its inner space beside them. */
 const OPENING = new Set(['(', '['])
 const CLOSING = new Set([')', ']'])
+/** Marks that follow a word without a space. */
+const PUNCTUATION = new Set(['.', ',', ';', ':', '!', '?', '…'])
 
 /**
  * Citations and cross-references, drawn as chips. Citations that print together are one chip, and
@@ -122,6 +124,7 @@ export class ChipMarkup {
         selected: b.selected(from, to),
         bracketBefore: from > 0 && OPENING.has(b.doc.sliceString(from - 1, from)),
         bracketAfter: CLOSING.has(b.doc.sliceString(to, to + 1)),
+        punctAfter: PUNCTUATION.has(b.doc.sliceString(to, to + 1)),
       }),
       from,
       to,

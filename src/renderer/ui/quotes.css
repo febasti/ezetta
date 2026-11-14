@@ -15,10 +15,6 @@
 .cm-quote-mark {
   color: inherit;
 }
-/* „ is empty in the bundled Libertinus faces (see `QuoteMark`), so it is set in a serif face of the system. */
-.cm-quote-mark.low-base {
-  font-family: var(--font-serif-system);
-}
 .cm-quote-mark.ground {
   background: var(--color-quote);
 }

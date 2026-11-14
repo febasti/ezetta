@@ -14,6 +14,8 @@ export type PreviewLine = [level: number, text: string]
 export const PREVIEW_ENTRIES = 4
 export const PREVIEW_CHARS = 240
 export const TITLE_CHARS = 60
+/** Fewer characters than this left over: no further entry is begun. */
+const MIN_ENTRY_CHARS = 24
 
 const HEADING = /^(=+)[ \t]+/
 /** A line of code (`#set …`, `#let …`): not text. */
@@ -35,7 +37,9 @@ export function sheetPreview(tree: Tree, doc: string): { title: string; lines: P
   const lines: PreviewLine[] = []
   let chars = 0
   let paragraph: string[] = []
-  const full = (): boolean => lines.length >= PREVIEW_ENTRIES || chars >= PREVIEW_CHARS
+  // Too few characters left for another entry to say anything ("…" alone) count as full.
+  const full = (): boolean =>
+    lines.length >= PREVIEW_ENTRIES || chars >= PREVIEW_CHARS - MIN_ENTRY_CHARS
   const flush = (): void => {
     if (paragraph.length === 0) return
     const text = shorten(paragraph.join(' '), PREVIEW_CHARS - chars)

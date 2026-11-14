@@ -103,13 +103,16 @@ function tooltipFor(chip: GroupChip, config: CiteConfig): HTMLElement {
 /**
  * How a chip is drawn besides its citations: its editor is open (`active`), it is in the selection,
  * and whether a bracket the writer typed stands right before or after it, as in "(@kuhn1962)": on
- * that side the chip has no inner space, so the bracket hugs it as it hugs a word.
+ * that side the chip has no inner space, so the bracket hugs it as it hugs a word. A punctuation
+ * mark right after it (`.`, `,`, `;` …) gets only a hair of inner space, so it does not stand apart
+ * as if a space came before it.
  */
 export interface ChipFlags {
   active: boolean
   selected: boolean
   bracketBefore?: boolean
   bracketAfter?: boolean
+  punctAfter?: boolean
 }
 
 /** The element of a chip: its text, the flag of a check mark, and the notes as its tooltip. */
@@ -124,7 +127,8 @@ export function chipElement(chip: GroupChip, config: CiteConfig, flags: ChipFlag
     (flags.active ? ' active' : '') +
     (flags.selected ? ' selected' : '') +
     (flags.bracketBefore ? ' bracket-before' : '') +
-    (flags.bracketAfter ? ' bracket-after' : '')
+    (flags.bracketAfter ? ' bracket-after' : '') +
+    (flags.punctAfter ? ' punct-after' : '')
   el.append(document.createTextNode(chip.text))
   if (chip.checks.length > 0) el.append(icon('flag-filled', 11, 'cm-cite-flag'))
   el.setAttribute('role', 'button')
@@ -157,6 +161,7 @@ export class CiteWidget extends WidgetType {
       other.flags.selected === this.flags.selected &&
       other.flags.bracketBefore === this.flags.bracketBefore &&
       other.flags.bracketAfter === this.flags.bracketAfter &&
+      other.flags.punctAfter === this.flags.punctAfter &&
       other.config.labels === this.config.labels
     )
   }

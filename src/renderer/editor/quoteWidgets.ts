@@ -51,9 +51,6 @@ export class QuoteMark extends WidgetType {
       (this.ground > 1 ? ' inner' : '') +
       (this.emphasis ? ` ${this.emphasis}` : '')
     mark.textContent = this.glyph
-    // The bundled Libertinus faces have an empty glyph for „ (U+201E): it takes room and shows
-    // nothing, and no other face is tried for it. This mark is set in a serif face of the system.
-    if (this.glyph === '„') mark.classList.add('low-base')
     if (this.label) mark.setAttribute('aria-label', this.label)
     return mark
   }

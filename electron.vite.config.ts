@@ -28,6 +28,9 @@ export default defineConfig({
       // electron-vite leaves the renderer unminified; minified it is half the size (1.5 MB to
       // 740 KB), which the window parses at every start.
       minify: 'esbuild',
+      // A font is never inlined as a data: URL, which the Content Security Policy (`font-src
+      // 'self'`) refuses; small ones (the low quote faces, `ui/lowQuote.css`) would be.
+      assetsInlineLimit: (file) => (/\.(woff2?|ttf|otf)$/.test(file) ? false : undefined),
       rollupOptions: { input: resolve('src/renderer/index.html') },
     },
   },

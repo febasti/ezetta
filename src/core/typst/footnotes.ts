@@ -96,6 +96,18 @@ export function plainText(scope: Tree | SyntaxNode, doc: string, from: number, t
       removed.push([Math.max(ref.from, from), Math.min(ref.to, to)])
       return false
     }
+    // Raw text keeps its words and loses its backticks (and the language tag of a ```block).
+    if (ref.name === 'Raw') {
+      const run = /^`+/.exec(doc.slice(ref.from, ref.to))![0].length
+      const tag =
+        run >= 3 ? (/^[^\s`]*/.exec(doc.slice(ref.from + run, ref.to))?.[0].length ?? 0) : 0
+      const opened = Math.min(ref.from + run + tag, ref.to)
+      const closed = Math.max(ref.to - run, opened)
+      if (opened > from) removed.push([Math.max(ref.from, from), Math.min(opened, to)])
+      if (ref.to > closed && closed < to)
+        removed.push([Math.max(closed, from), Math.min(ref.to, to)])
+      return false
+    }
     // Only a note that starts inside the range is a nested one; the outer note encloses it.
     if (ref.name === 'Expression' && ref.from >= from && noteOf(ref.node, doc)) {
       removed.push([Math.max(ref.from, from), Math.min(ref.to, to)])

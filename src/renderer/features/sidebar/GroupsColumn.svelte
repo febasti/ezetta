@@ -43,7 +43,7 @@
       aria-label={i18n.t('project.menu')}
       onclick={(e) => openDropdown(e.currentTarget, projectMenuItems())}
     >
-      <span class="project-name">{project.snapshot?.title}</span>
+      <span class="project-name" lang={project.snapshot?.language}>{project.snapshot?.title}</span>
       <Icon name="chevron-down" size={14} />
     </button>
     <IconButton
@@ -169,6 +169,9 @@
     flex: 1;
     min-width: 0;
     overflow: hidden;
+    /* A word too long for the line is hyphenated in the project's language ("Beispiel-projekt"),
+       and broken anywhere only where the system has no hyphenation for it. */
+    hyphens: auto;
     overflow-wrap: anywhere;
     font: var(--type-emphasis);
     /* A very long title stops after three lines. */

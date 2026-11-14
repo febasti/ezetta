@@ -206,8 +206,6 @@
   --font-ui:
     -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', 'Inter Variable', Inter, sans-serif;
   --font-writing: 'Source Serif 4 Variable', 'Source Serif 4', Literata, Georgia, serif;
-  /* A serif face the system has, for the one glyph the bundled writing faces lack (see `quotes.css`). */
-  --font-serif-system: Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* The writing surface: its text size and line spacing (both the writer's choice), and the width

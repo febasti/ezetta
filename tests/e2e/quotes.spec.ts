@@ -57,13 +57,37 @@ test('draws the quotation marks of the project language and never shows the synt
   }
 })
 
-test('the opening low mark of the German quote is drawn, in a face that has it', async () => {
+test('the opening low mark of the German quote is drawn, in the writing face', async () => {
   const { app, page } = await open()
   try {
-    const mark = page.locator('.cm-quote-mark.open.low-base').first()
+    const mark = page.locator('.cm-quote-mark.open').first()
     await expect(mark).toHaveText('„')
-    // Libertinus has an empty glyph for it: the mark must not be set in that face.
-    expect(await mark.evaluate((el) => getComputedStyle(el).fontFamily)).not.toContain('Libertinus')
+    // The Latin files of Libertinus draw „ empty; it comes from their Latin Extended files
+    // (`ui/lowQuote.css`), so the mark stays in the writing face. A „ typed by hand in the text,
+    // in each writing face and weight, is drawn too.
+    expect(await mark.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Libertinus')
+    const inked = await page.evaluate(async () => {
+      const counts: number[] = []
+      for (const font of [
+        "40px 'Libertinus Serif'",
+        "italic 40px 'Libertinus Serif'",
+        "bold 40px 'Libertinus Serif'",
+        "40px 'Libertinus Sans'",
+      ]) {
+        await document.fonts.load(font, '„')
+        const canvas = document.createElement('canvas')
+        canvas.width = canvas.height = 80
+        const context = canvas.getContext('2d')!
+        context.font = font
+        context.fillText('„', 10, 50)
+        const data = context.getImageData(0, 0, 80, 80).data
+        let ink = 0
+        for (let i = 3; i < data.length; i += 4) if (data[i]! > 0) ink += 1
+        counts.push(ink)
+      }
+      return counts
+    })
+    for (const ink of inked) expect(ink).toBeGreaterThan(20)
     // And something is drawn: the mark's pixels differ from the empty page behind it.
     const box = (await mark.boundingBox())!
     const clip = { x: box.x, y: box.y, width: box.width, height: box.height }

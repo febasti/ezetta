@@ -27,7 +27,6 @@ const STYLED = new Map([
   ['Emphasis', 'cm-emphasis'],
   ['Strong', 'cm-strong'],
   ['Url', 'cm-link'],
-  ['Raw', 'cm-raw'],
 ])
 
 /**
@@ -86,6 +85,14 @@ export function build(state: EditorState): Built {
         case 'Escape':
           text.escape(node)
           break
+        case 'Raw': {
+          // Raw text in the mono face, its backticks faint like the other marks of the markup.
+          const run = /^`+/.exec(b.doc.sliceString(node.from, node.to))![0].length
+          b.add(mark('cm-raw'), node.from, node.to)
+          b.add(mark('cm-marker'), node.from, node.from + run)
+          if (node.to - run > node.from + run) b.add(mark('cm-marker'), node.to - run, node.to)
+          return false
+        }
         case 'CodeLine':
         case 'CodeBlock':
           b.add(mark('cm-code'), node.from, node.to)

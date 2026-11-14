@@ -33,6 +33,18 @@ describe('sheetPreview', () => {
     expect(lines).toEqual([[0, 'Ein starker Satz mit … und @smith2020.']])
   })
 
+  it('keeps the words of raw text without its backticks', () => {
+    expect(preview('Die Datei `library.bib` und ```typ #set``` hier.\n').lines).toEqual([
+      [0, 'Die Datei library.bib und #set hier.'],
+    ])
+  })
+
+  it('begins no entry that would be only a dot dot dot', () => {
+    const { lines } = preview(`${'wort '.repeat(47)}ende\n\nZweiter Absatz.\n`)
+    expect(lines).toHaveLength(1)
+    expect(lines.some(([, text]) => text === '…')).toBe(false)
+  })
+
   it('drops the list markers and keeps each item in the paragraph', () => {
     expect(preview('- Eins\n- Zwei\n').lines).toEqual([[0, 'Eins Zwei']])
   })

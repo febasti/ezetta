@@ -1,0 +1,77 @@
+/* The Latin files of the bundled Libertinus faces contain „ (U+201E), but Chromium draws the glyph
+ * as it is encoded there empty, so a German opening quote showed as a gap. `fonts/` holds that one
+ * glyph of each face, encoded again (`scripts/low-quote-fonts.py`; SIL Open Font License 1.1, like
+ * the faces). Declared after the Latin faces, with the same family, weight and style, these are
+ * tried first for that character (CSS Fonts, "unicode-range"); the text keeps its face. */
+@font-face {
+  font-family: 'Libertinus Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/libertinus-serif-400-normal-low-quote.woff2') format('woff2');
+  unicode-range: U+201E;
+}
+@font-face {
+  font-family: 'Libertinus Serif';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/libertinus-serif-400-italic-low-quote.woff2') format('woff2');
+  unicode-range: U+201E;
+}
+@font-face {
+  font-family: 'Libertinus Serif';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/libertinus-serif-600-normal-low-quote.woff2') format('woff2');
+  unicode-range: U+201E;
+}
+@font-face {
+  font-family: 'Libertinus Serif';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/libertinus-serif-600-italic-low-quote.woff2') format('woff2');
+  unicode-range: U+201E;
+}
+@font-face {
+  font-family: 'Libertinus Serif';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/libertinus-serif-700-normal-low-quote.woff2') format('woff2');
+  unicode-range: U+201E;
+}
+@font-face {
+  font-family: 'Libertinus Serif';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/libertinus-serif-700-italic-low-quote.woff2') format('woff2');
+  unicode-range: U+201E;
+}
+@font-face {
+  font-family: 'Libertinus Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/libertinus-sans-400-normal-low-quote.woff2') format('woff2');
+  unicode-range: U+201E;
+}
+@font-face {
+  font-family: 'Libertinus Sans';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/libertinus-sans-400-italic-low-quote.woff2') format('woff2');
+  unicode-range: U+201E;
+}
+@font-face {
+  font-family: 'Libertinus Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/libertinus-sans-700-normal-low-quote.woff2') format('woff2');
+  unicode-range: U+201E;
+}

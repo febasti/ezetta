@@ -52,6 +52,18 @@ async function openWith(content: string) {
   return open()
 }
 
+test('a chip right before a punctuation mark keeps only a hair of space on that side', async () => {
+  const { app, page } = await openWith('Wie gezeigt @jones2019[S. 14]. Und @smith2020 dort.\n')
+  try {
+    const before = chips(page).filter({ hasText: 'Jones' })
+    await expect(before).toHaveClass(/punct-after/)
+    expect(await before.evaluate((el) => getComputedStyle(el).paddingRight)).toBe('2px')
+    await expect(chips(page).filter({ hasText: 'Smith' })).not.toHaveClass(/punct-after/)
+  } finally {
+    await app.close()
+  }
+})
+
 test('a chip in brackets the writer typed has no inner space beside them', async () => {
   const { app, page } = await openWith(
     'Nur das Jahr (#cite(<smith2020>, form: "year")) und frei @jones2019 im Satz.\n',

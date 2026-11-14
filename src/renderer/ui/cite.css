@@ -36,6 +36,10 @@
 .cm-cite.bracket-after {
   padding-right: 0;
 }
+/* A punctuation mark right after it keeps only a hair of space, as after a word: "(Kant 1784)." */
+.cm-cite.punct-after {
+  padding-right: 2px;
+}
 .cm-cite.active,
 .cm-cite.selected,
 .cm-cite-needed.active,
