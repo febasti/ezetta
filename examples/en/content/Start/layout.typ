@@ -4,6 +4,8 @@ On the left are two columns. In the first, the *groups*, you arrange your projec
 
 The second column, the *sheets*, shows the texts of the chosen group and everything below it as small cards with the first lines. On each card you see the status (Draft, Revised or Final) and the words. A click opens the sheet; several cards chosen with Cmd or Shift show the texts together, in the order they follow in the document.
 
+You can see two sheets *side by side*: click a card while holding Option (Alt on Windows and Linux), or choose “Open Beside” in its context menu. The second sheet then stands beside the one you are writing, for reading; a click into it makes it the one you write in, and the other is now there to read. Cmd+\\ on a Mac, Ctrl+\\ elsewhere, opens and closes the second view.
+
 == Scrapsheets and material <sec-material>
 
 Not everything belongs in the finished work. A sheet you mark as a *scrapsheet* (context menu) stays in the project but does not go into the export and does not count. Whole folders that should stay out of the text you move into the *material* below the groups. Look at the sheet "ideas" in the folder "Write" and at the material: they are in the project, but not in the PDF file.

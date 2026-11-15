@@ -1,6 +1,6 @@
 import { i18n } from '../i18n/i18n.svelte'
 import type { MessageKey } from '../i18n/translate'
-import { fitColumns } from './layout'
+import { EDITOR_MIN, fitColumns, SPLIT_PANE_MIN } from './layout'
 import type { Column } from './layout'
 
 export interface ConfirmRequest {
@@ -69,6 +69,8 @@ if (typeof window !== 'undefined')
   window.addEventListener('resize', () => (windowWidth.value = window.innerWidth))
 
 export const ui = $state({
+  /** Two sheets stand side by side (the editor pane says so): the editor's area needs more room. */
+  splitOpen: false,
   groupsVisible: stored('groupsVisible', true),
   sheetsVisible: stored('sheetsVisible', true),
   groupsWidth: clampWidth(stored('groupsWidth', 220), 'groups'),
@@ -229,6 +231,7 @@ export function fittedWidths(): {
     windowWidth.value,
     left.map((l) => l.column),
     right,
+    ui.splitOpen ? 2 * SPLIT_PANE_MIN : EDITOR_MIN,
   )
   const widths = { outline: ui.outlineWidth, groups: ui.groupsWidth, sheets: ui.sheetsWidth }
   left.forEach((l, i) => (widths[l.key] = fitted.left[i]!))

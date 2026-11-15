@@ -5,6 +5,7 @@ import type { CitationOverview } from '@core/typst/citations'
 import type { EditorView } from '@codemirror/view'
 import type { InlineKind, ParagraphStyle } from '@core/typst/edit'
 import { EditorView as CMEditorView } from '@codemirror/view'
+import { historyField } from '@codemirror/commands'
 import { footnoteField, noteEditorOf, openNote } from '../../editor/footnoteState'
 import type { NotesLayout } from '../../editor/footnoteState'
 import { analyzeSheet } from '@core/typst/text'
@@ -27,6 +28,17 @@ export interface SheetNote {
   source: string
 }
 
+/**
+ * The editor's state as it was when its sheet left the editor (the panes side by side): its text,
+ * its undo history (CodeMirror's state as JSON), and how far it was scrolled.
+ */
+export interface KeptState {
+  path: string
+  text: string
+  json: unknown
+  scroll: number
+}
+
 /** What the mounted CodeMirror view offers to the store. */
 export interface EditorHandle {
   view: EditorView
@@ -43,6 +55,10 @@ class EditorStore {
   mountKey = $state(0)
   /** Where the cursor starts when a sheet opens from the continuous view (a file offset). */
   initialCursor = $state<number | undefined>(undefined)
+  /** How far the text starts scrolled, when it takes the place of a pane that was read. */
+  initialScroll = $state<number | undefined>(undefined)
+  /** Counts the edits, so a pane that shows the same sheet read-only can follow the typing. */
+  liveVersion = $state(0)
   saveState = $state<SaveState>('saved')
   /** The file changed on disk while there are unsaved edits here. */
   conflict = $state(false)
@@ -79,6 +95,8 @@ class EditorStore {
 
   private handle: EditorHandle | null = null
   private opening = 0
+  /** A kept state for the sheet about to be opened; used only if its text is the file's text. */
+  private restore: KeptState | null = null
   private statsTimer: ReturnType<typeof setTimeout> | null = null
   /**
    * The sheet's text as the editor last knew it on disk (read or written), as a `contentHash`. A
@@ -188,9 +206,18 @@ class EditorStore {
     if (this.handle === handle) this.handle = null
   }
 
-  /** Opens a sheet. Unsaved text of the previous one is written first. */
-  async open(path: string, cursor?: number): Promise<void> {
-    if (path === this.path && cursor === undefined) {
+  /**
+   * Opens a sheet. Unsaved text of the previous one is written first. `scroll` starts the text
+   * scrolled that far; `restore` is a kept state of this sheet (with its undo history), taken only if
+   * its text is exactly what the file holds now, else the sheet opens fresh from the file; `loaded`
+   * runs in the same moment the sheet is taken, so what depends on it changes with it.
+   */
+  async open(
+    path: string,
+    cursor?: number,
+    options: { scroll?: number; restore?: KeptState | null; loaded?: () => void } = {},
+  ): Promise<void> {
+    if (path === this.path && cursor === undefined && options.restore === undefined) {
       this.handle?.focus()
       return
     }
@@ -199,7 +226,37 @@ class EditorStore {
     const result = await call(window.api.project.readSheet({ path }))
     if (ticket !== this.opening || result === null) return
     this.initialCursor = cursor
+    this.initialScroll = options.scroll
+    this.restore = options.restore?.path === path ? options.restore : null
+    options.loaded?.()
     this.load(path, result.content)
+  }
+
+  /**
+   * The kept state to mount with, if there is one for this sheet and its text is the text the
+   * editor mounts with (the file's). Asked once: a state that does not match is dropped.
+   */
+  takeRestore(text: string): KeptState | null {
+    const kept = this.restore
+    this.restore = null
+    return kept !== null && kept.path === this.path && kept.text === text ? kept : null
+  }
+
+  /** The open sheet's state, to keep while it is shown read-only beside the editor. */
+  keepState(): KeptState | null {
+    const handle = this.handle
+    if (!handle || this.path === null) return null
+    return {
+      path: this.path,
+      text: handle.getContent(),
+      json: handle.view.state.toJSON({ history: historyField }),
+      scroll: handle.view.scrollDOM.scrollTop,
+    }
+  }
+
+  /** The open sheet's text as it is in the editor now (saved or not), or null. */
+  currentText(): string | null {
+    return this.handle?.getContent() ?? null
   }
 
   private load(path: string, content: string): void {
@@ -219,6 +276,8 @@ class EditorStore {
     this.path = null
     this.initial = ''
     this.initialCursor = undefined
+    this.initialScroll = undefined
+    this.restore = null
     this.conflict = false
     this.orphaned = false
     this.overwriteNext = false
@@ -330,6 +389,7 @@ class EditorStore {
     if (this.path === null || this.handle === null) return
     const handle = this.handle
     this.saver.edit(this.path, () => handle.getContent())
+    this.liveVersion += 1
     if (this.statsTimer) clearTimeout(this.statsTimer)
     this.statsTimer = setTimeout(() => {
       this.liveStats = analyzeSheet(handle.getContent())

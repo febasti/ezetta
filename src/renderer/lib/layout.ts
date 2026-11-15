@@ -1,5 +1,7 @@
 /** The least the editor keeps, in pixels: a column of text that can still be written in. */
 export const EDITOR_MIN = 420
+/** The least each of two panes side by side keeps: a column that can still be read and written in. */
+export const SPLIT_PANE_MIN = 320
 
 export interface Column {
   /** The width the writer chose. */
@@ -9,7 +11,7 @@ export interface Column {
 }
 
 /**
- * Fits the sidebar's columns and the right sidebar into a window: the editor keeps `EDITOR_MIN`, the
+ * Fits the sidebar's columns and the right sidebar into a window: the editor keeps `editorMin`, the
  * columns give way for it, each down to its own least and in proportion to what it can give, and
  * when even that is not enough the right sidebar leaves (`right` is null). What the writer chose is
  * kept elsewhere, so a wider window brings the chosen widths back. Pure, for tests.
@@ -18,8 +20,10 @@ export function fitColumns(
   windowWidth: number,
   left: readonly Column[],
   right: Column | null,
+  /** What the editor's area keeps: more with two panes side by side. */
+  editorMin = EDITOR_MIN,
 ): { left: number[]; right: number | null } {
-  const room = Math.max(0, windowWidth - EDITOR_MIN)
+  const room = Math.max(0, windowWidth - editorMin)
   const shrink = (columns: readonly Column[], budget: number): number[] | null => {
     const total = columns.reduce((sum, c) => sum + c.width, 0)
     if (total <= budget) return columns.map((c) => c.width)

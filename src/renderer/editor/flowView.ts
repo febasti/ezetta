@@ -111,6 +111,8 @@ export interface FlowView {
   view: EditorView
   flow: FlowDoc
   setShowSource(show: boolean): void
+  /** One sheet only (`single`): shows new text for it, keeping the place scrolled to. */
+  setContent(text: string): void
   destroy(): void
 }
 
@@ -142,11 +144,21 @@ export function createFlowView(options: {
   /** Formulas are drawn as in the sheet; opening one opens its sheet. */
   math: Pick<MathConfig, 'service' | 'labels'>
   handlers: FlowHandlers
+  /** One sheet, without a separator above it: the pane read beside the editor. Its text can be
+   * replaced (`setContent`), and a place in it is a place in the sheet. */
+  single?: boolean
 }): FlowView {
   const flow = buildFlow(options.sources)
+  const single = options.single === true && options.sources.length === 1
   const markup = new Compartment()
   const builder = new RangeSetBuilder<Decoration>()
-  for (const segment of flow.segments) {
+  /** Opens the sheet at a place of the view. */
+  const openAt = (from: number): void => {
+    if (single) return options.handlers.open(options.sources[0]!.path, from)
+    const segment = segmentAt(flow.segments, from)
+    if (segment) options.handlers.open(segment.path, Math.max(0, from - segment.from))
+  }
+  for (const segment of single ? [] : flow.segments) {
     builder.add(
       segment.from,
       segment.from,
@@ -172,55 +184,37 @@ export function createFlowView(options: {
     figureField,
     figureConfig.of({
       ...options.figures,
-      onOpen: (_view, from) => {
-        const segment = segmentAt(flow.segments, from)
-        if (segment) options.handlers.open(segment.path, Math.max(0, from - segment.from))
-      },
+      onOpen: (_view, from) => openAt(from),
     }),
     tableField,
     tableConfig.of({
       ...options.tables,
-      onOpen: (_view, from) => {
-        const segment = segmentAt(flow.segments, from)
-        if (segment) options.handlers.open(segment.path, Math.max(0, from - segment.from))
-      },
+      onOpen: (_view, from) => openAt(from),
     }),
     citeField,
     missingField,
     citeConfig.of({
       ...options.cites,
-      onOpen: (_view, from) => {
-        const segment = segmentAt(flow.segments, from)
-        if (segment) options.handlers.open(segment.path, Math.max(0, from - segment.from))
-      },
+      onOpen: (_view, from) => openAt(from),
     }),
     refField,
     refConfig.of({
       ...options.refs,
       livePath: null,
-      onOpen: (_view, from) => {
-        const segment = segmentAt(flow.segments, from)
-        if (segment) options.handlers.open(segment.path, Math.max(0, from - segment.from))
-      },
+      onOpen: (_view, from) => openAt(from),
     }),
     quoteField,
     quoteConfig.of(options.quotes),
     mathField,
     mathConfig.of({
       ...options.math,
-      onOpen: (_view, from) => {
-        const segment = segmentAt(flow.segments, from)
-        if (segment) options.handlers.open(segment.path, Math.max(0, from - segment.from))
-      },
+      onOpen: (_view, from) => openAt(from),
     }),
     footnoteField,
     footnoteConfig.of({
       ...options.footnotes,
       mode: 'margin',
-      onOpen: (_view, from) => {
-        const segment = segmentAt(flow.segments, from)
-        if (segment) options.handlers.open(segment.path, Math.max(0, from - segment.from))
-      },
+      onOpen: (_view, from) => openAt(from),
     }),
     writingTheme,
     overlayScrollbars,
@@ -235,6 +229,10 @@ export function createFlowView(options: {
         if (!view.state.selection.main.empty || event.detail > 1) return false
         // The caret CodeMirror just placed there is the most reliable position.
         const position = view.state.selection.main.head
+        if (single) {
+          openAt(position)
+          return true
+        }
         const segment = segmentAt(flow.segments, position)
         if (!segment) return false
         options.handlers.open(
@@ -258,6 +256,28 @@ export function createFlowView(options: {
           markupExtension({ showSource: show, labels: options.markupLabels }),
         ),
       }),
+    setContent: (text) => {
+      if (!single) return
+      const old = view.state.doc.toString()
+      if (old === text) return
+      // Only the part that differs is replaced, so what is above it does not move.
+      let start = 0
+      while (start < old.length && start < text.length && old[start] === text[start]) start += 1
+      let end = 0
+      while (
+        end < old.length - start &&
+        end < text.length - start &&
+        old[old.length - 1 - end] === text[text.length - 1 - end]
+      )
+        end += 1
+      view.dispatch({
+        changes: {
+          from: start,
+          to: old.length - end,
+          insert: text.slice(start, text.length - end),
+        },
+      })
+    },
     destroy: () => view.destroy(),
   }
 }

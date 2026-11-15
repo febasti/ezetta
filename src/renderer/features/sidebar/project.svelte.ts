@@ -21,6 +21,8 @@ import type { DropSlot } from '../../lib/dropSlot'
 import { confirmDialog, promptDialog } from '../../lib/ui.svelte'
 import { bibliography } from '../bibliography/bibliography.svelte'
 import { editor } from '../editor/editorSession.svelte'
+import type { KeptState } from '../editor/editorSession.svelte'
+import { split } from '../editor/split.svelte'
 
 const asGroup = (node: TreeNodeDto | null): GroupNodeDto | null =>
   node?.kind === 'group' ? node : null
@@ -199,6 +201,7 @@ class ProjectStore {
   async adopt(snapshot: SnapshotDto | null | undefined): Promise<void> {
     if (!snapshot) return
     await editor.close()
+    split.reset()
     this.selectedGroup = ''
     this.selection = []
     this.renaming = null
@@ -260,6 +263,7 @@ class ProjectStore {
 
   async closeProject(): Promise<void> {
     await editor.close()
+    split.reset()
     await call(window.api.project.close({}))
     this.snapshot = null
     bibliography.clear()
@@ -321,9 +325,22 @@ class ProjectStore {
   }
 
   /** Opens one sheet for editing, optionally with the cursor at a file offset. */
-  async openSheet(path: string, cursor?: number): Promise<void> {
+  async openSheet(
+    path: string,
+    cursor?: number,
+    options: { scroll?: number; restore?: KeptState | null; loaded?: () => void } = {},
+  ): Promise<void> {
     this.mode = 'editor'
-    await editor.open(path, cursor)
+    await editor.open(path, cursor, options)
+  }
+
+  /**
+   * Shows a sheet read-only beside the one in the editor. Without a sheet in the editor there is
+   * nothing to stand beside: it opens in the editor.
+   */
+  async openBeside(path: string): Promise<void> {
+    if (this.mode !== 'editor' || editor.path === null) return this.openSheet(path)
+    split.openBeside(path)
   }
 
   // --- structure --------------------------------------------------------------------------------
@@ -419,6 +436,7 @@ class ProjectStore {
   private remap(from: string, to: string): void {
     if (from === to) return
     editor.pathChanged(from, to)
+    split.pathChanged(from, to)
     this.selection = this.selection.map((p) => (isSameOrBelow(p, from) ? rebase(p, from, to) : p))
     if (isSameOrBelow(this.selectedGroup, from))
       this.selectedGroup = rebase(this.selectedGroup, from, to)
@@ -447,11 +465,18 @@ class ProjectStore {
     if (!confirmed) return
     for (const node of nodes) {
       if (editor.isAffected(node.path)) await editor.close()
+      if (split.other !== null && isSameOrBelow(split.other, node.path)) split.close()
       const result = await call(window.api.project.remove({ path: node.path }))
       if (!result) return
       this.apply(result.snapshot)
     }
     this.selection = []
+    // The editor's sheet is gone, the one beside it is not: that one takes the editor.
+    const beside = split.other
+    if (beside !== null && editor.path === null) {
+      split.close()
+      await this.openSheet(beside)
+    }
   }
 
   /** Moves items into `toParent`. `index` is the position among the siblings that stay behind. */

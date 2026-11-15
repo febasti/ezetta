@@ -4,6 +4,7 @@ import type { AppMenu, AppMenuItem } from '@shared/menu'
 import { i18n } from '../i18n/i18n.svelte'
 import type { MessageKey } from '../i18n/translate'
 import { editor } from '../features/editor/editorSession.svelte'
+import { split } from '../features/editor/split.svelte'
 import { allCommands } from './commands'
 import type { Command } from './commands'
 import { isMac, toAccelerator } from './shortcut'
@@ -145,6 +146,8 @@ function layout(): { label: MessageKey | 'app'; role?: 'window' | 'help'; entrie
         { command: 'toggleGroups', label: 'menu.groups', checked: () => ui.groupsVisible },
         { command: 'toggleSheets', label: 'menu.sheets', checked: () => ui.sheetsVisible },
         { command: 'toggleOutline', label: 'menu.outline', checked: () => ui.outlineVisible },
+        'separator',
+        { command: 'split', label: 'cmd.split', checked: () => split.other !== null },
         'separator',
         { command: 'sidebar', label: 'menu.sidebar', checked: () => ui.rightSidebarVisible },
         { command: 'literatureShow' },

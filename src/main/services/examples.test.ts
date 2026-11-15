@@ -60,6 +60,7 @@ const FEATURES: [name: string, pattern: RegExp][] = [
     /@fig-[a-z]+[\s\S]*@tbl-[a-z]+[\s\S]*@eq-[a-z]+/,
   ],
   ['source in the text', /`[^`\n]+`/],
+  ['two sheets side by side, with the shortcut', /Cmd\+\\\\ /],
 ]
 
 let dir: string | null = null

@@ -45,6 +45,9 @@
   $effect(() => {
     const element = badge
     const pane = element?.parentElement
+    // A sheet opened anew (another one, or the editor came over from the pane beside) starts at
+    // its own place, without a scroll to say so: look again then too.
+    void editor.mountKey
     if (!element || !pane) return
     let frame = 0
     const check = (): void => {

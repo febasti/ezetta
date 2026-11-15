@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { defaultKeymap, history, historyKeymap, redoDepth, undoDepth } from '@codemirror/commands'
+  import {
+    defaultKeymap,
+    history,
+    historyField,
+    historyKeymap,
+    redoDepth,
+    undoDepth,
+  } from '@codemirror/commands'
   import { syntaxTree } from '@codemirror/language'
   import {
     Annotation,
@@ -362,226 +369,239 @@
   const startOf = (text: string): number => /^=+[ \t]+/.exec(text)?.[0].length ?? 0
 
   onMount(() => {
+    const extensions: Extension[] = [
+      history(),
+      drawSelection(),
+      EditorView.lineWrapping,
+      // Our shortcuts win over CodeMirror's defaults (for example Mod-i selects the parent syntax node).
+      // The keys follow the writer's choices, also while the editor is open.
+      Prec.high(shortcuts.of(keymap.of(editorKeymap()))),
+      Prec.high(keymap.of(listKeymap())),
+      Prec.high(keymap.of(quoteKeymap())),
+      // Below the markup's own keys (a heading's hidden label, atomic units), above the defaults.
+      keymap.of(paragraphKeymap()),
+      skipGaps,
+      rememberCopies,
+      keymap.of([...defaultKeymap, ...historyKeymap]),
+      typstLanguage.extension,
+      markup.of(markupExtension({ showSource: ui.showSource, labels: markupLabels })),
+      citeField,
+      missingField,
+      cites.of(citeSettings()),
+      citeEditor,
+      editorCompletion,
+      refField,
+      refs.of(refSettings()),
+      refEditor,
+      proofC.of(proofSettings()),
+      proofing,
+      searchExtension({ onState: (state) => search.receive(state) }),
+      refLabelsFacet.of({
+        editor: i18n.t('xref.editor'),
+        search: i18n.t('xref.search'),
+        empty: i18n.t('xref.empty'),
+        none: i18n.t('xref.none'),
+        kind: i18n.t('xref.kind'),
+        kinds: {
+          all: i18n.t('xref.kind.all'),
+          sec: i18n.t('xref.kind.sec'),
+          fig: i18n.t('xref.kind.fig'),
+          tbl: i18n.t('xref.kind.tbl'),
+          eq: i18n.t('xref.kind.eq'),
+        },
+        goTo: i18n.t('xref.goTo'),
+        remove: i18n.t('xref.remove'),
+        missing: i18n.t('xref.missingNote', { label: '{label}' }),
+        excluded: i18n.t('xref.excludedNote', { label: '{label}' }),
+        failed: i18n.t('xref.failed'),
+      }),
+      unifyCitationGroups,
+      citeLabelsFacet.of({
+        editor: i18n.t('cite.editor'),
+        search: i18n.t('cite.pickerPlaceholder'),
+        searchMore: i18n.t('cite.searchMore'),
+        searchReplace: i18n.t('cite.searchReplace'),
+        notFound: i18n.t('cite.notFound'),
+        missingRow: i18n.t('cite.pickerMissing'),
+        missingRowDetail: i18n.t('cite.pickerMissingDetail'),
+        resultsEmpty: i18n.t('cite.pickerEmpty'),
+        resultsNone: i18n.t('cite.pickerNone'),
+        supplement: i18n.t('cite.supplement'),
+        supplementPlaceholder: i18n.t('cite.supplementPlaceholder'),
+        supplementInvalid: i18n.t('cite.supplementInvalid'),
+        form: i18n.t('cite.form'),
+        formGroup: (count) => i18n.t('cite.formGroup', { count }),
+        forms: {
+          normal: i18n.t('cite.form.normal'),
+          prose: i18n.t('cite.form.prose'),
+          year: i18n.t('cite.form.year'),
+          author: i18n.t('cite.form.author'),
+          none: i18n.t('cite.form.none'),
+        },
+        remove: i18n.t('cite.remove'),
+        removeWork: i18n.t('cite.removeWork'),
+        check: i18n.t('cite.check'),
+        checkNote: i18n.t('cite.checkNoteLabel'),
+        checkNotePlaceholder: i18n.t('cite.checkNotePlaceholder'),
+        removeChip: i18n.t('cite.removeChip'),
+        hintSelect: i18n.t('cite.hintSelect'),
+        needed: i18n.t('cite.needed'),
+        problems: (count) => i18n.t('cite.pickerProblems', { count }),
+      }),
+      quoteField,
+      quotes.of(quoteSettings()),
+      tableField,
+      tables.of(tableSettings()),
+      tableToolbar,
+      tableLabelsFacet.of({
+        toolbar: i18n.t('table.toolbar'),
+        rowAbove: i18n.t('table.rowAbove'),
+        rowBelow: i18n.t('table.rowBelow'),
+        columnLeft: i18n.t('table.columnLeft'),
+        columnRight: i18n.t('table.columnRight'),
+        deleteRow: i18n.t('table.deleteRow'),
+        deleteColumn: i18n.t('table.deleteColumn'),
+        align: i18n.t('table.align'),
+        alignLeft: i18n.t('table.alignLeft'),
+        alignCenter: i18n.t('table.alignCenter'),
+        alignRight: i18n.t('table.alignRight'),
+        header: i18n.t('table.header'),
+        caption: i18n.t('table.caption'),
+        remove: i18n.t('table.remove'),
+      }),
+      figures.of(figureSettings()),
+      figureField,
+      mathField,
+      mathConfig.of({ service: mathService, labels: mathLabels() }),
+      mathEditor,
+      notes.of(noteSettings()),
+      footnoteField,
+      footnoteMargin,
+      footnoteEditor,
+      noteKeymapFacet.of(editorKeymap()),
+      focus.of(focusSettings()),
+      writingTheme,
+      overlayScrollbars,
+      ...cspNonceExtension(),
+      noBrowserProofing(lang, label),
+      // Typing the closing == of ==text== turns it into a comment, and typing the closing
+      // quotation mark of a pair turns it into a quote: the file holds no marks of
+      // its own. With Quelltext on, what is typed stays as typed.
+      EditorView.inputHandler.of((target, from, to, text) => {
+        if (from !== to || text.length !== 1 || !'="„“”«»'.includes(text)) return false
+        const doc = target.state.doc.toString()
+        const tree = syntaxTree(target.state)
+        const change =
+          text === '='
+            ? commentInputRule(doc, from, text, tree)
+            : ui.showSource
+              ? null
+              : quoteInputRule(doc, from, text, tree)
+        if (!change) return false
+        target.dispatch({
+          changes: change,
+          selection: { anchor: change.from + change.insert.length },
+          userEvent: 'input.type',
+        })
+        return true
+      }),
+      // Typing on the empty line after a paragraph starts a paragraph of its own: Typst would
+      // join a line that follows with a single line break to the one above. With Quelltext on,
+      // what is typed stays as typed.
+      EditorView.inputHandler.of((target, from, to, text) => {
+        const { state } = target
+        // Only an empty line can be such a line: the whole text is read for nothing else.
+        if (
+          ui.showSource ||
+          state.selection.ranges.length !== 1 ||
+          state.doc.lineAt(from).length > 0
+        )
+          return false
+        if (text.includes('\n')) return false
+        const result = typeOnGap(
+          { doc: target.state.doc.toString(), tree: syntaxTree(target.state), from, to },
+          text,
+        )
+        if (!result) return false
+        target.dispatch({
+          changes: result.changes,
+          selection: { anchor: result.anchor },
+          userEvent: 'input.type',
+        })
+        return true
+      }),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged && !update.transactions.some((tr) => tr.annotation(external)))
+          editor.edited()
+        if (update.docChanged || update.selectionSet) syncToolState(update.view)
+        if (update.docChanged) syncCitations(update.view)
+        const found = update.state.field(footnoteField)
+        if (found !== update.startState.field(footnoteField)) syncNotes(update.view)
+      }),
+      EditorView.domEventHandlers({
+        blur: () => void editor.flushOnBlur(),
+        // Pasted and dropped images go into the project's assets folder and become figures.
+        // Text becomes paragraphs as Typst reads them (`pasteText.ts`).
+        paste: (event, target) => {
+          const files = imageFilesOf(event.clipboardData)
+          if (files.length === 0) return pasteText(event, target)
+          event.preventDefault()
+          void importFiles(target, files)
+          return true
+        },
+        dragover: (event) => {
+          if (!event.dataTransfer?.types.includes('Files')) return false
+          event.preventDefault()
+          return true
+        },
+        drop: (event, target) => {
+          const files = imageFilesOf(event.dataTransfer)
+          if (files.length === 0) return false
+          event.preventDefault()
+          const at = target.posAtCoords({ x: event.clientX, y: event.clientY }) ?? undefined
+          void importFiles(target, files, at)
+          return true
+        },
+        contextmenu: (event, target) => {
+          openEditorContextMenu(target, event)
+          return true
+        },
+        // Cmd-click (Ctrl-click elsewhere) opens a link in the system browser.
+        click: (event, target) => {
+          if (!(event.metaKey || event.ctrlKey)) return false
+          const pos = target.posAtCoords({ x: event.clientX, y: event.clientY })
+          if (pos === null) return false
+          const url = urlAt({
+            doc: target.state.doc.toString(),
+            tree: syntaxTree(target.state),
+            from: pos,
+            to: pos,
+          })
+          if (!url) return false
+          void call(window.api.app.openExternal({ url }))
+          return true
+        },
+      }),
+    ]
+    const anchor = Math.min(cursor ?? startOf(initial), initial.length)
+    // The sheet comes back from the other pane: its undo history comes with it, if its text is the
+    // file's text (it was saved when it left). Otherwise it starts fresh from the file.
+    const kept = editor.takeRestore(initial)
+    let state: EditorState | null = null
+    if (kept) {
+      try {
+        state = EditorState.fromJSON(kept.json, { extensions }, { history: historyField }).update({
+          selection: EditorSelection.cursor(anchor),
+        }).state
+      } catch {
+        state = null // a state that cannot be read again: the sheet opens fresh from the file
+      }
+    }
     const created = new EditorView({
       parent: host!,
-      state: EditorState.create({
-        doc: initial,
-        selection: EditorSelection.cursor(Math.min(cursor ?? startOf(initial), initial.length)),
-        extensions: [
-          history(),
-          drawSelection(),
-          EditorView.lineWrapping,
-          // Our shortcuts win over CodeMirror's defaults (for example Mod-i selects the parent syntax node).
-          // The keys follow the writer's choices, also while the editor is open.
-          Prec.high(shortcuts.of(keymap.of(editorKeymap()))),
-          Prec.high(keymap.of(listKeymap())),
-          Prec.high(keymap.of(quoteKeymap())),
-          // Below the markup's own keys (a heading's hidden label, atomic units), above the defaults.
-          keymap.of(paragraphKeymap()),
-          skipGaps,
-          rememberCopies,
-          keymap.of([...defaultKeymap, ...historyKeymap]),
-          typstLanguage.extension,
-          markup.of(markupExtension({ showSource: ui.showSource, labels: markupLabels })),
-          citeField,
-          missingField,
-          cites.of(citeSettings()),
-          citeEditor,
-          editorCompletion,
-          refField,
-          refs.of(refSettings()),
-          refEditor,
-          proofC.of(proofSettings()),
-          proofing,
-          searchExtension({ onState: (state) => search.receive(state) }),
-          refLabelsFacet.of({
-            editor: i18n.t('xref.editor'),
-            search: i18n.t('xref.search'),
-            empty: i18n.t('xref.empty'),
-            none: i18n.t('xref.none'),
-            kind: i18n.t('xref.kind'),
-            kinds: {
-              all: i18n.t('xref.kind.all'),
-              sec: i18n.t('xref.kind.sec'),
-              fig: i18n.t('xref.kind.fig'),
-              tbl: i18n.t('xref.kind.tbl'),
-              eq: i18n.t('xref.kind.eq'),
-            },
-            goTo: i18n.t('xref.goTo'),
-            remove: i18n.t('xref.remove'),
-            missing: i18n.t('xref.missingNote', { label: '{label}' }),
-            excluded: i18n.t('xref.excludedNote', { label: '{label}' }),
-            failed: i18n.t('xref.failed'),
-          }),
-          unifyCitationGroups,
-          citeLabelsFacet.of({
-            editor: i18n.t('cite.editor'),
-            search: i18n.t('cite.pickerPlaceholder'),
-            searchMore: i18n.t('cite.searchMore'),
-            searchReplace: i18n.t('cite.searchReplace'),
-            notFound: i18n.t('cite.notFound'),
-            missingRow: i18n.t('cite.pickerMissing'),
-            missingRowDetail: i18n.t('cite.pickerMissingDetail'),
-            resultsEmpty: i18n.t('cite.pickerEmpty'),
-            resultsNone: i18n.t('cite.pickerNone'),
-            supplement: i18n.t('cite.supplement'),
-            supplementPlaceholder: i18n.t('cite.supplementPlaceholder'),
-            supplementInvalid: i18n.t('cite.supplementInvalid'),
-            form: i18n.t('cite.form'),
-            formGroup: (count) => i18n.t('cite.formGroup', { count }),
-            forms: {
-              normal: i18n.t('cite.form.normal'),
-              prose: i18n.t('cite.form.prose'),
-              year: i18n.t('cite.form.year'),
-              author: i18n.t('cite.form.author'),
-              none: i18n.t('cite.form.none'),
-            },
-            remove: i18n.t('cite.remove'),
-            removeWork: i18n.t('cite.removeWork'),
-            check: i18n.t('cite.check'),
-            checkNote: i18n.t('cite.checkNoteLabel'),
-            checkNotePlaceholder: i18n.t('cite.checkNotePlaceholder'),
-            removeChip: i18n.t('cite.removeChip'),
-            hintSelect: i18n.t('cite.hintSelect'),
-            needed: i18n.t('cite.needed'),
-            problems: (count) => i18n.t('cite.pickerProblems', { count }),
-          }),
-          quoteField,
-          quotes.of(quoteSettings()),
-          tableField,
-          tables.of(tableSettings()),
-          tableToolbar,
-          tableLabelsFacet.of({
-            toolbar: i18n.t('table.toolbar'),
-            rowAbove: i18n.t('table.rowAbove'),
-            rowBelow: i18n.t('table.rowBelow'),
-            columnLeft: i18n.t('table.columnLeft'),
-            columnRight: i18n.t('table.columnRight'),
-            deleteRow: i18n.t('table.deleteRow'),
-            deleteColumn: i18n.t('table.deleteColumn'),
-            align: i18n.t('table.align'),
-            alignLeft: i18n.t('table.alignLeft'),
-            alignCenter: i18n.t('table.alignCenter'),
-            alignRight: i18n.t('table.alignRight'),
-            header: i18n.t('table.header'),
-            caption: i18n.t('table.caption'),
-            remove: i18n.t('table.remove'),
-          }),
-          figures.of(figureSettings()),
-          figureField,
-          mathField,
-          mathConfig.of({ service: mathService, labels: mathLabels() }),
-          mathEditor,
-          notes.of(noteSettings()),
-          footnoteField,
-          footnoteMargin,
-          footnoteEditor,
-          noteKeymapFacet.of(editorKeymap()),
-          focus.of(focusSettings()),
-          writingTheme,
-          overlayScrollbars,
-          ...cspNonceExtension(),
-          noBrowserProofing(lang, label),
-          // Typing the closing == of ==text== turns it into a comment, and typing the closing
-          // quotation mark of a pair turns it into a quote: the file holds no marks of
-          // its own. With Quelltext on, what is typed stays as typed.
-          EditorView.inputHandler.of((target, from, to, text) => {
-            if (from !== to || text.length !== 1 || !'="„“”«»'.includes(text)) return false
-            const doc = target.state.doc.toString()
-            const tree = syntaxTree(target.state)
-            const change =
-              text === '='
-                ? commentInputRule(doc, from, text, tree)
-                : ui.showSource
-                  ? null
-                  : quoteInputRule(doc, from, text, tree)
-            if (!change) return false
-            target.dispatch({
-              changes: change,
-              selection: { anchor: change.from + change.insert.length },
-              userEvent: 'input.type',
-            })
-            return true
-          }),
-          // Typing on the empty line after a paragraph starts a paragraph of its own: Typst would
-          // join a line that follows with a single line break to the one above. With Quelltext on,
-          // what is typed stays as typed.
-          EditorView.inputHandler.of((target, from, to, text) => {
-            const { state } = target
-            // Only an empty line can be such a line: the whole text is read for nothing else.
-            if (
-              ui.showSource ||
-              state.selection.ranges.length !== 1 ||
-              state.doc.lineAt(from).length > 0
-            )
-              return false
-            if (text.includes('\n')) return false
-            const result = typeOnGap(
-              { doc: target.state.doc.toString(), tree: syntaxTree(target.state), from, to },
-              text,
-            )
-            if (!result) return false
-            target.dispatch({
-              changes: result.changes,
-              selection: { anchor: result.anchor },
-              userEvent: 'input.type',
-            })
-            return true
-          }),
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged && !update.transactions.some((tr) => tr.annotation(external)))
-              editor.edited()
-            if (update.docChanged || update.selectionSet) syncToolState(update.view)
-            if (update.docChanged) syncCitations(update.view)
-            const found = update.state.field(footnoteField)
-            if (found !== update.startState.field(footnoteField)) syncNotes(update.view)
-          }),
-          EditorView.domEventHandlers({
-            blur: () => void editor.flushOnBlur(),
-            // Pasted and dropped images go into the project's assets folder and become figures.
-            // Text becomes paragraphs as Typst reads them (`pasteText.ts`).
-            paste: (event, target) => {
-              const files = imageFilesOf(event.clipboardData)
-              if (files.length === 0) return pasteText(event, target)
-              event.preventDefault()
-              void importFiles(target, files)
-              return true
-            },
-            dragover: (event) => {
-              if (!event.dataTransfer?.types.includes('Files')) return false
-              event.preventDefault()
-              return true
-            },
-            drop: (event, target) => {
-              const files = imageFilesOf(event.dataTransfer)
-              if (files.length === 0) return false
-              event.preventDefault()
-              const at = target.posAtCoords({ x: event.clientX, y: event.clientY }) ?? undefined
-              void importFiles(target, files, at)
-              return true
-            },
-            contextmenu: (event, target) => {
-              openEditorContextMenu(target, event)
-              return true
-            },
-            // Cmd-click (Ctrl-click elsewhere) opens a link in the system browser.
-            click: (event, target) => {
-              if (!(event.metaKey || event.ctrlKey)) return false
-              const pos = target.posAtCoords({ x: event.clientX, y: event.clientY })
-              if (pos === null) return false
-              const url = urlAt({
-                doc: target.state.doc.toString(),
-                tree: syntaxTree(target.state),
-                from: pos,
-                to: pos,
-              })
-              if (!url) return false
-              void call(window.api.app.openExternal({ url }))
-              return true
-            },
-          }),
-        ],
-      }),
+      state:
+        state ??
+        EditorState.create({ doc: initial, selection: EditorSelection.cursor(anchor), extensions }),
     })
     view = created
     const handle: EditorHandle = {
@@ -600,7 +620,13 @@
     syncCitations(created, 0)
     // A sheet that was just created is being named; the name field keeps the focus.
     if (project.renaming === null) created.focus()
-    if (cursor !== undefined) {
+    const scroll = editor.initialScroll
+    if (scroll !== undefined) {
+      // It takes the place of a pane that was being read: the text stays where it was, and the
+      // caret (where the click was) is in sight.
+      created.scrollDOM.scrollTop = scroll
+      created.dispatch({ effects: EditorView.scrollIntoView(created.state.selection.main) })
+    } else if (cursor !== undefined) {
       created.dispatch({
         effects: EditorView.scrollIntoView(created.state.selection.main, { y: 'center' }),
       })

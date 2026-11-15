@@ -66,7 +66,13 @@
           }))
         : []),
       ...(onlySheets && targets.length === 1
-        ? [{ label: i18n.t('menu.setGoal'), onselect: () => void project.setGoal(node.path) }]
+        ? [
+            { label: i18n.t('menu.setGoal'), onselect: () => void project.setGoal(node.path) },
+            {
+              label: i18n.t('split.openBeside'),
+              onselect: () => void project.openBeside(node.path),
+            },
+          ]
         : []),
       { separator: true },
       ...(targets.some(isMaterial) || targets.some((p) => slotOf(p) !== null)
@@ -88,6 +94,8 @@
 
   function activate(event: MouseEvent | KeyboardEvent): void {
     if (node.kind === 'missing') return project.select(node.path)
+    // Option-click (Alt-click elsewhere) reads the sheet beside the one being written.
+    if (event.altKey && node.kind === 'sheet') return void project.openBeside(node.path)
     void project.clickRow(node.path, {
       extend: event.shiftKey,
       toggle: event.metaKey || event.ctrlKey,

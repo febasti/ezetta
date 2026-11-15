@@ -2,6 +2,7 @@ import { TITELEI } from '@core/project/paths'
 import { i18n } from '../i18n/i18n.svelte'
 import { project } from '../features/sidebar/project.svelte'
 import { editor } from '../features/editor/editorSession.svelte'
+import { split } from '../features/editor/split.svelte'
 import { exporting } from '../features/export/export.svelte'
 import { history } from '../features/history/history.svelte'
 import { settings } from '../features/settings/settings.svelte'
@@ -108,6 +109,21 @@ function defaultCommands(): Command[] {
       shortcut: { key: '3' },
       available: hasProject,
       run: () => setOutlineVisible(!ui.outlineVisible),
+    },
+    {
+      // Opens a second pane, read-only, beside the editor: the sheet chosen in the list if it is
+      // another one, else the editor's own (two places of one long sheet). Closes it when open.
+      id: 'split',
+      label: () => i18n.t('cmd.split'),
+      shortcut: { key: '\\' },
+      available: canEdit,
+      run: () => {
+        if (split.other !== null) return split.close()
+        const chosen = project.selection.find(
+          (path) => path !== editor.path && project.node(path)?.kind === 'sheet',
+        )
+        void project.openBeside(chosen ?? editor.path!)
+      },
     },
     {
       id: 'showSource',
@@ -243,6 +259,7 @@ const GROUP_OF: Record<string, CommandGroup> = {
   toggleGroups: 'view',
   toggleSheets: 'view',
   toggleOutline: 'view',
+  split: 'view',
   showSource: 'view',
   sidebar: 'view',
   literatureShow: 'view',
