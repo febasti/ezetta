@@ -192,6 +192,10 @@ export function createHandlers({
         unwrap(await host.session().setProofing(patch))
         return { snapshot: snapshotOrThrow() }
       },
+      setGoal: async ({ words }) => {
+        unwrap(await host.session().setProjectGoal(words))
+        return { snapshot: snapshotOrThrow() }
+      },
       setFootnoteRestart: async ({ restart }) => {
         unwrap(await host.session().setFootnoteRestart(restart))
         return { snapshot: snapshotOrThrow() }

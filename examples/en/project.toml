@@ -39,6 +39,9 @@ status = "final"
 [items."Start/layout.typ"]
 status = "final"
 
+[items.Write]
+goal = 1500
+
 [items."Write/basics.typ"]
 status = "final"
 goal = 300

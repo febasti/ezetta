@@ -12,4 +12,4 @@ Nicht alles gehört in die fertige Arbeit. Ein Abschnitt, den du als *Notizblatt
 
 == Ziele und Zahlen <sec-ziele>
 
-Für das Projekt und für jeden Abschnitt kannst du ein Wortziel setzen. Die Statistik in der rechten Seitenleiste zeigt, wie weit du bist: für den Abschnitt, die Gruppe und das ganze Projekt. Wörter in Kommentaren und im Literaturverzeichnis zählen nicht mit.
+Für das Projekt, für jede Gruppe und für jeden Abschnitt kannst du ein Wortziel setzen, jeweils im Kontextmenü; das Ziel des Projekts steht in dem von „Alle Abschnitte“ und im Projektmenü. Die Gruppe „Schreiben“ hat eines. Die Statistik in der rechten Seitenleiste zeigt, wie weit du bist: für den Abschnitt, die Gruppe und das ganze Projekt. Wörter in Kommentaren und im Literaturverzeichnis zählen nicht mit.

@@ -34,6 +34,8 @@
       : editor.liveStats.words,
   )
   const num = (n: number): string => formatNumber(n, i18n.locale)
+  /** The sheet's goal, or in the continuous view the group's (the project's for all sheets). */
+  const goal = $derived(flow ? project.flowGoal : (sheetNode?.goal ?? null))
 </script>
 
 <!--
@@ -78,11 +80,11 @@
     </Chip>
   {/if}
   <Chip tone="neutral">
-    {#if sheetNode?.goal && words >= sheetNode.goal}
+    {#if goal && words >= goal}
       <span class="reached" title={i18n.t('goal.reached')}><Icon name="check" size={13} /></span>
     {/if}
-    {sheetNode?.goal
-      ? i18n.t('header.wordsOfGoal', { count: num(words), goal: num(sheetNode.goal) })
+    {goal
+      ? i18n.t('header.wordsOfGoal', { count: num(words), goal: num(goal) })
       : i18n.t('header.words', { count: num(words) })}
   </Chip>
   {#if sheetNode && sheetNode.export && !sheetNode.inExport}

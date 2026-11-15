@@ -120,6 +120,17 @@ class ProjectStore {
     ),
   )
 
+  /**
+   * The goal of what the continuous view shows: the chosen group's, or the project's for "Alle
+   * Abschnitte". None for sheets chosen one by one, which make no unit with a goal.
+   */
+  get flowGoal(): number | null {
+    if (this.mode !== 'flow' || this.flowKind !== 'group') return null
+    return this.selectedGroup === ''
+      ? (this.snapshot?.goalWords ?? null)
+      : (this.currentGroup?.goal ?? null)
+  }
+
   get tree(): GroupNodeDto | null {
     return this.snapshot?.tree ?? null
   }
@@ -546,24 +557,51 @@ class ProjectStore {
     if (result) this.apply(result.snapshot)
   }
 
+  /**
+   * Asks for a word goal and sets it: of a sheet, of a group, or (`''`, "Alle Abschnitte") of the
+   * whole project. An empty answer takes the goal away.
+   */
   async setGoal(path: string): Promise<void> {
-    const node = this.node(path)
-    if (node?.kind !== 'sheet') return
+    const node = path === '' ? null : this.node(path)
+    if (path !== '' && node?.kind !== 'sheet' && node?.kind !== 'group') return
+    const current =
+      path === '' ? (this.snapshot?.goalWords ?? null) : node && 'goal' in node ? node.goal : null
     const answer = await promptDialog({
-      title: i18n.t('prompt.goalTitle'),
+      title: i18n.t(
+        path === ''
+          ? 'prompt.goalTitle.project'
+          : node?.kind === 'group'
+            ? 'prompt.goalTitle.group'
+            : 'prompt.goalTitle',
+        { name: node?.name ?? '' },
+      ),
       label: i18n.t('prompt.goalLabel'),
-      initial: node.goal === null ? '' : String(node.goal),
+      initial: current === null ? '' : String(current),
       inputMode: 'numeric',
     })
     if (answer === null) return
-    const words = Number.parseInt(answer.replaceAll(/[^\d]/g, ''), 10)
-    const result = await call(
-      window.api.project.setItem({
-        path,
-        goal: Number.isFinite(words) && words > 0 ? words : null,
-      }),
-    )
+    const typed = Number.parseInt(answer.replaceAll(/[^\d]/g, ''), 10)
+    const words = Number.isFinite(typed) && typed > 0 ? typed : null
+    const result =
+      path === ''
+        ? await call(window.api.project.setGoal({ words }))
+        : await call(window.api.project.setItem({ path, goal: words }))
     if (result) this.apply(result.snapshot)
+  }
+
+  /**
+   * The words a goal of `group` is measured against: its writing sheets, the ones in the export
+   * (scrapsheets are no part of the text), as the group's continuous view shows them.
+   */
+  writingWords(group: GroupNodeDto): number {
+    return this.writingSheets(group).reduce((sum, sheet) => sum + sheet.words, 0)
+  }
+
+  /** The writing sheets of `group` and below: the ones in the export, without the scrapsheets. */
+  writingSheets(group: GroupNodeDto): SheetNodeDto[] {
+    return flattenSheets(group).flatMap(({ node }) =>
+      node.kind === 'sheet' && node.export ? [node] : [],
+    )
   }
 
   async setFootnoteRestart(restart: 'continuous' | 'chapter'): Promise<void> {

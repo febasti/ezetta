@@ -50,6 +50,16 @@
           ]
         : []),
       { separator: true },
+      // The goal of "Alle Abschnitte" is the project's; a folder of the material has none.
+      ...(isMaterial(node.path)
+        ? []
+        : [
+            {
+              label: i18n.t(isRoot ? 'menu.setProjectGoal' : 'menu.setGoal'),
+              onselect: () => void project.setGoal(isRoot ? '' : node.path),
+            },
+            { separator: true },
+          ]),
       ...(isRoot
         ? []
         : [

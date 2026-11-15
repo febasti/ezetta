@@ -12,4 +12,4 @@ Not everything belongs in the finished work. A sheet you mark as a *scrapsheet* 
 
 == Goals and numbers <sec-goals>
 
-For the project and for each sheet you can set a word goal. The statistics in the right sidebar show how far you are: for the sheet, the group and the whole project. Words in comments and in the bibliography are not counted.
+For the project, for each group and for each sheet you can set a word goal, each in its context menu; the project's goal is in the one of “All sheets” and in the project menu. The group “Write” has one. The statistics in the right sidebar show how far you are: for the sheet, the group and the whole project. Words in comments and in the bibliography are not counted.

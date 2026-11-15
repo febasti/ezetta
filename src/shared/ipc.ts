@@ -399,6 +399,12 @@ export const ipc = {
       z.object({ title: z.string().max(200) }).strict(),
       withSnapshot,
     ),
+    /** The project's word goal; null takes it away. A group's or sheet's goal is `setItem`. */
+    setGoal: defineInvoke(
+      'project:set-goal',
+      z.object({ words: z.number().int().min(1).max(10_000_000).nullable() }).strict(),
+      withSnapshot,
+    ),
     /** How footnotes are numbered: continuous, or restarting at each level-1 heading. */
     setFootnoteRestart: defineInvoke(
       'project:set-footnote-restart',

@@ -48,6 +48,7 @@ export interface GroupNodeDto {
   export: boolean
   icon: string | null
   color: string | null
+  goal: number | null
   inExport: boolean
   children: TreeNodeDto[]
   sheetCount: number
@@ -98,6 +99,7 @@ const groupNode: z.ZodType<GroupNodeDto> = z.lazy(() =>
     export: z.boolean(),
     icon: z.string().nullable(),
     color: z.string().nullable(),
+    goal: z.number().nullable(),
     inExport: z.boolean(),
     children: z.array(treeNode),
     sheetCount: z.number(),

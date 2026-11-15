@@ -39,6 +39,9 @@ status = "final"
 [items."Start/aufbau.typ"]
 status = "final"
 
+[items.Schreiben]
+goal = 1500
+
 [items."Schreiben/grundlagen.typ"]
 status = "final"
 goal = 300

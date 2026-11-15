@@ -92,6 +92,8 @@ export interface GroupNode extends NodeBase {
   icon: string | null
   /** Colour id of the folder icon, or null for the plain grey. */
   color: string | null
+  /** The group's word goal, or null. The project's own goal is not here but in `[goals]`. */
+  goal: number | null
   children: TreeNode[]
   /** Sheets in this group and below. */
   sheetCount: number
@@ -187,6 +189,7 @@ export function reconcile(
         group.export = own
         group.icon = settings.icon ?? null
         group.color = settings.color ?? null
+        group.goal = settings.goal ?? null
         children.push(group)
         sheetCount += group.sheetCount
         words += group.words
@@ -224,6 +227,7 @@ export function reconcile(
       export: true,
       icon: null,
       color: null,
+      goal: null,
       inExport: parentInExport,
       children,
       sheetCount,

@@ -638,6 +638,19 @@ export class ProjectSession {
     })
   }
 
+  /** The project's word goal (`[goals] words`); null takes it away. */
+  async setProjectGoal(words: number | null): Promise<Outcome<null>> {
+    return this.mutate(async () => {
+      if (words !== null && (!Number.isInteger(words) || words < 1))
+        return fail('invalid_name', 'goal')
+      const goals = { ...this.manifest.goals }
+      if (words === null) delete goals.words
+      else goals.words = words
+      this.manifest = { ...this.manifest, goals }
+      return ok(null)
+    })
+  }
+
   async setFootnoteRestart(restart: FootnoteRestart): Promise<Outcome<null>> {
     return this.mutate(async () => {
       this.manifest = { ...this.manifest, footnotes: { ...this.manifest.footnotes, restart } }

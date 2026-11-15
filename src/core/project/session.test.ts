@@ -435,6 +435,36 @@ describe('project title', () => {
   })
 })
 
+describe('word goals', () => {
+  it('sets and takes away the project goal in [goals]', async () => {
+    const fs = project()
+    const session = await open(fs)
+    expect(session.snapshot().goalWords).toBeNull()
+    expectOk(await session.setProjectGoal(80000))
+    expect(session.snapshot().goalWords).toBe(80000)
+    expect(fs.files.get('project.toml')).toMatch(/\[goals\]\s+words = 80000/)
+    expectOk(await session.setProjectGoal(null))
+    expect(session.snapshot().goalWords).toBeNull()
+    expect(fs.files.get('project.toml')).not.toContain('[goals]')
+    for (const words of [0, -5, 1.5])
+      expect(await session.setProjectGoal(words)).toMatchObject({ ok: false })
+  })
+
+  it('gives a group its goal, kept in its item and shown on its node', async () => {
+    const fs = project()
+    const session = await open(fs)
+    expectOk(await session.setItem('methoden', { goal: 5000 }))
+    expect(findNode(session.snapshot().tree, 'methoden')).toMatchObject({
+      kind: 'group',
+      goal: 5000,
+    })
+    expect(fs.files.get('project.toml')).toMatch(/\[items\.methoden\]\s+goal = 5000/)
+    expect(findNode((await open(fs)).snapshot().tree, 'methoden')).toMatchObject({ goal: 5000 })
+    expectOk(await session.setItem('methoden', { goal: undefined }))
+    expect(findNode(session.snapshot().tree, 'methoden')).toMatchObject({ goal: null })
+  })
+})
+
 describe('adding images', () => {
   const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])
   const text = (s: string): Uint8Array => Uint8Array.from([...s].map((c) => c.charCodeAt(0)))

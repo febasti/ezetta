@@ -72,11 +72,23 @@
     </Section>
 
     {#if group && project.selectedGroup !== ''}
+      <!-- Its writing sheets count, as in the project: scrapsheets are no part of the text. -->
+      {@const words = project.writingWords(group)}
       <Section title={i18n.t('stats.group')}>
-        <p class="big">{i18n.t('stats.words', { count: num(group.words) })}</p>
+        <p class="big">{i18n.t('stats.words', { count: num(words) })}</p>
+        {#if group.goal}
+          <Meter value={words / group.goal} label={i18n.t('stats.goal')} />
+          <p class="note">
+            {i18n.t('stats.ofGoal', {
+              percent: num(Math.round((words / group.goal) * 100)),
+              goal: num(group.goal),
+            })}
+          </p>
+        {/if}
         <p class="note">
-          {i18n.t('sidebar.sheetCount', { count: group.sheetCount })} · {minutes(group.words)} ·
-          {pages(group.words)}
+          {i18n.t('sidebar.sheetCount', { count: project.writingSheets(group).length })} ·
+          {minutes(words)} ·
+          {pages(words)}
         </p>
       </Section>
     {/if}

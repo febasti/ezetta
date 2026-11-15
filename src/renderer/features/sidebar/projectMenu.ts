@@ -13,6 +13,7 @@ export function projectMenuItems(): MenuItem[] {
     { label: i18n.t('project.new'), onselect: () => void project.createProject() },
     { label: i18n.t('project.open'), onselect: () => void project.openProject() },
     { label: i18n.t('project.rename'), onselect: () => void project.promptRenameProject() },
+    { label: i18n.t('menu.setProjectGoal'), onselect: () => void project.setGoal('') },
     { label: i18n.t('titelei.menu'), onselect: () => project.selectGroup(TITELEI) },
     { label: i18n.t('project.close'), onselect: () => void project.closeProject() },
     { separator: true },

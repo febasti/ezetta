@@ -71,7 +71,17 @@
   <div class="group">
     {#if project.mode === 'flow'}
       <span class="item">
-        {i18n.t('statusbar.flow', { sheets: num(flowSheets.length), words: num(flowWords) })}
+        {#if project.flowGoal && flowWords >= project.flowGoal}
+          <span class="reached" title={i18n.t('goal.reached')}><Icon name="check" size={13} /></span
+          >
+        {/if}
+        {project.flowGoal
+          ? i18n.t('statusbar.flowOfGoal', {
+              sheets: num(flowSheets.length),
+              count: num(flowWords),
+              goal: num(project.flowGoal),
+            })
+          : i18n.t('statusbar.flow', { sheets: num(flowSheets.length), words: num(flowWords) })}
       </span>
     {:else if editor.path}
       <span class="item">

@@ -1,4 +1,5 @@
-import { rm } from 'node:fs/promises'
+import { readFile, rm } from 'node:fs/promises'
+import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { createSandbox, launch, MOD, openSheet } from './helpers'
@@ -36,6 +37,52 @@ test('the Statistik tab counts the open sheet, the group, and the project', asyn
     await expect(whole).toContainText('von 80.000')
     await expect(whole).toContainText('Überarbeitet')
     await expect(whole).toContainText('Nicht im Export')
+  } finally {
+    await app.close()
+  }
+})
+
+/** Answers the word goal prompt. */
+async function answerGoal(page: Page, title: string | RegExp, words: string) {
+  const prompt = page.getByRole('dialog', { name: title })
+  await prompt.getByRole('textbox').fill(words)
+  await prompt.getByRole('textbox').press('Enter')
+  await expect(prompt).toHaveCount(0)
+}
+
+test('a group and the project get a word goal from their menus, shown in the badge, the status bar and here', async () => {
+  const { app, page } = await open()
+  try {
+    // A group's goal: its menu (the app's own in the tests), then its continuous view.
+    const methoden = page.locator('[role=treeitem][data-path="methoden"]')
+    await methoden.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Wortziel festlegen …' }).click()
+    await answerGoal(page, /Wortziel für/, '20')
+    await expect
+      .poll(() => readFile(join(sandbox.projectDir, 'project.toml'), 'utf8'))
+      .toMatch(/\[items\.methoden\]\s+goal = 20/)
+    await methoden.click()
+    await expect(page.locator('.badge')).toContainText('24 von 20 Wörtern')
+    await expect(page.locator('.badge .reached')).toHaveCount(1)
+    await expect(page.locator('footer')).toContainText('24 von 20 Wörtern')
+    await expect(panel(page).getByRole('region', { name: 'Gruppe' })).toContainText('von 20')
+
+    // The project's goal: the project menu, and "Alle Abschnitte" shows it.
+    await page.getByRole('button', { name: 'Projektmenü' }).click()
+    await page.getByRole('menuitem', { name: 'Wortziel des Projekts festlegen …' }).click()
+    await answerGoal(page, 'Wortziel des Projekts', '50.000')
+    await expect
+      .poll(() => readFile(join(sandbox.projectDir, 'project.toml'), 'utf8'))
+      .toMatch(/\[goals\]\s+words = 50000/)
+    await expect(panel(page).getByRole('region', { name: 'Projekt' })).toContainText('von 50.000')
+    await page.locator('[role=treeitem][data-path=""]').click()
+    await expect(page.locator('.badge')).toContainText('36 von 50.000 Wörtern')
+    // An empty answer takes the goal away.
+    await page.locator('[role=treeitem][data-path=""]').click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Wortziel des Projekts festlegen …' }).click()
+    await answerGoal(page, 'Wortziel des Projekts', '')
+    await expect(page.locator('.badge')).toContainText('36 Wörter')
+    await expect(page.locator('.badge')).not.toContainText('von')
   } finally {
     await app.close()
   }
