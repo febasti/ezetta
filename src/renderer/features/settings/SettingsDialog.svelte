@@ -112,6 +112,7 @@
             <FormRow label={i18n.t('settings.fontSize')} for="settings-size">
               <NumberField
                 id="settings-size"
+                unit={i18n.t('unit.px')}
                 {...FONT_SIZE}
                 value={typography.size}
                 onchange={(size) => (typography.size = size)}
@@ -120,6 +121,7 @@
             <FormRow label={i18n.t('settings.lineSpacing')} for="settings-spacing">
               <NumberField
                 id="settings-spacing"
+                unit={i18n.t('unit.times')}
                 {...LINE_SPACING}
                 value={typography.lineSpacing}
                 onchange={(spacing) => (typography.lineSpacing = spacing)}
@@ -128,6 +130,7 @@
             <FormRow label={i18n.t('settings.paragraphSpacing')} for="settings-paragraph">
               <NumberField
                 id="settings-paragraph"
+                unit={i18n.t('unit.times')}
                 {...PARAGRAPH_GAP}
                 value={typography.paragraphGap}
                 onchange={(gap) => (typography.paragraphGap = gap)}
@@ -136,6 +139,7 @@
             <FormRow label={i18n.t('settings.textWidth')} for="settings-width">
               <NumberField
                 id="settings-width"
+                unit={i18n.t('unit.px')}
                 {...TEXT_WIDTH}
                 value={typography.width}
                 onchange={(width) => (typography.width = width)}

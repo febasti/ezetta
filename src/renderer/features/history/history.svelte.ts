@@ -6,6 +6,7 @@ import { i18n } from '../../i18n/i18n.svelte'
 import { confirmDialog, notify } from '../../lib/ui.svelte'
 import { editor } from '../editor/editorSession.svelte'
 import { backup } from './backup.svelte'
+import { readableForComparison } from './readable'
 import { project } from '../sidebar/project.svelte'
 
 /**
@@ -105,7 +106,11 @@ class HistoryStore {
     this.comparison = null
     const result = await call(window.api.history.compare({ id, path }))
     if (!result || this.selectedId !== id || this.selectedPath !== path) return
-    const pieces = result.binary ? [] : diffWords(result.current ?? '', result.version ?? '')
+    // A sheet is compared as the editor shows it, not as its source: the restore brings back
+    // the source itself.
+    const shown = (text: string | null): string =>
+      text !== null && path.endsWith('.typ') ? readableForComparison(text) : (text ?? '')
+    const pieces = result.binary ? [] : diffWords(shown(result.current), shown(result.version))
     this.comparison = { ...result, pieces, ...diffCounts(pieces) }
   }
 

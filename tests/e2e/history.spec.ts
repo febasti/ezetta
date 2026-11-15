@@ -123,6 +123,33 @@ test('a named version, a change, and a restore that can itself be undone', async
   }
 })
 
+test('a sheet is compared as the editor shows it: citations as their chips, a note at its marker, no markup', async () => {
+  const { app, page } = await open()
+  try {
+    await firstVersion(page)
+    // A change from outside: the comparison reads the file, whoever wrote it.
+    await writeFile(
+      join(sandbox.projectDir, SHEET),
+      `${START}\nSiehe _dazu_ @smith2020[S. 3].#footnote[Eine Notiz.] <sec-x>\n`,
+    )
+    await expect(page.locator('.cm-content')).toContainText('Siehe')
+    await openDialog(page)
+    await versions(page).first().click()
+    await dialog(page).locator('.file').first().click()
+    const text = dialog(page).locator('.text')
+    await expect(text.locator('.lost')).toContainText(
+      'Siehe dazu (smith2020, S. 3). [Fußnote: Eine Notiz.]',
+    )
+    await expect(text).toContainText('Design')
+    await expect(text).not.toContainText('@smith2020')
+    await expect(text).not.toContainText('#footnote')
+    await expect(text).not.toContainText('<sec-x>')
+    await expect(text).not.toContainText('= Design')
+  } finally {
+    await app.close()
+  }
+})
+
 test('versions of several days: the newest day open, an earlier one closed but for its named versions', async () => {
   // Three versions from three days ago, one of them named, as the app writes them.
   const dir = sandbox.projectDir

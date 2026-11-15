@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { basename } from '@core/project/paths'
+  import { basename, slotOf } from '@core/project/paths'
   import { i18n } from '../../i18n/i18n.svelte'
   import { formatNumber } from '../../lib/format'
   import { openDropdown } from '../../lib/menu.svelte'
@@ -15,6 +15,8 @@
   const flow = $derived(project.mode === 'flow')
   const sheet = $derived(!flow && editor.path ? project.node(editor.path) : null)
   const sheetNode = $derived(sheet?.kind === 'sheet' ? sheet : null)
+  /** A text of the Titelei has no heading to say what it is: the badge names its slot. */
+  const slot = $derived(!flow && editor.path ? slotOf(editor.path) : null)
 
   /** The group in the continuous view: the text shows its sheets, so this says which group it is. */
   const groupName = $derived(
@@ -94,6 +96,9 @@
     <Chip tone="neutral" title={i18n.t('flow.hint')}>{groupName}</Chip>
     <Chip tone="accent">{i18n.t('sidebar.sheetCount', { count: project.flowPaths.length })}</Chip>
   {/if}
+  {#if slot}
+    <Chip tone="accent">{i18n.t(`titelei.slot.${slot}`)}</Chip>
+  {/if}
   {#if sheetNode && !sheetNode.export}
     <!-- A scrapsheet has no status. -->
     <Chip tone="neutral" title={i18n.t('header.scrapsheetHint')}>
@@ -118,6 +123,9 @@
     </Chip>
   {/if}
   <Chip tone="neutral">
+    {#if sheetNode?.goal && words >= sheetNode.goal}
+      <span class="reached" title={i18n.t('goal.reached')}><Icon name="check" size={13} /></span>
+    {/if}
     {sheetNode?.goal
       ? i18n.t('header.wordsOfGoal', { count: num(words), goal: num(sheetNode.goal) })
       : i18n.t('header.words', { count: num(words) })}
@@ -128,6 +136,10 @@
 </div>
 
 <style>
+  .reached {
+    display: inline-flex;
+    color: var(--color-success);
+  }
   /* Floats in the corner of the text, on a translucent window ground with a hairline ring. */
   .badge {
     position: absolute;

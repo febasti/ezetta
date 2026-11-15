@@ -205,6 +205,43 @@ test('the toolbar keeps the sidebar and history tools left, the right sidebar ri
   }
 })
 
+test('a reached word goal is marked: a check in the badge and the status bar, a green bar', async () => {
+  const { app, page } = await open()
+  try {
+    const reached = page.locator('.badge .reached')
+    await expect(page.locator('.badge')).toContainText('von 1.200 Wörtern')
+    await expect(reached).toHaveCount(0)
+    // The sheet's menu (the app's own in the tests) sets a goal it has already passed.
+    await page.locator('[role=option][data-path="methoden/design.typ"]').click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Wortziel festlegen …' }).click()
+    const prompt = page.getByRole('dialog', { name: 'Wortziel' })
+    await prompt.getByRole('textbox').fill('3')
+    await prompt.getByRole('textbox').press('Enter')
+    await expect(page.locator('.badge')).toContainText('von 3 Wörtern')
+    await expect(reached).toHaveCount(1)
+    await expect(page.locator('footer .reached')).toHaveCount(1)
+    await expect(page.locator('footer .fill')).toHaveClass(/done/)
+  } finally {
+    await app.close()
+  }
+})
+
+test('the switches of the status bar have their icons, and the numbers of the writing face their units', async () => {
+  const { app, page } = await open()
+  try {
+    for (const name of ['Quelltext', 'Prüfung'])
+      await expect(page.locator('footer').getByRole('button', { name }).locator('svg')).toHaveCount(
+        1,
+      )
+    await page.keyboard.press(`${MOD}+,`)
+    const dialog = page.getByRole('dialog', { name: 'Einstellungen' })
+    await dialog.getByRole('tab', { name: 'Darstellung' }).click()
+    await expect(dialog.locator('.unit')).toHaveText(['px', '×', '×', 'px'])
+  } finally {
+    await app.close()
+  }
+})
+
 test('the status and word count float in the corner of the text, with no title, path, or file name', async () => {
   const { app, page } = await open()
   try {

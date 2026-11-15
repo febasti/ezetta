@@ -84,6 +84,8 @@ test('a text of the Titelei is a sheet in its slot, edited like any other', asyn
     await expect
       .poll(() => readFile(file, 'utf8').catch(() => ''))
       .toBe('Die Arbeit untersucht den Erzähler.')
+    // The text has no heading to say what it is: the badge names the slot.
+    await expect(page.locator('.badge')).toContainText('Abstract')
     // The slot is a card now, with its word count, and the dashed row is gone.
     await expect(page.getByRole('button', { name: 'Abstract hinzufügen' })).toHaveCount(0)
     const card = page.locator('[role=option][data-path=":titelei/abstract.typ"]')

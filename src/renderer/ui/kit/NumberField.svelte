@@ -16,9 +16,11 @@
     step: number
     id?: string
     label?: string
+    /** What the number counts, after the field: "px", "×". */
+    unit?: string
     onchange: (value: number) => void
   }
-  let { value, min, max, step, id, label, onchange }: Props = $props()
+  let { value, min, max, step, id, label, unit, onchange }: Props = $props()
 
   const decimals = $derived(String(step).split('.')[1]?.length ?? 0)
   const format = (n: number): string =>
@@ -56,39 +58,51 @@
   }
 </script>
 
-<span class="number">
-  <TextField
-    {id}
-    {label}
-    inputmode="numeric"
-    value={shown}
-    onvalue={(text) => (draft = text)}
-    onchange={commit}
-    onkeydown={onKeydown}
-  />
-  <span class="steppers">
-    <button
-      type="button"
-      tabindex="-1"
-      aria-label="+"
-      disabled={value >= max}
-      onclick={() => nudge(1)}
-    >
-      <Icon name="chevron-up" size={12} />
-    </button>
-    <button
-      type="button"
-      tabindex="-1"
-      aria-label="−"
-      disabled={value <= min}
-      onclick={() => nudge(-1)}
-    >
-      <Icon name="chevron-down" size={12} />
-    </button>
+<span class="with-unit">
+  <span class="number">
+    <TextField
+      {id}
+      {label}
+      inputmode="numeric"
+      value={shown}
+      onvalue={(text) => (draft = text)}
+      onchange={commit}
+      onkeydown={onKeydown}
+    />
+    <span class="steppers">
+      <button
+        type="button"
+        tabindex="-1"
+        aria-label="+"
+        disabled={value >= max}
+        onclick={() => nudge(1)}
+      >
+        <Icon name="chevron-up" size={12} />
+      </button>
+      <button
+        type="button"
+        tabindex="-1"
+        aria-label="−"
+        disabled={value <= min}
+        onclick={() => nudge(-1)}
+      >
+        <Icon name="chevron-down" size={12} />
+      </button>
+    </span>
   </span>
+  {#if unit}<span class="unit">{unit}</span>{/if}
 </span>
 
 <style>
+  .with-unit {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-8);
+  }
+  .unit {
+    color: var(--color-label-secondary);
+    font: var(--type-body);
+  }
   .number {
     position: relative;
     display: inline-block;

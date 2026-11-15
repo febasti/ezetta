@@ -4,6 +4,7 @@
   import { openDropdown } from '../../lib/menu.svelte'
   import { proofActive, setShowSource, showRightTab, ui } from '../../lib/ui.svelte'
   import { proof, proofWaiting } from '../proof/proof.svelte'
+  import Icon from '../../ui/Icon.svelte'
   import Spinner from '../../ui/Spinner.svelte'
   import ToolbarButton from '../../ui/kit/ToolbarButton.svelte'
   import { paragraphLabel } from '../editor/editorCommands'
@@ -74,6 +75,10 @@
       </span>
     {:else if editor.path}
       <span class="item">
+        {#if goal && sheetWords >= goal}
+          <span class="reached" title={i18n.t('goal.reached')}><Icon name="check" size={13} /></span
+          >
+        {/if}
         {goal
           ? i18n.t('statusbar.wordsOfGoal', { count: num(sheetWords), goal: num(goal) })
           : i18n.t('statusbar.words', { count: num(sheetWords) })}
@@ -86,7 +91,7 @@
           aria-valuemax="100"
           aria-valuenow={Math.round(progress * 100)}
         >
-          <span class="fill" style:width="{progress * 100}%"></span>
+          <span class="fill" class:done={progress >= 1} style:width="{progress * 100}%"></span>
         </span>
       {/if}
     {/if}
@@ -105,6 +110,8 @@
     {#if project.snapshot}
       <ToolbarButton
         size="sm"
+        icon="code"
+        showLabel
         label={i18n.t('toolbar.source')}
         title={i18n.t('cmd.showSource')}
         pressed={ui.showSource}
@@ -116,6 +123,8 @@
         {#if proofWaiting()}<Spinner size={12} />{/if}
         <ToolbarButton
           size="sm"
+          icon="spellcheck"
+          showLabel
           label={proofLabel}
           title={proofActive()
             ? i18n.t(`proof.state.${proof.state}`)
@@ -210,6 +219,15 @@
     display: block;
     height: 100%;
     background: var(--color-accent);
+  }
+  /* The goal is reached. */
+  .fill.done {
+    background: var(--color-success);
+  }
+  .reached {
+    display: inline-flex;
+    vertical-align: -2px;
+    color: var(--color-success);
   }
   .save {
     padding-left: var(--sp-8);

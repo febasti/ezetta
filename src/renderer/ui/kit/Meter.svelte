@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
-   * How far something is towards a goal: a thin bar in the accent on a control's track. The label
-   * names it for screen readers; the numbers stand beside it as text.
+   * How far something is towards a goal: a thin bar in the accent on a control's track, green once
+   * the goal is reached. The label names it for screen readers; the numbers stand beside it as text.
    */
   interface Props {
     /** Between 0 and 1; more is drawn full. */
@@ -21,7 +21,7 @@
   aria-valuemax="100"
   aria-valuenow={Math.round(share * 100)}
 >
-  <span class="fill" style:width="{share * 100}%"></span>
+  <span class="fill" class:done={value >= 1} style:width="{share * 100}%"></span>
 </span>
 
 <style>
@@ -41,5 +41,8 @@
     display: block;
     height: 100%;
     background: var(--color-accent);
+  }
+  .fill.done {
+    background: var(--color-success);
   }
 </style>

@@ -7,6 +7,7 @@
   import IconArrowForwardUp from '@tabler/icons-svelte/icons/arrow-forward-up'
   import IconAsterisk from '@tabler/icons-svelte/icons/asterisk'
   import IconQuote from '@tabler/icons-svelte/icons/quote'
+  import IconTextSpellcheck from '@tabler/icons-svelte/icons/text-spellcheck'
   import IconTag from '@tabler/icons-svelte/icons/tag'
   import IconLayoutSidebarRight from '@tabler/icons-svelte/icons/layout-sidebar-right'
   import IconEye from '@tabler/icons-svelte/icons/eye'
@@ -175,6 +176,7 @@
     'border-right': IconBorderRight,
     'align-justify': IconAlignJustified,
     hyphenation: IconArrowsSplit,
+    spellcheck: IconTextSpellcheck,
     'columns-1': IconColumns1,
     'columns-2': IconColumns2,
     'columns-3': IconColumns3,
