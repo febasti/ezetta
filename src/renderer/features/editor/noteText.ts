@@ -4,7 +4,7 @@ import type { EditorView } from '@codemirror/view'
 import { citationGroups, scanCitations } from '@core/typst/citations'
 import type { Citation } from '@core/typst/citations'
 import { parseTypst } from '@core/typst/parser'
-import { chipElement, groupChipFor } from '../../editor/citeWidget'
+import { chipElement, chipSides, groupChipFor } from '../../editor/citeWidget'
 import { citeConfig } from '../../editor/citeState'
 import { quoteConfig } from '../../editor/quoteState'
 
@@ -61,8 +61,14 @@ export function drawNote(host: HTMLElement, source: string, view: EditorView): v
   ): void => {
     let pos = from
     const chip = (group: Citation[]): void => {
+      const from = group[0]!.from
+      const to = group.at(-1)!.end
       parent.appendChild(
-        chipElement(groupChipFor(group, cite), cite, { active: false, selected: false }),
+        chipElement(groupChipFor(group, cite), cite, {
+          active: false,
+          selected: false,
+          ...chipSides(source.slice(Math.max(0, from - 1), from), source.slice(to, to + 1)),
+        }),
       )
       pos = Math.max(pos, group.at(-1)!.end)
     }

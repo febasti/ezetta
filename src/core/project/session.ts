@@ -105,6 +105,7 @@ export interface ProjectSnapshot {
   titelei: TiteleiSnapshot
   tree: GroupNode
   warnings: Warning[]
+  /** The words of the sheets in the export: what the project's goal is measured against. */
   totalWords: number
   totalSheets: number
 }
@@ -290,7 +291,7 @@ export class ProjectSession {
       titelei: this.titeleiSnapshot(),
       tree: root,
       warnings: all,
-      totalWords: root.words,
+      totalWords: exportOrder(root).reduce((sum, sheet) => sum + sheet.words, 0),
       totalSheets: root.sheetCount,
     }
   }

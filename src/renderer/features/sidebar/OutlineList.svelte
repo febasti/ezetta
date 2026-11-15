@@ -18,6 +18,15 @@
   }
   let { entries, sheetLabel, current, onpick }: Props = $props()
 
+  /** The longest number of each level, in characters: the titles of a level start in one column,
+   * "10" or not. */
+  const numberWidths = $derived.by(() => {
+    const widths: Record<number, number> = {}
+    for (const { level, number } of entries)
+      widths[level] = Math.max(widths[level] ?? 0, number.length)
+    return widths
+  })
+
   const skippedText = (entry: OutlineEntry): string =>
     entry.skippedFrom === 0
       ? i18n.t('outline.skippedStart', { to: entry.level })
@@ -54,7 +63,11 @@
         }}
       >
         {#snippet content()}
-          {#if entry.number}<span class="number">{entry.number}</span>{/if}
+          {#if entry.number}
+            <span class="number" style:min-width="{numberWidths[entry.level]}ch">
+              {entry.number}
+            </span>
+          {/if}
           <span class="title" class:chapter={entry.level === 1}>{entry.title || '…'}</span>
         {/snippet}
         {#snippet accessory()}

@@ -69,11 +69,19 @@ export class MathWidget extends WidgetType {
     private readonly block: boolean,
     private readonly selected: boolean,
     private readonly selectAll = false,
+    /** The number a block formula has in the export ("3"), shown at its right; null for none. */
+    private readonly number: string | null = null,
   ) {
     super()
-    this.key = [formula.source, formula.display, active, block, selected, active && selectAll].join(
-      '\u0000',
-    )
+    this.key = [
+      formula.source,
+      formula.display,
+      active,
+      block,
+      selected,
+      active && selectAll,
+      number ?? '',
+    ].join('\u0000')
   }
 
   override eq(other: MathWidget): boolean {
@@ -92,6 +100,22 @@ export class MathWidget extends WidgetType {
       (this.active ? ' active' : '') +
       (this.selected ? ' selected' : '')
     )
+  }
+
+  /** The number at the right of a block formula, as the export prints it: "(3)". */
+  private syncNumber(root: HTMLElement): void {
+    let number = root.querySelector<HTMLElement>(':scope > .cm-math-number')
+    if (this.number === null) {
+      number?.remove()
+      return
+    }
+    if (!number) {
+      number = document.createElement('span')
+      number.className = 'cm-math-number'
+      number.setAttribute('aria-hidden', 'true')
+      root.querySelector(':scope > .cm-math-drawing')!.after(number)
+    }
+    number.textContent = `(${this.number})`
   }
 
   /** The editing field of an open block formula: made when it opens, taken away when it closes. */
@@ -126,6 +150,7 @@ export class MathWidget extends WidgetType {
     if (this.block) {
       drawing.className = 'cm-math-drawing'
       root.append(drawing)
+      this.syncNumber(root)
     }
     // The click does not move the caret. The formula may have moved since this element was made,
     // so ask where it is now.
@@ -148,6 +173,7 @@ export class MathWidget extends WidgetType {
       drawing.classList.toggle('invalid', invalid)
       drawing.classList.toggle('unavailable', unavailable)
     } else dom.className += (invalid ? ' invalid' : '') + (unavailable ? ' unavailable' : '')
+    if (this.block) this.syncNumber(dom)
     refresh(dom, drawing, view, this.formula, this.config, TYPING_PAUSE_MS)
     this.syncEditing(dom, view)
     return true

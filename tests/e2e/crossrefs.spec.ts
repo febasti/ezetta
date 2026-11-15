@@ -83,6 +83,20 @@ test('draws references as chips with the number the PDF prints, and marks a miss
   }
 })
 
+test('a block formula shows the number the export gives it, and the reference to it says the same', async () => {
+  const { app, page } = await open()
+  try {
+    await expect(page.locator('.cm-content .cm-math-number')).toHaveText(['(1)'])
+    await caretAtEnd(page)
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('$ a = b $')
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.cm-content .cm-math-number')).toHaveText(['(1)', '(2)'])
+  } finally {
+    await app.close()
+  }
+})
+
 test('the label of a heading stays out of sight, and Enter at the end keeps it on the heading', async () => {
   const { app, page } = await open()
   try {

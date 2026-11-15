@@ -33,9 +33,11 @@
   height: auto;
   margin: 0 auto;
   border-radius: var(--r-sm);
+  filter: var(--image-filter);
 }
 .cm-inline-image {
   display: inline-block;
+  filter: var(--image-filter);
   max-height: 3em;
   /* Typst puts a boxed image's bottom edge on the baseline, so the editor does too. */
   vertical-align: baseline;

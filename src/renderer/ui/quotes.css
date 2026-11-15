@@ -107,7 +107,8 @@
   display: flex;
   align-items: baseline;
   justify-content: flex-end;
-  gap: var(--sp-8);
+  /* The field's own padding adds to it: the name stands a space after the dash. */
+  gap: var(--sp-4);
   padding-left: var(--sp-32);
   color: var(--color-label-secondary);
   font-family: var(--font-writing);
@@ -117,9 +118,9 @@
   font-style: normal;
 }
 .cm-epigraph-source-input {
-  /* As wide as its text, so the dash stays next to it. */
+  /* As wide as its text, so the dash stays next to it; wide enough for its hint while empty. */
   field-sizing: content;
-  min-width: 8em;
+  min-width: 1em;
   max-width: 24em;
   padding: 2px var(--sp-8);
   border: 0;
@@ -129,6 +130,9 @@
   font: inherit;
   text-align: right;
   transition: background var(--duration);
+}
+.cm-epigraph-source-input:placeholder-shown {
+  min-width: 8em;
 }
 .cm-epigraph-source-input::placeholder {
   color: var(--color-label-tertiary);

@@ -357,12 +357,16 @@
     )
   }
 
+  /** Where the caret starts in a sheet opened afresh: before its first word, past the marks of a
+   * heading on the first line (at 0 it would stand in front of the faint `=`, apart from the text). */
+  const startOf = (text: string): number => /^=+[ \t]+/.exec(text)?.[0].length ?? 0
+
   onMount(() => {
     const created = new EditorView({
       parent: host!,
       state: EditorState.create({
         doc: initial,
-        selection: EditorSelection.cursor(Math.min(cursor ?? 0, initial.length)),
+        selection: EditorSelection.cursor(Math.min(cursor ?? startOf(initial), initial.length)),
         extensions: [
           history(),
           drawSelection(),

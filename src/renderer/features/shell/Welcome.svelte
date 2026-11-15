@@ -24,10 +24,11 @@
 </script>
 
 <!-- As the source lists of the system and of note apps: the recent projects at the left, and at the
-  right the name with what can be started, one row each between hairlines. -->
+  right the name with what can be started, one row each between hairlines. Before the first project
+  there is no list: the start stands alone. -->
 <main class="welcome">
-  <nav class="recent" use:scrollbar aria-label={i18n.t('welcome.recent')}>
-    {#if project.recent.length}
+  {#if project.recent.length}
+    <nav class="recent" use:scrollbar aria-label={i18n.t('welcome.recent')}>
       <ul>
         {#each project.recent as recent (recent.path)}
           <li>
@@ -43,10 +44,8 @@
           </li>
         {/each}
       </ul>
-    {:else}
-      <p class="none">{i18n.t('welcome.noRecent')}</p>
-    {/if}
-  </nav>
+    </nav>
+  {/if}
   <section class="start">
     <div class="column">
       <header>
@@ -92,12 +91,6 @@
     margin: 0;
     padding: 0;
     list-style: none;
-  }
-  .none {
-    margin: 0;
-    padding: var(--sp-8);
-    color: var(--color-label-secondary);
-    font: var(--type-body);
   }
   .start {
     display: flex;

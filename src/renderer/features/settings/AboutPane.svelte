@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { reflow } from '@core/reflow'
   import { call } from '../../lib/api'
   import { i18n } from '../../i18n/i18n.svelte'
   import Button from '../../ui/kit/Button.svelte'
@@ -14,6 +15,9 @@
   let version = $state('')
   /** Null while it loads; empty when the file could not be read. */
   let notices = $state<string | null>(null)
+
+  /** The file is wrapped by hand at a hundred columns; the box wraps its paragraphs itself. */
+  const lines = $derived(notices ? reflow(notices) : [])
 
   onMount(async () => {
     const info = await call(window.api.app.about({}))
@@ -40,7 +44,13 @@
   {#if notices === ''}
     <p class="hint">{i18n.t('about.licenses.missing')}</p>
   {:else if notices !== null}
-    <pre class="notices" use:scrollbar aria-label={i18n.t('about.licenses')}>{notices}</pre>
+    <div class="notices" use:scrollbar role="document" aria-label={i18n.t('about.licenses')}>
+      {#each lines as line, index (index)}
+        <p class="line" class:ruler={line.ruler} style:padding-inline-start="{line.indent}ch">
+          {#if line.text}{line.text}{:else}<br />{/if}
+        </p>
+      {/each}
+    </div>
   {/if}
 </Section>
 
@@ -84,7 +94,14 @@
     color: var(--color-label);
     font: var(--type-caption);
     font-family: var(--font-mono);
-    white-space: pre-wrap;
     user-select: text;
+  }
+  .line {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .ruler {
+    overflow: hidden;
+    white-space: nowrap;
   }
 </style>

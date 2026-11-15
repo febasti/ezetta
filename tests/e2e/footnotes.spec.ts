@@ -177,6 +177,25 @@ test('a click lands on the line clicked after the margin narrowed the text', asy
   }
 })
 
+test('the text keeps its place from a sheet with margin notes to one without', async () => {
+  const { app, page } = await open()
+  try {
+    await expect(cards(page)).toHaveCount(3)
+    const textLeft = () =>
+      page
+        .locator('.cm-content .cm-line')
+        .first()
+        .evaluate((line) => line.getBoundingClientRect().left)
+    const withNotes = await textLeft()
+    await page.locator('[role=option][data-path="methoden/auswertung.typ"]').click()
+    await expect(page.locator('.cm-content')).toContainText('Die Auswertung folgt später.')
+    await expect(cards(page)).toHaveCount(0)
+    expect(Math.abs((await textLeft()) - withNotes)).toBeLessThan(1)
+  } finally {
+    await app.close()
+  }
+})
+
 test('the source is shown only in Quelltext mode, not where the selection touches a note', async () => {
   const { app, page } = await open()
   try {

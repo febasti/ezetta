@@ -53,7 +53,7 @@ test('the Info tab names the license and lists the software that ships with the 
     await dialog(page).getByRole('tab', { name: 'Info' }).click()
     await expect(dialog(page).locator('p.free')).toContainText('GNU General Public License')
     await expect(dialog(page).locator('p.version')).toHaveText(/^Version \d+\.\d+\.\d+/)
-    const notices = dialog(page).locator('pre')
+    const notices = dialog(page).locator('.notices')
     await expect(notices).toContainText('Typst 0.15.1')
     await expect(notices).toContainText('LanguageTool')
     await expect(notices).toContainText('OpenThesaurus')

@@ -9,6 +9,7 @@ import type { FootnoteConfig, NoteView } from '../footnoteState'
 import { activeMathField, isBlockWidget, mathConfig, mathField } from '../mathState'
 import type { ActiveMath, MathConfig } from '../mathState'
 import { MathWidget } from '../mathWidget'
+import { refConfig, refField } from '../refState'
 import { tableConfig, tableField } from '../tableState'
 import type { TableConfig, TableView } from '../tableState'
 import { TableWidget } from '../tableWidget'
@@ -26,6 +27,8 @@ export class EmbedMarkup {
   private readonly mathSettings: MathConfig
   private readonly activeMath: ActiveMath | null
   private readonly formulasByStart: Map<number, Formula>
+  /** The numbers of this sheet's block formulas in the export, by where they start. */
+  private readonly equationNumbers: Map<number, string>
   private readonly tableSettings: TableConfig
   private readonly tablesByStart: Map<number, TableView>
   private readonly figureSettings: FigureConfig
@@ -39,6 +42,12 @@ export class EmbedMarkup {
     this.mathSettings = state.facet(mathConfig)
     this.activeMath = state.field(activeMathField, false) ?? null
     this.formulasByStart = byStart(state.field(mathField, false))
+    const path = state.facet(refConfig).livePath
+    this.equationNumbers = new Map(
+      (state.field(refField, false)?.targets ?? [])
+        .filter((t) => t.path === path && t.kind === 'eq' && t.inExport && t.number !== '')
+        .map((t) => [t.at, t.number]),
+    )
     this.tableSettings = state.facet(tableConfig)
     this.tablesByStart = byStart(state.field(tableField, false))
     this.figureSettings = state.facet(figureConfig)
@@ -67,6 +76,7 @@ export class EmbedMarkup {
         alone,
         b.selected(from, to),
         this.activeMath?.select ?? false,
+        alone ? (this.equationNumbers.get(formula.from) ?? null) : null,
       ),
       from,
       to,

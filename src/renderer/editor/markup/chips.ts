@@ -5,18 +5,12 @@ import { referenceText } from '@core/typst/targets'
 import type { SyntaxNode } from '@lezer/common'
 import { activeCiteField, citeConfig, citeField, missingField } from '../citeState'
 import type { CiteConfig } from '../citeState'
-import { CiteWidget, NeededWidget, groupChipFor } from '../citeWidget'
+import { chipSides, CiteWidget, NeededWidget, groupChipFor } from '../citeWidget'
 import { activeRefField, chipText, refConfig, refField, resolve } from '../refState'
 import type { ActiveRef, RefConfig, RefIndex } from '../refState'
 import { RefWidget } from '../refWidget'
 import { mark } from './builder'
 import type { Builder, Call } from './builder'
-
-/** Brackets the writer types around a citation: the chip leaves out its inner space beside them. */
-const OPENING = new Set(['(', '['])
-const CLOSING = new Set([')', ']'])
-/** Marks that follow a word without a space. */
-const PUNCTUATION = new Set(['.', ',', ';', ':', '!', '?', '…'])
 
 /**
  * Citations and cross-references, drawn as chips. Citations that print together are one chip, and
@@ -122,9 +116,7 @@ export class ChipMarkup {
       new CiteWidget(groupChipFor(group, this.settings), this.settings, {
         active: this.activeFrom === from,
         selected: b.selected(from, to),
-        bracketBefore: from > 0 && OPENING.has(b.doc.sliceString(from - 1, from)),
-        bracketAfter: CLOSING.has(b.doc.sliceString(to, to + 1)),
-        punctAfter: PUNCTUATION.has(b.doc.sliceString(to, to + 1)),
+        ...chipSides(b.doc.sliceString(Math.max(0, from - 1), from), b.doc.sliceString(to, to + 1)),
       }),
       from,
       to,

@@ -69,7 +69,8 @@ describe('open and create', () => {
     const snap = (await open(project())).snapshot()
     expect(snap.title).toBe('Test')
     expect(snap.totalSheets).toBe(6)
-    expect(snap.totalWords).toBe(16)
+    // The scrapsheet's two words are not the document's.
+    expect(snap.totalWords).toBe(14)
     expect(findNode(snap.tree, 'methoden/design.typ')).toMatchObject({
       status: 'revised',
       goal: 1200,
@@ -1016,7 +1017,7 @@ describe('the Titelei', () => {
     expectOk(await session.writeSheet(path, 'Kurz gesagt, es geht um drei Dinge.'))
     expect(expectOk(await session.readSheet(path))).toContain('drei Dinge')
     expect(session.snapshot().titelei.slots.abstract?.words).toBe(7)
-    expect(session.snapshot().totalWords).toBe(16)
+    expect(session.snapshot().totalWords).toBe(14)
     // It is there again when the project is opened.
     expect((await open(fs)).snapshot().titelei.slots.abstract?.words).toBe(7)
   })

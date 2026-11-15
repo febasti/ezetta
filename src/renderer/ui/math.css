@@ -8,8 +8,27 @@
   cursor: default;
 }
 .cm-math-widget.block {
-  display: block;
+  /* The drawing in the middle, its number (as the export prints it) at the right, level with the
+   * middle of the drawing; the field of an open formula under both. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   text-align: center;
+}
+.cm-math-widget.block > * {
+  grid-column: 1 / -1;
+}
+.cm-math-widget.block > .cm-math-drawing {
+  grid-row: 1;
+  grid-column: 2;
+  min-width: 0;
+}
+.cm-math-number {
+  grid-row: 1;
+  grid-column: 3;
+  justify-self: end;
+  color: var(--color-label-secondary);
+  font-variant-numeric: tabular-nums;
 }
 .cm-math-drawing {
   padding: var(--sp-24) 0;

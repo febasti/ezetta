@@ -124,9 +124,17 @@ class MarginPlugin implements PluginValue {
     const needed = this.layout === 'margin' ? MIN_ROOM - HYSTERESIS : MIN_ROOM
     if (notes.length > 0 && config.mode === 'margin') layout = room >= needed ? 'margin' : 'panel'
 
-    const usable = room - 2 * EDGE
-    const textWidth = Math.max(MIN_TEXT, Math.min(maxText(), usable - GAP - CARD_WIDTH))
-    const left = EDGE + Math.max(0, (usable - (textWidth + GAP + CARD_WIDTH)) / 2)
+    // The text keeps the left edge it has without notes (centered in the pane), so it does not move
+    // from one sheet to the next; the cards take their room from its right side. Only when that
+    // would leave less than `MIN_TEXT` does the text move left.
+    const cards = GAP + CARD_WIDTH + EDGE
+    // (The text has padding of its own, so it needs no edge at its left.)
+    let left = Math.max(0, (room - maxText()) / 2)
+    let textWidth = Math.min(maxText(), room - left - cards)
+    if (textWidth < MIN_TEXT) {
+      textWidth = MIN_TEXT
+      left = Math.max(0, room - cards - MIN_TEXT)
+    }
 
     const items: Measure['items'] = []
     if (layout === 'margin') {

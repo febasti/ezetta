@@ -115,6 +115,24 @@ export interface ChipFlags {
   punctAfter?: boolean
 }
 
+/** Brackets the writer types around a citation: the chip leaves out its inner space beside them. */
+const OPENING = new Set(['(', '['])
+const CLOSING = new Set([')', ']'])
+/** Marks that follow a word without a space. */
+const PUNCTUATION = new Set(['.', ',', ';', ':', '!', '?', '…'])
+
+/** The flags of a chip's sides, from the character just before it and the one just after. */
+export function chipSides(
+  before: string,
+  after: string,
+): Pick<ChipFlags, 'bracketBefore' | 'bracketAfter' | 'punctAfter'> {
+  return {
+    bracketBefore: OPENING.has(before),
+    bracketAfter: CLOSING.has(after),
+    punctAfter: PUNCTUATION.has(after),
+  }
+}
+
 /** The element of a chip: its text, the flag of a check mark, and the notes as its tooltip. */
 export function chipElement(chip: GroupChip, config: CiteConfig, flags: ChipFlags): HTMLElement {
   const el = document.createElement('span')
