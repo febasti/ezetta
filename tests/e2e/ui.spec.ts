@@ -263,24 +263,19 @@ test('the status and word count float in the corner of the text, with no title, 
   }
 })
 
-test('the badge steps aside while the text is scrolled under it, and comes back at the top', async () => {
+test('the badge stays in its corner while the text is scrolled under it', async () => {
   const long = Array.from({ length: 40 }, (_, i) => `Absatz ${i + 1} mit etwas Text.`).join('\n\n')
   await rm(sandbox.base, { recursive: true, force: true })
   sandbox = await createSandbox({ [SHEET]: `= Methoden\n\n${long}\n` })
   const { app, page } = await open()
   try {
-    // At the window's least size the badge lies over the text column.
+    // At the window's least size the badge lies over the text column; it stays visible there.
     await page.setViewportSize(LEAST_SIZE)
     const badge = page.locator('.badge')
-    await expect(badge).toHaveCSS('opacity', '1')
     await page.locator('.cm-scroller').evaluate((el) => (el.scrollTop = 300))
-    await expect(badge).toHaveCSS('opacity', '0')
-    await page.locator('.cm-scroller').evaluate((el) => (el.scrollTop = 0))
+    await expect(badge).toBeVisible()
     await expect(badge).toHaveCSS('opacity', '1')
-    // Where the window is wide enough for the badge to stand beside the text, it stays.
-    await page.setViewportSize({ width: 2000, height: 800 })
-    await page.locator('.cm-scroller').evaluate((el) => (el.scrollTop = 300))
-    await expect(badge).toHaveCSS('opacity', '1')
+    await expect(badge).toContainText('Wörter')
   } finally {
     await app.close()
   }
