@@ -327,12 +327,26 @@ test('the picker is as wide as the citation editor, and its dropdown is fused wi
     await page.getByRole('button', { name: 'Querverweis', exact: true }).click()
     const box = (await picker(page).boundingBox())!
     expect(box.width).toBe(600)
-    // The dropdown and the field are one control: the same height, no gap between them.
-    const select = (await kind(page).boundingBox())!
-    const field = (await search(page).boundingBox())!
-    expect(select.height).toBeGreaterThanOrEqual(field.height - 1)
-    expect(Math.abs(select.y - field.y)).toBeLessThan(2)
-    expect(field.x - (select.x + select.width)).toBeLessThan(2)
+    // The dropdown and the field are one control: the same height, no gap between them. Both are
+    // measured in one moment, and again until the picker has settled where it opens.
+    const select = (await kind(page).elementHandle())!
+    const field = (await search(page).elementHandle())!
+    await expect
+      .poll(() =>
+        page.evaluate(
+          ([select, field]) => {
+            const s = select.getBoundingClientRect()
+            const f = field.getBoundingClientRect()
+            return {
+              height: s.height >= f.height - 1,
+              level: Math.abs(s.top - f.top) < 2,
+              fused: f.left - s.right < 2,
+            }
+          },
+          [select, field] as const,
+        ),
+      )
+      .toEqual({ height: true, level: true, fused: true })
   } finally {
     await app.close()
   }
