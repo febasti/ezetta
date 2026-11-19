@@ -256,6 +256,36 @@ test('the font of the editor is chosen in the settings: serif, sans-serif or mon
   }
 })
 
+test('a new text width applies at once, also beside notes in the margin', async () => {
+  // A sheet with a note: the margin narrows the text, and works out its width itself.
+  const { app, page } = await open()
+  try {
+    const column = () =>
+      page.evaluate(() => {
+        const box = document.querySelector('.cm-content')!.getBoundingClientRect()
+        return { left: Math.round(box.left), width: Math.round(box.width) }
+      })
+    await expect(page.locator('.cm-notes-margin .cm-note-card')).toHaveCount(1)
+    const before = await column()
+    await page.keyboard.press(`${MOD}+,`)
+    await dialog(page).getByRole('tab', { name: 'Darstellung' }).click()
+    const width = dialog(page).getByRole('textbox', { name: 'Textbreite' })
+    await width.fill('560')
+    await width.press('Enter')
+    // Without anything else changed (before, only a new font or size moved the text).
+    await expect.poll(column).not.toEqual(before)
+    const changed = await column()
+    // It is where the sheet puts it when opened afresh with that width.
+    await dialog(page).getByRole('button', { name: 'Schließen' }).click()
+    await page.reload()
+    await openSheet(page, 'methoden/design.typ')
+    await expect(page.locator('.cm-notes-margin .cm-note-card')).toHaveCount(1)
+    await expect.poll(column).toEqual(changed)
+  } finally {
+    await app.close()
+  }
+})
+
 test('what stands in the text (citations, footnotes, a quote’s source) follows the font of the editor', async () => {
   await writeFile(
     join(sandbox.projectDir, SHEET),

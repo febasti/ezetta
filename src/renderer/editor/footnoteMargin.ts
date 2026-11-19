@@ -78,6 +78,10 @@ class MarginPlugin implements PluginValue {
   private destroyed = false
 
   private readonly onScroll = (): void => this.view.requestMeasure(this.request)
+  /** The window changed size, or the writer changed the writing face (the text width among it),
+   * which announces itself the same way: the text column is worked out again. CodeMirror's own
+   * measuring would not tell this plugin, since the inline width it set keeps the editor as it was. */
+  private readonly onResize = (): void => this.view.requestMeasure(this.request)
 
   private readonly request = {
     read: (view: EditorView): Measure => this.read(view),
@@ -88,6 +92,7 @@ class MarginPlugin implements PluginValue {
     this.container.className = 'cm-notes-margin'
     view.scrollDOM.append(this.container)
     view.scrollDOM.addEventListener('scroll', this.onScroll, { passive: true })
+    window.addEventListener('resize', this.onResize)
     view.requestMeasure(this.request)
   }
 
@@ -108,6 +113,7 @@ class MarginPlugin implements PluginValue {
   destroy(): void {
     this.destroyed = true
     this.view.scrollDOM.removeEventListener('scroll', this.onScroll)
+    window.removeEventListener('resize', this.onResize)
     for (const index of [...this.editors.keys()]) this.unmount(index)
     for (const text of this.texts.values()) text.destroy()
     this.texts.clear()
