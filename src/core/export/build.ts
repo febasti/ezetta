@@ -29,9 +29,13 @@ import type { OptionValues, TemplateInfo } from './template'
 export const BUILD_DIR = '_build'
 export const MAIN_FILE = `${BUILD_DIR}/main.typ`
 export const OUTPUT_FILE = `${BUILD_DIR}/out.pdf`
-/** The pages of the preview, one PNG each, `p-1.png`, `p-2.png`, …: temporary, made again on every refresh. */
+/**
+ * The pages of the preview, one SVG each, `p-1.svg`, `p-2.svg`, … (the templates' pictures are PNG,
+ * in a folder of their own): temporary, made again on every refresh.
+ */
 export const PREVIEW_DIR = `${BUILD_DIR}/preview`
-export const PREVIEW_PAGE_PATTERN = `${PREVIEW_DIR}/p-{p}.png`
+export const previewPagePattern = (format: 'png' | 'svg'): string =>
+  `${PREVIEW_DIR}/p-{p}.${format}`
 
 /** The title page fields and the sheets of the Titelei's slots, as the export gets them. */
 export interface TiteleiInput extends TiteleiFields {

@@ -9,9 +9,9 @@
   import Link from '../../ui/kit/Link.svelte'
   import ListRow from '../../ui/kit/ListRow.svelte'
   import { preview } from './preview.svelte'
-  import { project } from '../sidebar/project.svelte'
   import PropertiesPanel from '../templates/PropertiesPanel.svelte'
   import ExportPanel from './ExportPanel.svelte'
+  import PreviewPane from './PreviewPane.svelte'
   import { EXPORT, OPTIONS, exporting } from './export.svelte'
   import TemplateList from './TemplateList.svelte'
   import { scrollbar } from '../../ui/scrollbar'
@@ -66,9 +66,6 @@
       .querySelector(`.properties section[aria-label="${i18n.t('export.warnings')}"]`)
       ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }
-
-  const src = (n: number): string =>
-    `project-asset://project/_build/preview/p-${n}.png?v=${preview.stamp}`
 </script>
 
 {#snippet row(
@@ -209,27 +206,7 @@
         {/if}
       </div>
 
-      <section class="pages" use:scrollbar aria-label={i18n.t('preview.title')}>
-        {#if preview.status === 'error'}
-          <p class="empty problem" role="alert">
-            {preview.noCompiler ? i18n.t('preview.noCompiler') : i18n.t('preview.failed')}
-          </p>
-        {:else if preview.status === 'ready'}
-          <div class="sheets" class:dim={preview.busy}>
-            {#each Array.from({ length: preview.pages }, (_, i) => i + 1) as n (n)}
-              <img
-                class="page"
-                src={src(n)}
-                alt={i18n.t('preview.pageLabel', { page: n })}
-                loading="lazy"
-                decoding="async"
-              />
-            {/each}
-          </div>
-        {:else}
-          <p class="empty">{project.snapshot ? i18n.t('preview.loading') : ''}</p>
-        {/if}
-      </section>
+      <PreviewPane />
     </div>
   </Dialog>
 {/if}
@@ -307,43 +284,5 @@
     min-height: 0;
     overflow-y: auto;
     padding-right: var(--sp-8);
-  }
-  /* The pages lie on the panel's ground, as on a desk. A clear border as deep as the rounded corner
-     keeps the ends of the scrollbars out of the corners (macOS draws them to the very edge); the
-     panel's ground runs under it, and the pages' padding is less by as much. */
-  .pages {
-    flex: 1;
-    min-width: 0;
-    overflow: auto;
-    border: var(--r-lg) solid transparent;
-    border-radius: var(--r-lg);
-    background: var(--color-panel);
-  }
-  .sheets {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--sp-24);
-    padding: calc(var(--sp-24) - var(--r-lg));
-  }
-  .sheets.dim {
-    opacity: 0.6;
-  }
-  .page {
-    display: block;
-    width: 100%;
-    max-width: 794px;
-    height: auto;
-    min-height: 120px;
-    background: var(--color-paper);
-    box-shadow: var(--shadow-paper);
-  }
-  .empty {
-    margin: var(--sp-24);
-    color: var(--color-label-tertiary);
-    font: var(--type-body);
-  }
-  .problem {
-    color: var(--color-danger);
   }
 </style>

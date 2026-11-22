@@ -55,6 +55,8 @@
   import IconPhotoOff from '@tabler/icons-svelte/icons/photo-off'
   import IconPilcrow from '@tabler/icons-svelte/icons/pilcrow'
   import IconPlus from '@tabler/icons-svelte/icons/plus'
+  import IconZoomIn from '@tabler/icons-svelte/icons/zoom-in'
+  import IconZoomOut from '@tabler/icons-svelte/icons/zoom-out'
   import IconSearch from '@tabler/icons-svelte/icons/search'
   import IconTypography from '@tabler/icons-svelte/icons/typography'
   import IconNotebook from '@tabler/icons-svelte/icons/notebook'
@@ -96,6 +98,8 @@
     'chevron-down': IconChevronDown,
     'chevron-left': IconChevronLeft,
     plus: IconPlus,
+    'zoom-in': IconZoomIn,
+    'zoom-out': IconZoomOut,
     folder: IconFolder,
     file: IconFileText,
     'eye-off': IconEyeOff,

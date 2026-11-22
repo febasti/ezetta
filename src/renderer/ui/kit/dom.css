@@ -268,3 +268,25 @@
   width: 8px;
   background: var(--color-scrollbar-active);
 }
+/* The bar along the bottom edge of an area that scrolls across: the same thumb, lying down. */
+.k-scroll-rail.horizontal {
+  width: auto;
+  height: var(--sp-12);
+  translate: 0 -100%;
+}
+.k-scroll-rail.horizontal .k-scroll-thumb {
+  top: auto;
+  right: auto;
+  bottom: 3px;
+  left: 0;
+  width: auto;
+  height: 6px;
+  transition:
+    height var(--duration),
+    background var(--duration);
+}
+.k-scroll-rail.horizontal:hover .k-scroll-thumb,
+.k-scroll-rail.horizontal.dragging .k-scroll-thumb {
+  width: auto;
+  height: 8px;
+}

@@ -22,6 +22,7 @@ import {
   createExporter,
   listFontVariants,
   spawnCompiler,
+  spawnEvaluator,
   stopCompilers,
 } from './services/exporter'
 import { createTemplateStore } from './services/templateStore'
@@ -317,6 +318,7 @@ void app.whenReady().then(async () => {
     templatesDir: bundledTemplates,
     customTemplatesDir: customTemplates,
     compiler: spawnCompiler(typstBinary),
+    evaluate: spawnEvaluator(typstBinary),
     available: () => compilerAvailable(typstBinary),
     pickSavePath: (title, filterName, fileName) =>
       savePath(

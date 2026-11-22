@@ -8,9 +8,11 @@ import {
   OUTPUT_FILE,
   MAIN_FILE,
   PREVIEW_DIR,
-  PREVIEW_PAGE_PATTERN,
   buildExport,
+  previewPagePattern,
 } from '@core/export/build'
+import { OUTLINE_QUERY, parseOutline, svgPageSize } from '@core/export/previewPages'
+import type { PageSize } from '@core/export/previewPages'
 import { miniature } from '@core/export/miniature'
 import type { SampleLanguage } from '@core/export/miniature'
 import type { PreparedExport } from '@core/project/session'
@@ -178,6 +180,8 @@ export interface CompileRun {
 /** What to make: the PDF of an export (the default), or page images for the preview. `signal` stops it. */
 export interface CompileOptions {
   preview?: boolean
+  /** The kind of page images: PNG (the default, the templates' pictures) or SVG (the preview's pages, sharp at any zoom). */
+  format?: 'png' | 'svg'
   signal?: AbortSignal
   /** Folders with font files besides the ones the compiler brings. */
   fontPaths?: readonly string[]
@@ -187,11 +191,26 @@ export interface CompileOptions {
 /** Runs the compiler in the project folder and gathers what it printed. */
 export type Compiler = (cwd: string, options?: CompileOptions) => Promise<CompileRun>
 
-/** The resolution of the preview's pages: sharp on a high-resolution screen, about 150 KB a page. */
-const PREVIEW_PPI = 150
+/** What `typst eval` printed: the value as JSON on its standard output, the messages apart. */
+export interface EvalRun {
+  code: number | null
+  stdout: string
+}
+/** Evaluates Typst code in the context of the project's compiled main file. */
+export type Evaluator = (
+  cwd: string,
+  code: string,
+  options?: Pick<CompileOptions, 'signal' | 'fontPaths'>,
+) => Promise<EvalRun>
+
+/** The resolution of PNG pages that do not ask for one of their own. */
+const PNG_PPI = 150
 
 /** A thumbnail is a taster 9 cm wide shown about 115 pixels wide, three times that on a sharp screen. */
 const THUMBNAIL_PPI = 96
+
+/** A4 in points: the size of a page whose own cannot be read. */
+const A4: PageSize = { width: 595.28, height: 841.89 }
 
 /** How many thumbnails are kept: one per template and look, so a few dozen is plenty. */
 const THUMBNAIL_CACHE = 64
@@ -217,52 +236,99 @@ export function stopCompilers(): void {
   for (const child of compiling) child.kill()
 }
 
-export function spawnCompiler(binary: string): Compiler {
-  return (cwd, options = {}) =>
-    new Promise((resolve) => {
-      const child = spawn(
-        binary,
-        [
-          'compile',
-          '--root',
-          cwd,
-          // The system's fonts too: a template may name any font the writer has installed.
-          ...(options.fontPaths ?? []).flatMap((path) => ['--font-path', path]),
-          '--diagnostic-format',
-          'short',
-          ...(options.preview
-            ? ['--format', 'png', '--ppi', String(options.ppi ?? PREVIEW_PPI)]
-            : []),
-          MAIN_FILE,
-          options.preview ? PREVIEW_PAGE_PATTERN : OUTPUT_FILE,
-        ],
-        {
-          cwd,
-          shell: false,
-          stdio: ['ignore', 'pipe', 'pipe'],
-          signal: options.signal,
-          windowsHide: true,
-        },
-      )
-      compiling.add(child)
-      let output = ''
-      const take = (chunk: Buffer): void => {
-        if (output.length < 2_000_000) output += chunk.toString('utf8')
-      }
-      child.stdout.on('data', take)
-      child.stderr.on('data', take)
-      const timer = setTimeout(() => child.kill(), 180_000)
-      child.once('error', () => {
-        clearTimeout(timer)
-        compiling.delete(child)
-        resolve({ code: null, output })
-      })
-      child.once('exit', (code) => {
-        clearTimeout(timer)
-        compiling.delete(child)
-        resolve({ code, output })
-      })
+/** Starts the compiler with `args` in `cwd` and gathers what it printed: its standard output apart, and everything together. */
+function runTypst(
+  binary: string,
+  args: string[],
+  cwd: string,
+  signal: AbortSignal | undefined,
+): Promise<{ code: number | null; stdout: string; output: string }> {
+  return new Promise((resolve) => {
+    const child = spawn(binary, args, {
+      cwd,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      signal,
+      windowsHide: true,
     })
+    compiling.add(child)
+    let output = ''
+    let stdout = ''
+    const take = (chunk: Buffer): void => {
+      if (output.length < 2_000_000) output += chunk.toString('utf8')
+    }
+    child.stdout.on('data', (chunk: Buffer) => {
+      if (stdout.length < 2_000_000) stdout += chunk.toString('utf8')
+      take(chunk)
+    })
+    child.stderr.on('data', take)
+    const timer = setTimeout(() => child.kill(), 180_000)
+    child.once('error', () => {
+      clearTimeout(timer)
+      compiling.delete(child)
+      resolve({ code: null, stdout, output })
+    })
+    child.once('exit', (code) => {
+      clearTimeout(timer)
+      compiling.delete(child)
+      resolve({ code, stdout, output })
+    })
+  })
+}
+
+/** The fonts the compiler reads: its own, the system's (a template may name any font the writer has installed), and these folders. */
+const fontArgs = (paths: readonly string[] | undefined): string[] =>
+  (paths ?? []).flatMap((path) => ['--font-path', path])
+
+export function spawnCompiler(binary: string): Compiler {
+  return async (cwd, options = {}) => {
+    const format = options.format ?? 'png'
+    const run = await runTypst(
+      binary,
+      [
+        'compile',
+        '--root',
+        cwd,
+        ...fontArgs(options.fontPaths),
+        '--diagnostic-format',
+        'short',
+        ...(options.preview
+          ? [
+              '--format',
+              format,
+              ...(format === 'png' ? ['--ppi', String(options.ppi ?? PNG_PPI)] : []),
+            ]
+          : []),
+        MAIN_FILE,
+        options.preview ? previewPagePattern(format) : OUTPUT_FILE,
+      ],
+      cwd,
+      options.signal,
+    )
+    return { code: run.code, output: run.output }
+  }
+}
+
+export function spawnEvaluator(binary: string): Evaluator {
+  return async (cwd, code, options = {}) => {
+    const run = await runTypst(
+      binary,
+      [
+        'eval',
+        '--root',
+        cwd,
+        ...fontArgs(options.fontPaths),
+        '--diagnostic-format',
+        'short',
+        '--in',
+        MAIN_FILE,
+        code,
+      ],
+      cwd,
+      options.signal,
+    )
+    return { code: run.code, stdout: run.stdout }
+  }
 }
 
 /** Pages in a PDF: its page objects, not the page tree. */
@@ -277,6 +343,8 @@ export interface ExporterDeps {
   /** The writer's own templates, in the app's data folder. */
   customTemplatesDir?: string
   compiler: Compiler
+  /** Lists the headings of the preview's pages; without it the preview has no outline. */
+  evaluate?: Evaluator
   /** Whether a compiler can be started at all. */
   available: () => Promise<boolean>
   pickSavePath: (title: string, filterName: string, fileName: string) => Promise<string | null>
@@ -370,14 +438,18 @@ export function createExporter(deps: ExporterDeps): {
     // The old pages go, so a document that got shorter does not keep its last pages.
     await rm(join(root, PREVIEW_DIR), { recursive: true, force: true })
     await mkdir(join(root, PREVIEW_DIR), { recursive: true })
-    const run = await deps.compiler(root, {
-      preview: true,
-      signal: controller.signal,
-      fontPaths: fontPathsOf(template),
-    })
+    const fontPaths = fontPathsOf(template)
+    // The outline is asked for at the same time: it lays the document out again, on other cores.
+    const [run, listed] = await Promise.all([
+      deps.compiler(root, { preview: true, format: 'svg', signal: controller.signal, fontPaths }),
+      deps.evaluate?.(root, OUTLINE_QUERY, { signal: controller.signal, fontPaths }),
+    ])
     if (controller.signal.aborted) return superseded()
     const diagnostics = parseDiagnostics(run.output).map(wire)
-    const pages = (await readdir(join(root, PREVIEW_DIR))).filter((f) => /^p-\d+\.png$/.test(f))
+    const pages = (await readdir(join(root, PREVIEW_DIR)))
+      .map((f) => /^p-(\d+)\.svg$/.exec(f))
+      .flatMap((m) => (m ? [Number(m[1])] : []))
+      .sort((a, b) => a - b)
     if (run.code !== 0 || pages.length === 0) {
       if (diagnostics.every((d) => d.severity !== 'error'))
         diagnostics.push({
@@ -388,7 +460,30 @@ export function createExporter(deps: ExporterDeps): {
         })
       return { ok: false, reason: 'failed', diagnostics }
     }
-    return { ok: true, pages: pages.length, stamp: String(Date.now()), diagnostics }
+    const sizes = await Promise.all(
+      pages.map((n) => pageSize(join(root, PREVIEW_DIR, `p-${n}.svg`))),
+    )
+    const outline = listed && listed.code === 0 ? parseOutline(listed.stdout, pages.length) : []
+    return {
+      ok: true,
+      pages: pages.length,
+      sizes,
+      outline,
+      stamp: String(Date.now()),
+      diagnostics,
+    }
+  }
+
+  /** A page's size from the start of its file; A4 when it cannot be read, so the column still has a length. */
+  async function pageSize(path: string): Promise<PageSize> {
+    const file = await open(path, 'r')
+    try {
+      const head = Buffer.alloc(1024)
+      const { bytesRead } = await file.read(head, 0, head.length, 0)
+      return svgPageSize(head.subarray(0, bytesRead).toString('utf8')) ?? A4
+    } finally {
+      await file.close()
+    }
   }
 
   /** Thumbnails made so far, by what they were made from: a template that did not change is not compiled again. */

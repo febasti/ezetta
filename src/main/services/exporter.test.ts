@@ -10,8 +10,9 @@ import {
   listFontVariants,
   loadTemplates,
   spawnCompiler,
+  spawnEvaluator,
 } from './exporter'
-import type { Compiler } from './exporter'
+import type { Compiler, Evaluator } from './exporter'
 import { findTypst } from './mathRenderer'
 import { createRootedFs } from './rootedFs'
 import type { ProjectHost } from './projectHost'
@@ -27,6 +28,10 @@ const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
   'base64',
 )
+
+/** A page of the preview: an empty A5 page, as the compiler writes it. */
+const SVG = (width = 419.53, height = 595.28): string =>
+  `<svg viewBox="0 0 ${width} ${height}" width="${width}pt" height="${height}pt" xmlns="http://www.w3.org/2000/svg"></svg>`
 
 const BIB = '@book{smith2020, author = {Smith, Anna}, title = {Eine Studie}, year = {2020}}\n'
 
@@ -86,6 +91,7 @@ function exporter(session: ProjectSession, root: string, target: string | null) 
     host,
     templatesDir: TEMPLATES,
     compiler: spawnCompiler(binary),
+    evaluate: spawnEvaluator(binary),
     available: () => Promise.resolve(installed),
     pickSavePath: () => Promise.resolve(target),
     log: () => undefined,
@@ -154,20 +160,26 @@ describe('the preview', () => {
     const calls: number[] = []
     const compiler: Compiler = async (cwd, o) => {
       calls.push(calls.length + 1)
-      expect(o?.preview).toBe(true)
+      expect(o).toMatchObject({ preview: true, format: 'svg' })
       await new Promise((resolve) => setTimeout(resolve, options.ms ?? 0))
       if (o?.signal?.aborted) return { code: null, output: '' }
       for (let i = 1; i <= (options.pages ?? 3); i += 1)
-        await writeFile(join(cwd, '_build', 'preview', `p-${i}.png`), PNG)
+        await writeFile(join(cwd, '_build', 'preview', `p-${i}.svg`), SVG())
       return { code: options.code ?? 0, output: options.output ?? '' }
     }
     return { compiler, calls }
   }
-  const withCompiler = (session: ProjectSession, root: string, compiler: Compiler) =>
+  const withCompiler = (
+    session: ProjectSession,
+    root: string,
+    compiler: Compiler,
+    evaluate?: Evaluator,
+  ) =>
     createExporter({
       host: { session: () => session, root } as unknown as ProjectHost,
       templatesDir: TEMPLATES,
       compiler,
+      ...(evaluate ? { evaluate } : {}),
       available: () => Promise.resolve(true),
       pickSavePath: () => Promise.resolve(null),
       log: () => undefined,
@@ -181,6 +193,47 @@ describe('the preview', () => {
     expect(result.ok && result.stamp).toMatch(/^\d+$/)
     // The sheets were prepared for it, like for an export.
     expect(await readFile(join(root, '_build', 'main.typ'), 'utf8')).toContain('project')
+  })
+
+  it('gives the size of each page and the headings on them', async () => {
+    const { root, session } = await project()
+    const compiler: Compiler = async (cwd) => {
+      await writeFile(join(cwd, '_build', 'preview', 'p-1.svg'), SVG())
+      await writeFile(join(cwd, '_build', 'preview', 'p-2.svg'), SVG(595.28, 419.53))
+      // Something that is not a page is no page.
+      await writeFile(join(cwd, '_build', 'preview', 'notes.txt'), 'x')
+      return { code: 0, output: '' }
+    }
+    const asked: string[] = []
+    const evaluate: Evaluator = (cwd, code) => {
+      asked.push(code)
+      return Promise.resolve({
+        code: 0,
+        stdout: JSON.stringify([
+          { level: 1, number: '1', text: 'Einleitung', page: 1, y: 72 },
+          { level: 2, number: '1.1', text: 'Später', page: 5, y: 10 },
+        ]),
+      })
+    }
+    const result = await withCompiler(session, root, compiler, evaluate).preview()
+    expect(result).toMatchObject({
+      ok: true,
+      pages: 2,
+      sizes: [
+        { width: 419.53, height: 595.28 },
+        { width: 595.28, height: 419.53 },
+      ],
+      // A heading on a page the preview does not have is left out.
+      outline: [{ level: 1, number: '1', text: 'Einleitung', page: 1, y: 72 }],
+    })
+    expect(asked[0]).toContain('query(heading)')
+  })
+
+  it('still shows the pages when the headings cannot be listed', async () => {
+    const { root, session } = await project()
+    const evaluate: Evaluator = () => Promise.resolve({ code: 1, stdout: '' })
+    const result = await withCompiler(session, root, fakeCompiler().compiler, evaluate).preview()
+    expect(result).toMatchObject({ ok: true, pages: 3, outline: [] })
   })
 
   it('removes the pages of an earlier preview, so a shorter document keeps none of them', async () => {
@@ -211,7 +264,7 @@ describe('the preview', () => {
       const mine = calls
       await new Promise((resolve) => setTimeout(resolve, mine === 1 ? 150 : 5))
       if (o?.signal?.aborted) return { code: null, output: '' }
-      await writeFile(join(cwd, '_build', 'preview', 'p-1.png'), PNG)
+      await writeFile(join(cwd, '_build', 'preview', 'p-1.svg'), SVG())
       return { code: 0, output: '' }
     }
     const run = withCompiler(session, root, compiler)
@@ -241,7 +294,7 @@ describe('the preview with a profile', () => {
     let seen = ''
     const compiler: Compiler = async (cwd) => {
       seen = await readFile(join(cwd, '_build', 'main.typ'), 'utf8')
-      await writeFile(join(cwd, '_build', 'preview', 'p-1.png'), PNG)
+      await writeFile(join(cwd, '_build', 'preview', 'p-1.svg'), SVG())
       return { code: 0, output: '' }
     }
     const run = createExporter({
@@ -352,15 +405,29 @@ describe.skipIf(!installed)('the thumbnails with the real Typst compiler', () =>
 })
 
 describe.skipIf(!installed)('the preview with the real Typst compiler', () => {
-  it('makes one PNG per page of the thesis, and fewer when it is shorter', async () => {
+  it('makes one SVG per page of the thesis, with its size and the headings on it', async () => {
     const { root, session } = await project()
     const run = exporter(session, root, null)
     const result = await run.preview()
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.pages).toBeGreaterThanOrEqual(2) // title page, contents, chapters
-    const first = await readFile(join(root, '_build', 'preview', 'p-1.png'))
-    expect(first.subarray(1, 4).toString('latin1')).toBe('PNG')
+    const first = await readFile(join(root, '_build', 'preview', 'p-1.svg'), 'utf8')
+    expect(first.startsWith('<svg')).toBe(true)
+    // A4, upright.
+    expect(result.sizes).toHaveLength(result.pages)
+    expect(result.sizes[0]!.width).toBeCloseTo(595.28, 1)
+    expect(result.sizes[0]!.height).toBeCloseTo(841.89, 1)
+    // The chapters as the contents list them, numbered, on the pages after the contents; the
+    // bibliography with no number.
+    const chapters = result.outline.filter((h) => h.level === 1)
+    expect(chapters.map((h) => [h.number, h.text])).toEqual([
+      ['1', 'Einleitung'],
+      ['2', 'Methoden'],
+      [null, 'Literaturverzeichnis'],
+    ])
+    expect(chapters[0]!.page).toBeGreaterThan(1)
+    expect(chapters[1]!.page).toBeGreaterThanOrEqual(chapters[0]!.page)
     // Cancelling the compiler stops it without leaving the pages half-made.
     const again = run.preview()
     const newer = run.preview()

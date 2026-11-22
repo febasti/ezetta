@@ -121,3 +121,97 @@ test('citations do not stop the pages: an unknown work, a flawed bibliography, a
     await app.close()
   }
 })
+
+test('the pages zoom, and a sidebar shows them small or the headings, which lead to them', async () => {
+  // Long enough for several pages, with chapters and sections.
+  const paragraph =
+    'Ein Absatz, der lang genug ist, um eine Zeile zu füllen und weiter zu laufen. '.repeat(8)
+  await writeFile(
+    join(sandbox.projectDir, SHEET),
+    [
+      '= Design',
+      '',
+      ...Array.from({ length: 4 }, (_, i) => [
+        `== Teil ${i + 1}`,
+        '',
+        ...Array(6).fill(paragraph + '\n'),
+      ]).flat(),
+    ].join('\n'),
+  )
+  const { app, page } = await open()
+  try {
+    await openDialog(page)
+    await expect(pages(page).first()).toBeVisible({ timeout: 30_000 })
+    const count = await pages(page).count()
+    expect(count).toBeGreaterThan(3)
+    // Each page has its size before it is loaded: the last one is as tall as the first.
+    const height = (n: number) =>
+      pages(page)
+        .nth(n)
+        .evaluate((img: HTMLImageElement) => img.offsetHeight)
+    expect(await height(count - 1)).toBe(await height(0))
+    const width = () =>
+      pages(page)
+        .first()
+        .evaluate((img: HTMLImageElement) => img.offsetWidth)
+    const zoom = pane(page).getByLabel('Zoom', { exact: true })
+    await expect(zoom).toHaveValue('width')
+    if (process.env['EZETTA_SHOTS'])
+      await page.screenshot({ path: `${process.env['EZETTA_SHOTS']}/1-width.png` })
+
+    // The real size: A4 is 794 pixels wide; a step up makes it larger, Cmd 0 brings the page's width back.
+    await zoom.selectOption('1')
+    await expect.poll(width).toBe(794)
+    await pane(page).getByRole('button', { name: 'Vergrößern' }).click()
+    await expect.poll(width).toBe(992)
+    await expect(zoom).toHaveValue('1.25')
+    // A page wider than the desk scrolls across.
+    const desk = pane(page).locator('.desk')
+    expect(await desk.evaluate((d) => d.scrollWidth > d.clientWidth)).toBe(true)
+    if (process.env['EZETTA_SHOTS'])
+      await page.screenshot({ path: `${process.env['EZETTA_SHOTS']}/2-zoomed.png` })
+    await page.keyboard.press(`${MOD}+-`)
+    await expect.poll(width).toBe(794)
+    await page.keyboard.press(`${MOD}+0`)
+    await expect(zoom).toHaveValue('width')
+    await zoom.selectOption('page')
+    const whole = await desk.evaluate((d) => {
+      const img = d.querySelector('img.page') as HTMLImageElement
+      return img.offsetHeight <= d.clientHeight
+    })
+    expect(whole).toBe(true)
+    await zoom.selectOption('width')
+
+    // The sidebar with the pages small: a click on one brings it into view and marks it.
+    const sidebar = pane(page).getByRole('complementary', { name: 'Seitenleiste' })
+    await expect(sidebar).toHaveCount(0)
+    await pane(page).getByRole('button', { name: 'Seitenleiste' }).click()
+    await expect(sidebar).toBeVisible()
+    const thumbs = sidebar.getByRole('button', { name: /^Seite \d+$/ })
+    await expect(thumbs).toHaveCount(count)
+    await expect(thumbs.first()).toHaveAttribute('aria-current', 'page')
+    await thumbs.nth(2).click()
+    await expect(thumbs.nth(2)).toHaveAttribute('aria-current', 'page')
+    await expect(pane(page)).toContainText(`Seite 3 von ${count}`)
+    if (process.env['EZETTA_SHOTS'])
+      await page.screenshot({ path: `${process.env['EZETTA_SHOTS']}/3-thumbs.png` })
+
+    // The headings, numbered as the template prints them; a click goes to the page it is on.
+    await sidebar.getByRole('radio', { name: 'Gliederung' }).click()
+    const last = sidebar.getByRole('button', { name: /Teil 4/ })
+    await expect(last).toBeVisible()
+    await last.click()
+    await expect(last).toHaveAttribute('aria-current', 'location')
+    const onPage = Number(await last.locator('.page-number').textContent())
+    await expect(pane(page)).toContainText(`Seite ${onPage} von ${count}`)
+    if (process.env['EZETTA_SHOTS'])
+      await page.screenshot({ path: `${process.env['EZETTA_SHOTS']}/4-outline.png` })
+
+    // The sidebar is remembered when the dialog opens again.
+    await page.keyboard.press('Escape')
+    await openDialog(page)
+    await expect(sidebar).toBeVisible()
+  } finally {
+    await app.close()
+  }
+})

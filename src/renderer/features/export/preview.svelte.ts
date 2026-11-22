@@ -1,9 +1,16 @@
 import type { z } from 'zod'
-import type { diagnosticSchema, profileSchema } from '@shared/export'
+import type {
+  diagnosticSchema,
+  outlineEntrySchema,
+  pageSizeSchema,
+  profileSchema,
+} from '@shared/export'
 import { call } from '../../lib/api'
 
 export type Diagnostic = z.infer<typeof diagnosticSchema>
 type Profile = z.infer<typeof profileSchema>
+export type PageSize = z.infer<typeof pageSizeSchema>
+export type OutlineEntry = z.infer<typeof outlineEntrySchema>
 /**
  * The pages of the export dialog's preview: the project as the profile being edited sets
  * it, as images that the main process makes with the compiler. Asking again while one is being made
@@ -12,6 +19,10 @@ type Profile = z.infer<typeof profileSchema>
 class PreviewStore {
   status = $state<'idle' | 'loading' | 'ready' | 'error'>('idle')
   pages = $state(0)
+  /** The size of each page in points, so the column has its length before a picture is loaded. */
+  sizes = $state.raw<PageSize[]>([])
+  /** The headings the contents list, with the page they are on. */
+  outline = $state.raw<OutlineEntry[]>([])
   /** Changes with every refresh, so an image is not taken from the cache. */
   stamp = $state('')
   diagnostics = $state.raw<Diagnostic[]>([])
@@ -38,6 +49,8 @@ class PreviewStore {
     }
     if (result.ok) {
       this.pages = result.pages
+      this.sizes = result.sizes
+      this.outline = result.outline
       this.stamp = result.stamp
       this.diagnostics = result.diagnostics
       this.noCompiler = false
@@ -48,6 +61,8 @@ class PreviewStore {
     this.noCompiler = result.reason === 'no_compiler'
     this.diagnostics = result.diagnostics
     this.pages = 0
+    this.sizes = []
+    this.outline = []
     this.status = 'error'
   }
 
@@ -57,8 +72,14 @@ class PreviewStore {
     this.busy = false
     this.status = 'idle'
     this.pages = 0
+    this.sizes = []
+    this.outline = []
     this.diagnostics = []
   }
 }
 
 export const preview = new PreviewStore()
+
+/** The picture of a page, counted from 1, as the project's image protocol serves it. */
+export const pageSrc = (n: number): string =>
+  `project-asset://project/_build/preview/p-${n}.svg?v=${preview.stamp}`

@@ -58,6 +58,14 @@ function persist(key: string, value: unknown): void {
   }
 }
 
+export type PreviewZoom = 'width' | 'page' | number
+
+function previewZoomFromStore(): PreviewZoom {
+  const zoom = stored<unknown>('previewZoom', 'width')
+  if (zoom === 'page' || zoom === 'width') return zoom
+  return typeof zoom === 'number' && zoom >= 0.25 && zoom <= 4 ? zoom : 'width'
+}
+
 /** The narrowest each column may be: below this its header and rows no longer fit. */
 const MIN_WIDTH = { groups: 160, sheets: 200, outline: 220, right: 240 } as const
 const clampWidth = (value: number, column: keyof typeof MIN_WIDTH): number =>
@@ -85,6 +93,11 @@ export const ui = $state({
   literatureScope: stored<'sheet' | 'group' | 'project'>('literatureScope', 'sheet'),
   /** The tab of the right sidebar: the cited works, or the spelling and grammar issues. */
   rightTab: stored<'literature' | 'proof' | 'stats'>('rightTab', 'literature'),
+  /** The sidebar beside the export preview's pages, and what it shows: the pages small, or the headings. */
+  previewSidebarVisible: stored('previewSidebarVisible', false),
+  previewSidebarTab: stored<'pages' | 'outline'>('previewSidebarTab', 'pages'),
+  /** The zoom of the export preview: the page's width or the whole page in view, or a factor of its real size. */
+  previewZoom: previewZoomFromStore(),
   confirm: null as ConfirmRequest | null,
   prompt: null as PromptRequest | null,
   /** The size picker under the toolbar's table button: where it opens, and what a click does. */
@@ -236,4 +249,16 @@ export function fittedWidths(): {
   const widths = { outline: ui.outlineWidth, groups: ui.groupsWidth, sheets: ui.sheetsWidth }
   left.forEach((l, i) => (widths[l.key] = fitted.left[i]!))
   return { ...widths, right: fitted.right }
+}
+
+export function setPreviewSidebar(visible: boolean, tab = ui.previewSidebarTab): void {
+  ui.previewSidebarVisible = visible
+  ui.previewSidebarTab = tab
+  persist('previewSidebarVisible', visible)
+  persist('previewSidebarTab', tab)
+}
+
+export function setPreviewZoom(zoom: PreviewZoom): void {
+  ui.previewZoom = zoom
+  persist('previewZoom', zoom)
 }

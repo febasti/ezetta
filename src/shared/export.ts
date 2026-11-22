@@ -107,16 +107,33 @@ export const exportRequestSchema = z
   })
   .strict()
 
+/** A page of the preview: its size in points. */
+export const pageSizeSchema = z.object({ width: z.number(), height: z.number() }).strict()
+
+/** A heading of the preview's pages, for its outline: where it stands, in points from the top of its page. */
+export const outlineEntrySchema = z
+  .object({
+    level: z.number().int(),
+    number: z.string().max(40).nullable(),
+    text: z.string().max(300),
+    page: z.number().int(),
+    y: z.number(),
+  })
+  .strict()
+
 /**
- * The preview: the pages of the project made as images in the project's `_build/preview`
- * folder, served like the project's other images. `stamp` changes with every refresh, so a page is
- * not taken from the cache. `superseded`: a newer refresh was asked for while this one ran.
+ * The preview: the pages of the project made as SVG images in the project's `_build/preview`
+ * folder, served like the project's other images, with the size of each and the headings on them.
+ * `stamp` changes with every refresh, so a page is not taken from the cache. `superseded`: a newer
+ * refresh was asked for while this one ran.
  */
 export const exportPreviewSchema = z.discriminatedUnion('ok', [
   z
     .object({
       ok: z.literal(true),
       pages: z.number(),
+      sizes: z.array(pageSizeSchema),
+      outline: z.array(outlineEntrySchema),
       stamp: z.string(),
       diagnostics: z.array(diagnosticSchema),
     })
