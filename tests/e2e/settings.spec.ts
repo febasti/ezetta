@@ -98,13 +98,24 @@ test('theme and language change at once and are stored', async () => {
   const { app, page } = await open()
   try {
     await page.keyboard.press(`${MOD}+,`)
+    // The theme is with the rest of the look: light, dark, or as the system is (the default).
+    await dialog(page).getByRole('tab', { name: 'Darstellung' }).click()
+    await expect(dialog(page).getByRole('radio', { name: 'Wie das System' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
     await dialog(page).getByRole('radio', { name: 'Dunkel' }).click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
-    // The first field of the tab, found by place: its label changes with the language.
-    await dialog(page).locator('select').first().selectOption('en')
-    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
     // What is chosen is stored, so the next start has it.
     expect(await page.evaluate(() => localStorage.getItem('theme'))).toBe('dark')
+    // Back to the system's: the window follows the system again, which is light in the tests.
+    await dialog(page).getByRole('radio', { name: 'Wie das System' }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+    expect(await page.evaluate(() => localStorage.getItem('theme'))).toBe('system')
+    // The first field of the general tab, found by place: its label changes with the language.
+    await dialog(page).getByRole('tab', { name: 'Allgemein' }).click()
+    await dialog(page).locator('select').first().selectOption('en')
+    await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
   } finally {
     await app.close()
   }
@@ -135,7 +146,8 @@ test('the quotation marks of block quotes are a project setting kept in the proj
   try {
     await page.keyboard.press(`${MOD}+,`)
     await dialog(page).getByRole('tab', { name: 'Darstellung' }).click()
-    await expect(dialog(page)).toContainText('gilt für das geöffnete Projekt')
+    await expect(dialog(page).getByRole('heading', { name: 'Dieses Projekt' })).toBeVisible()
+    await expect(dialog(page)).toContainText('gelten nur für das geöffnete Projekt')
     await dialog(page).getByRole('checkbox', { name: 'Blockzitate mit Anführungszeichen' }).click()
     await expect
       .poll(() => readFile(join(sandbox.projectDir, 'project.toml'), 'utf8'))

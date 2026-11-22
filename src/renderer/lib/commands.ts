@@ -291,6 +291,7 @@ const GROUP_OF: Record<string, CommandGroup> = {
   'editor-divider': 'insert',
   'editor-line-break': 'paragraph',
   'editor-quote-inline': 'insert',
+  'editor-quote-translation': 'insert',
 }
 
 /** Where a command is listed among the shortcuts: by what it does. */

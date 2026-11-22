@@ -22,6 +22,8 @@
     palette: Readonly<Record<string, unknown>>
     label: string
     tokens?: boolean
+    /** What an unset colour is called (it is the text's, or the compiler's own). */
+    placeholder?: string
     /** Whether the element sets this colour itself (it can then go back to the one it takes). */
     own?: boolean
     invalid?: boolean
@@ -37,6 +39,7 @@
     palette,
     label,
     tokens = true,
+    placeholder = '—',
     own = false,
     invalid = false,
     disabled = false,
@@ -154,7 +157,7 @@
     {id}
     data-value={value ?? ''}
     aria-label={label}
-    title={nameOf(value) || '—'}
+    title={nameOf(value) || placeholder}
     aria-haspopup="dialog"
     aria-expanded={open}
     class:invalid
@@ -162,7 +165,7 @@
     onclick={toggle}
   >
     <span class="swatch" style:--swatch={draft ?? hex(value) ?? 'transparent'}></span>
-    <span class="name">{draft ?? (nameOf(value) || '—')}</span>
+    <span class="name">{draft ?? (nameOf(value) || placeholder)}</span>
   </button>
   {#if open}
     <div class="float {edge}" role="dialog" aria-label={label}>

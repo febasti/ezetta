@@ -71,6 +71,9 @@ border_color = "accent"
 border_thickness = "1.5pt"
 border_gap = "0.9em"
 
+[element.translation]
+italic = true
+
 [element.epigraph]
 width = "75%"
 above = "1em"
@@ -89,6 +92,7 @@ size = "0.95em"
 
 [element.table_caption]
 caption_position = "above"
+italic = true
 
 [element.footnote]
 placement = "margin"

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  INHERIT,
   applyOptionOverrides,
   cleanName,
   fontFileName,
@@ -77,35 +78,86 @@ describe('sets', () => {
 })
 
 describe('a value of all headings', () => {
-  const base = { heading_1: { text_case: 'smallcaps', size: '2em' }, heading: { weight: 'bold' } }
+  const base = { heading_1: { color: '#333333', size: '2em' }, heading: { weight: 'bold' } }
 
   it('reaches every level that sets it itself, in the base or in the changes', () => {
     const result = setValueForAll(
       base,
-      { heading_3: { text_case: 'normal' } },
+      { heading_3: { color: '#666666' } },
       'heading',
-      'text_case',
-      'upper',
+      'color',
+      '#b00020',
     )
+    expect(result).toEqual({
+      ok: true,
+      sets: {
+        heading: { color: '#b00020' },
+        heading_1: { color: '#b00020' },
+        heading_3: { color: '#b00020' },
+      },
+    })
+  })
+
+  it('sets a modifier on every level, since a level does not inherit one', () => {
+    const result = setValueForAll(base, {}, 'heading', 'text_case', 'upper')
     expect(result).toEqual({
       ok: true,
       sets: {
         heading: { text_case: 'upper' },
         heading_1: { text_case: 'upper' },
+        heading_2: { text_case: 'upper' },
         heading_3: { text_case: 'upper' },
+        heading_4: { text_case: 'upper' },
       },
     })
   })
 
   it('leaves the levels alone when taken back, and other elements always', () => {
-    const changes = { heading: { text_case: 'upper' }, heading_1: { text_case: 'upper' } }
-    expect(setValueForAll(base, changes, 'heading', 'text_case', null)).toEqual({
+    const changes = { heading: { color: '#b00020' }, heading_1: { color: '#b00020' } }
+    expect(setValueForAll(base, changes, 'heading', 'color', null)).toEqual({
       ok: true,
-      sets: { heading_1: { text_case: 'upper' } },
+      sets: { heading_1: { color: '#b00020' } },
     })
     expect(setValueForAll(base, {}, 'body', 'size', '12pt')).toEqual({
       ok: true,
       sets: { body: { size: '12pt' } },
+    })
+  })
+})
+
+describe('a value made inherited', () => {
+  const base = { heading_1: { size: '2em', weight: 'bold' }, heading: { weight: 'bold' } }
+
+  it('is written as inherit where the base sets it, and takes the base value away when merged', () => {
+    const result = setValueForAll(base, {}, 'heading_1', 'size', INHERIT)
+    expect(result).toEqual({ ok: true, sets: { heading_1: { size: INHERIT } } })
+    const merged = mergeSets(base, result.ok ? result.sets : {})
+    expect(merged['heading_1']).toEqual({ weight: 'bold' })
+    // The style the engine gets has no trace of it: heading_1 takes its size from above.
+    expect(setsToToml(merged)).not.toContain('inherit')
+  })
+
+  it("only takes the writer's value back where the base sets nothing", () => {
+    const changes = { heading_2: { size: '1.4em' } }
+    expect(setValueForAll(base, changes, 'heading_2', 'size', INHERIT)).toEqual({
+      ok: true,
+      sets: {},
+    })
+  })
+
+  it('reaches only the element itself, not the levels of all headings', () => {
+    expect(setValueForAll(base, {}, 'heading', 'weight', INHERIT)).toEqual({
+      ok: true,
+      sets: { heading: { weight: INHERIT } },
+    })
+  })
+
+  it('is kept in the file of the changes, and a new value replaces it', () => {
+    const text = setsToToml({ heading_1: { size: INHERIT } })
+    expect(parseSets(text)).toEqual({ heading_1: { size: INHERIT } })
+    expect(setValue({ heading_1: { size: INHERIT } }, 'heading_1', 'size', '3em')).toEqual({
+      ok: true,
+      sets: { heading_1: { size: '3em' } },
     })
   })
 })

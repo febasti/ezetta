@@ -494,6 +494,8 @@ const VARIANTS: {
         label_style: 'normal',
         label_color: '#b00020',
       },
+      // The style of a label is a modifier, which the table's caption does not take from the figure's.
+      table_caption: { label_style: 'normal' },
     },
   },
   {

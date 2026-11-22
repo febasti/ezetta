@@ -141,7 +141,14 @@
         onvalue={(value) => (query = value)}
       />
     </div>
-    <Button size="sm" disabled={!keybindings.anyCustom} onclick={() => keybindings.resetAll()}>
+    <!-- Plain, so that while there is nothing to reset it does not look like a second field. -->
+    <Button
+      size="sm"
+      variant="plain"
+      icon="undo"
+      disabled={!keybindings.anyCustom}
+      onclick={() => keybindings.resetAll()}
+    >
       {i18n.t('shortcuts.resetAll')}
     </Button>
   </div>
@@ -179,7 +186,11 @@
               title={command.label()}
             >
               {#snippet accessory()}
-                <span class="keys" data-recording={recording === command.id}>
+                <span
+                  class="keys"
+                  class:none={!command.shortcut && recording !== command.id}
+                  data-recording={recording === command.id}
+                >
                   {#if keybindings.isCustom(command.id)}
                     <IconButton
                       icon="undo"
@@ -188,9 +199,15 @@
                       onclick={() => keybindings.reset(command.id)}
                     />
                   {/if}
+                  <!-- A command without a shortcut has a quiet button: most have none, and a column
+                       of grey "Kein Kürzel" fields would hide the shortcuts there are. -->
                   <Button
                     size="sm"
-                    variant={recording === command.id ? 'primary' : 'secondary'}
+                    variant={recording === command.id
+                      ? 'primary'
+                      : command.shortcut
+                        ? 'secondary'
+                        : 'plain'}
                     onclick={() => (recording === command.id ? stop() : start(command.id))}
                   >
                     {recording === command.id
@@ -214,8 +231,10 @@
 <style>
   .pane {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: var(--sp-8);
+    min-height: 0;
   }
   .top {
     display: flex;
@@ -241,8 +260,12 @@
   }
   /* The list scrolls on its own, so the search and the hint stay in sight. */
   .list {
-    max-height: 46vh;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+  }
+  .keys.none :global(.button) {
+    color: var(--color-label-tertiary);
   }
   .keys {
     display: inline-flex;

@@ -15,10 +15,23 @@
     label: string
     invalid?: boolean
     disabled?: boolean
+    /** A factor (the line spacing): a number without a unit, stepped by 0.05, shown with "×". */
+    factor?: boolean
+    /** What an empty field says. */
+    placeholder?: string
     /** A length typed or stepped to, as text (2.5cm), or '' to take it from above. */
     oncommit: (text: string) => void
   }
-  let { id, value, label, invalid = false, disabled = false, oncommit }: Props = $props()
+  let {
+    id,
+    value,
+    label,
+    factor = false,
+    placeholder = '—',
+    invalid = false,
+    disabled = false,
+    oncommit,
+  }: Props = $props()
 
   /** How far one step goes, by unit. */
   const STEP: Readonly<Record<string, number>> = {
@@ -51,12 +64,13 @@
     if (text === '') return oncommit('')
     const typed = parts(text)
     if (!typed) return oncommit(text)
+    if (factor) return oncommit(String(Number(typed.n.toFixed(3))))
     oncommit(`${Number(typed.n.toFixed(3))}${typed.unit || parsed?.unit || 'pt'}`)
   }
   function nudge(direction: 1 | -1): void {
     draft = null
-    const p = parsed ?? { n: 0, unit: 'pt' }
-    const step = STEP[p.unit] ?? 1
+    const p = parsed ?? (factor ? { n: 1, unit: '' } : { n: 0, unit: 'pt' })
+    const step = factor ? 0.05 : (STEP[p.unit] ?? 1)
     const n = Math.max(0, Math.round((p.n + direction * step) / step) * step)
     oncommit(`${Number(n.toFixed(3))}${p.unit}`)
   }
@@ -77,14 +91,16 @@
     inputmode="decimal"
     aria-label={label}
     data-value={value ?? ''}
-    placeholder="—"
+    {placeholder}
     value={shown}
     {disabled}
     oninput={(e) => (draft = e.currentTarget.value)}
     onchange={commit}
     onkeydown={keydown}
   />
-  <span class="unit" aria-hidden="true">{parsed && draft === null ? parsed.unit : ''}</span>
+  <span class="unit" aria-hidden="true"
+    >{parsed && draft === null ? (factor ? '×' : parsed.unit) : ''}</span
+  >
   <span class="steppers">
     <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a step up, as in a number field -->
     <button type="button" tabindex="-1" aria-label="+" {disabled} onclick={() => nudge(1)}>

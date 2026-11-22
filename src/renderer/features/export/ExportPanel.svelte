@@ -2,21 +2,18 @@
   import { i18n } from '../../i18n/i18n.svelte'
   import Icon from '../../ui/Icon.svelte'
   import Callout from '../../ui/kit/Callout.svelte'
-  import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Form from '../../ui/kit/Form.svelte'
   import FormRow from '../../ui/kit/FormRow.svelte'
   import Link from '../../ui/kit/Link.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Select from '../../ui/kit/Select.svelte'
-  import TextField from '../../ui/kit/TextField.svelte'
   import { project } from '../sidebar/project.svelte'
   import PropertiesPanel from '../templates/PropertiesPanel.svelte'
   import ReadonlyNote from '../templates/ReadonlyNote.svelte'
   import { fontProblemText } from '../templates/fontProblems'
   import { elementById } from '@core/export/elements'
+  import DocumentField from './DocumentField.svelte'
   import { exporting } from './export.svelte'
-  import { checkBinding } from '@core/export/profile'
-  import { numberIn } from '@core/export/template'
 
   const info = $derived(exporting.info)
   const profile = $derived(exporting.profile)
@@ -28,23 +25,6 @@
   const anyOpen = $derived(exporting.openCount > 0)
   /** What the template offers, as the document's own settings. */
   const offered = $derived(template?.options.filter((o) => !o.hidden) ?? [])
-  /** Hyphenation: the document's own choice, else what the template's body text says. */
-  const hyphenate = $derived(
-    profile?.hyphenate ?? exporting.resolved['body']?.['hyphenate'] === true,
-  )
-  /** A binding offset that is not one: kept in the field, marked, and not stored. */
-  let bindingRefused = $state(false)
-  function setBinding(text: string): void {
-    if (!profile) return
-    if (text.trim() === '') {
-      bindingRefused = false
-      delete profile.binding
-      return
-    }
-    const binding = checkBinding(text)
-    bindingRefused = binding === null
-    if (binding !== null) profile.binding = binding
-  }
 </script>
 
 {#snippet flag()}
@@ -103,75 +83,18 @@
       <Section title={i18n.t('export.layout')} level={4}>
         <Form labels="start">
           <FormRow label={i18n.t('export.binding')} for="export-binding">
-            <span class="short">
-              <TextField
-                id="export-binding"
-                value={profile.binding ?? ''}
-                placeholder="0 cm"
-                invalid={bindingRefused}
-                disabled={exporting.busy}
-                onchange={(e) => setBinding((e.currentTarget as HTMLInputElement).value)}
-              />
-            </span>
+            <DocumentField field="binding" id="export-binding" />
           </FormRow>
-          {#if bindingRefused}
-            <p class="refused" role="alert">{i18n.t('export.binding.invalid')}</p>
-          {/if}
           {#each offered as option (option.id)}
-            {#if option.type === 'enum'}
+            {#if option.type !== 'bool'}
               <FormRow label={option.label[lang]} for="export-option-{option.id}">
-                <Select
-                  id="export-option-{option.id}"
-                  value={String(profile.options[option.id] ?? option.default)}
-                  options={option.values.map((v) => ({ value: v.id, label: v.label[lang] }))}
-                  disabled={exporting.busy}
-                  onchange={(v) => (profile.options[option.id] = v)}
-                />
-              </FormRow>
-            {:else if option.type === 'number'}
-              {@const typed = String(profile.options[option.id] ?? option.default)}
-              <!-- A number (the line spacing): a value outside its bounds is marked and not used. -->
-              <FormRow label={option.label[lang]} for="export-option-{option.id}">
-                <span class="short">
-                  <TextField
-                    id="export-option-{option.id}"
-                    value={typed.replace('.', i18n.locale === 'de' ? ',' : '.')}
-                    inputmode="numeric"
-                    invalid={numberIn(typed, option.min, option.max) === null}
-                    disabled={exporting.busy}
-                    onvalue={(v) =>
-                      (profile.options[option.id] = numberIn(v, option.min, option.max) ?? v)}
-                  />
-                </span>
-              </FormRow>
-              {#if numberIn(typed, option.min, option.max) === null}
-                <p class="refused" role="alert">
-                  {i18n.t('export.number.invalid', {
-                    min: String(option.min).replace('.', i18n.locale === 'de' ? ',' : '.'),
-                    max: String(option.max).replace('.', i18n.locale === 'de' ? ',' : '.'),
-                  })}
-                </p>
-              {/if}
-            {:else if option.type !== 'bool'}
-              <FormRow label={option.label[lang]} for="export-option-{option.id}">
-                <TextField
-                  id="export-option-{option.id}"
-                  value={String(profile.options[option.id] ?? option.default)}
-                  disabled={exporting.busy}
-                  onvalue={(v) => (profile.options[option.id] = v)}
-                />
+                <DocumentField field="option:{option.id}" id="export-option-{option.id}" />
               </FormRow>
             {/if}
           {/each}
         </Form>
         <div class="checks">
-          <Checkbox
-            checked={hyphenate}
-            disabled={exporting.busy}
-            onchange={(on) => (profile.hyphenate = on)}
-          >
-            {i18n.t('export.hyphenate')}
-          </Checkbox>
+          <DocumentField field="hyphenate" id="export-hyphenate" named />
         </div>
       </Section>
 
@@ -180,14 +103,7 @@
           <div class="checks">
             {#each offered as option (option.id)}
               {#if option.type === 'bool'}
-                <Checkbox
-                  checked={profile.options[option.id] === true ||
-                    (profile.options[option.id] === undefined && option.default)}
-                  disabled={exporting.busy}
-                  onchange={(on) => (profile.options[option.id] = on)}
-                >
-                  {option.label[lang]}
-                </Checkbox>
+                <DocumentField field="option:{option.id}" id="export-option-{option.id}" named />
               {/if}
             {/each}
           </div>
@@ -206,12 +122,7 @@
     <Section title={i18n.t('export.content')} level={4}>
       <Form labels="start">
         <FormRow label={i18n.t('export.citationStyle')} for="export-style">
-          <Select
-            id="export-style"
-            bind:value={profile.citationStyle}
-            options={info.styles.map((s) => ({ value: s.id, label: s.label }))}
-            disabled={exporting.busy}
-          />
+          <DocumentField field="citationStyle" id="export-style" />
         </FormRow>
         <FormRow label={i18n.t('export.marks')} for="export-marks">
           <Select
@@ -320,14 +231,6 @@
   .panel {
     min-width: 0;
   }
-  /* A number or a length is a short field, as in the template's own panels. */
-  .short {
-    display: block;
-    width: 96px;
-  }
-  .short :global(.text-field) {
-    width: 100%;
-  }
   /* The title, the template it is for, and what is open, in one block. */
   .head {
     display: flex;
@@ -389,13 +292,6 @@
   }
   .open .mark {
     padding-top: 1px;
-  }
-  /* A refusal stands under the field it is about, in the column of the fields. */
-  .refused {
-    grid-column: 2;
-    margin: calc(var(--sp-8) * -1) 0 0;
-    color: var(--color-danger);
-    font: var(--type-caption);
   }
   .quiet,
   .where {

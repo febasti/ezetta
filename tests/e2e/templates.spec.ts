@@ -33,6 +33,7 @@ const card = (page: Page, name: string) => editor(page).getByRole('button', { na
 /** Shows the "Dokument einrichten" panel: the options, the colours, the citation style, what is open. */
 const showExport = (page: Page) =>
   editor(page)
+    .getByRole('navigation', { name: 'Elemente' })
     .getByRole('button', { name: /^Dokument einrichten( \d+)?$/ })
     .click()
 /** Chooses an element in the list, opening the groups first when it is not to be seen. */
@@ -206,8 +207,7 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
 
     await size.fill('3em')
     await size.press('Tab')
-    // Nothing says a value was changed, and there is no button to take it back: a copy is made for that.
-    await expect(editor(page).getByText('geändert')).toHaveCount(0)
+    // Nothing marks a value as changed, and there is no button that takes it back to the base.
     await expect(editor(page).getByRole('button', { name: /zurücksetzen/ })).toHaveCount(0)
     await expect
       .poll(() => readFile(style('meine-arbeit'), 'utf8').catch(() => ''))
@@ -223,11 +223,69 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
     await expect(editor(page).getByRole('alert')).toContainText('kein gültiger Wert')
     expect(await readFile(style('meine-arbeit'), 'utf8')).toContain('size = "3em"')
 
-    // An emptied field takes the value the element would have without it.
+    // An emptied field takes the value the element would have without it: a heading of the first
+    // level has a size of its own, which is not the base's 2em.
     await size.fill('')
     await size.press('Tab')
-    await expect(size).toHaveAttribute('data-value', '2em')
-    await expect.poll(() => readFile(style('meine-arbeit'), 'utf8')).not.toContain('3em')
+    await expect.poll(() => readFile(style('meine-arbeit'), 'utf8')).toContain('size = "inherit"')
+    await expect(size).toHaveAttribute('data-value', '1.9em')
+    // A size of its own is not taken from above, so the size has no button to do it.
+    await expect(editor(page).locator('.part:has(#prop-heading_1-size) .revert')).toHaveCount(0)
+
+    // The colour has none of its own: the button after it takes it from the element above, though
+    // the base sets one here, and says what it brings back. Then the value is shown as taken from
+    // there, in the quieter tone, and the button is gone until a value is set here again.
+    // (The colour shares its line with the alignment, so its part of the line is what says it.)
+    const colourRow = editor(page).locator(
+      '.part:has(#prop-heading_1-color), .row:not(:has(.part)):has(#prop-heading_1-color)',
+    )
+    const back = colourRow.locator('.revert button')
+    await expect(back).toHaveAccessibleName(/^Zurück zu .+ \(„.+“\)$/)
+    await back.click()
+    await expect.poll(() => readFile(style('meine-arbeit'), 'utf8')).toContain('color = "inherit"')
+    await expect(colourRow).toHaveClass(/inherited/)
+    await expect(back).toBeHidden()
+    await setColor(page, 'prop-heading_1-color', '#b00020')
+    await expect
+      .poll(() => readFile(style('meine-arbeit'), 'utf8'))
+      .not.toContain('color = "inherit"')
+    await expect(colourRow).not.toHaveClass(/inherited/)
+    await expect(back).toBeVisible()
+
+    // A modifier is on or off and is never taken from above: italic has no way back.
+    await expect(editor(page).locator('.part:has(#prop-heading_1-italic) .revert')).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test("the document's own settings are on the element pages too, also with a bundled template", async () => {
+  const { app, page } = await open()
+  try {
+    await openEditor(page)
+    // Monographie comes with the app: its own values cannot be changed, the document's can.
+    await expect(readOnlyNote(page)).toBeVisible()
+    await choose(page, 'Fließtext')
+    const own = editor(page).getByRole('region', { name: 'Für dieses Dokument' })
+    const spacing = own.getByLabel('Zeilenabstand', { exact: true })
+    await expect(spacing).toBeEnabled()
+    await expect(spacing).toHaveValue('1,13')
+    await spacing.fill('1,5')
+    await spacing.press('Tab')
+    await expect(own.getByLabel('Silbentrennung', { exact: true })).toBeChecked()
+    // The same value in "Dokument einrichten", which links back from the page.
+    await own.getByRole('button', { name: 'Dokument einrichten' }).click()
+    await expect(editor(page).getByLabel('Zeilenabstand', { exact: true })).toHaveValue('1,5')
+    // A part the template prints is switched on its own page as well.
+    await choose(page, 'Inhaltsverzeichnis')
+    await own.getByLabel('Inhaltsverzeichnis', { exact: true }).uncheck()
+    await showExport(page)
+    await expect(
+      editor(page).getByRole('checkbox', { name: 'Inhaltsverzeichnis', exact: true }),
+    ).not.toBeChecked()
+    // An element the document sets nothing about has no such section.
+    await choose(page, 'Code')
+    await expect(own).toHaveCount(0)
   } finally {
     await app.close()
   }
@@ -437,7 +495,7 @@ test('the letter case of headings is chosen with radio buttons, and the properti
     await choose(page, 'Überschrift 2')
 
     // The properties of a heading are in groups with a title each.
-    for (const title of ['Schrift', 'Anordnung', 'Nummerierung und Umbruch']) {
+    for (const title of ['Schrift', 'Anordnung', 'Nummerierung']) {
       await expect(editor(page).getByRole('heading', { name: title, level: 4 })).toBeVisible()
     }
     // An element with one kind of property has no group title.
@@ -471,6 +529,15 @@ test('the letter case of headings is chosen with radio buttons, and the properti
     await group.getByRole('radio', { name: 'Normal' }).click()
     await choose(page, 'Überschrift 1 (Kapitel)')
     await expect(group.getByRole('radio', { name: 'Normal' })).toBeChecked()
+    // The letter case is a modifier, which no level takes from above: a choice for all headings
+    // is written on every level, and while the levels differ, none is chosen there.
+    await expect
+      .poll(() => readFile(style('versalien'), 'utf8'))
+      .toMatch(/\[element\.heading_4\][^[]*text_case = "normal"/)
+    await group.getByRole('radio', { name: 'Versalien' }).click()
+    await choose(page, 'Alle Überschriften')
+    for (const name of ['Normal', 'Versalien', 'Kapitälchen'])
+      await expect(group.getByRole('radio', { name })).not.toBeChecked()
     await expect(editor(page).locator('img.page').first()).toBeVisible({ timeout: 30_000 })
     await expect(editor(page).getByRole('alert')).toHaveCount(0)
   } finally {
@@ -1097,10 +1164,10 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
       .getByLabel('Nummer in der Fußnote')
       .selectOption({ label: 'Normal mit Punkt (1.)' })
     await expect.poll(toml).toContain('entry_number = "period"')
-    await editor(page).getByLabel('Zahlenformat').selectOption({ label: '* † ‡ §' })
+    await editor(page).getByLabel('Zahlenformat').selectOption({ label: '*, †, ‡, §' })
     await expect.poll(toml).toContain('note_numbering = "symbols"')
     // The rule: its style and colour; without a rule its look is not asked for.
-    const rule = editor(page).getByLabel('Linienart')
+    const rule = editor(page).getByLabel('Linienart', { exact: true })
     await rule.selectOption({ label: 'Gestrichelt' })
     await expect.poll(toml).toContain('separator_style = "dashed"')
     await expect(editor(page).locator('#prop-footnote-separator_color')).toBeVisible()
@@ -1249,8 +1316,8 @@ test('the list has one entry for what belongs together: the epigraph with its so
       await entry(group).click()
     for (const gone of [
       'Quelle des Epigraphs',
-      'Bildunterschrift',
-      'Tabellenüberschrift',
+      'Beschriftung der Abbildung',
+      'Beschriftung der Tabelle',
       'Titel',
       'Untertitel',
       'Autorin oder Autor',
@@ -1266,10 +1333,10 @@ test('the list has one entry for what belongs together: the epigraph with its so
     await choose(page, 'Epigraph')
     await expect(sections('Quelle des Epigraphs')).toBeVisible()
     await choose(page, 'Abbildung')
-    await expect(sections('Bildunterschrift')).toBeVisible()
+    await expect(sections('Beschriftung der Abbildung')).toBeVisible()
     await expect(editor(page).getByLabel('Stellung')).toHaveCount(1)
     await choose(page, 'Tabelle')
-    await expect(sections('Tabellenüberschrift')).toBeVisible()
+    await expect(sections('Beschriftung der Tabelle')).toBeVisible()
     await expect(editor(page).getByLabel('Stellung')).toHaveCount(1)
     await choose(page, 'Titelseite')
     for (const part of ['Titel', 'Untertitel', 'Autorin oder Autor', 'Datum'])
@@ -1286,7 +1353,10 @@ test('a value of a part is changed in the entry it is shown in', async () => {
     await makeCopy(page, 'Teile')
     const nav = editor(page).getByRole('navigation', { name: 'Elemente' })
     await choose(page, 'Titelseite')
+    // The title page has four parts, closed until one is opened by its name.
     const subtitle = editor(page).locator('#prop-title_page_subtitle-size')
+    await expect(subtitle).toHaveCount(0)
+    await editor(page).getByRole('button', { name: 'Untertitel', exact: true }).click()
     await subtitle.fill('1.6em')
     await subtitle.press('Tab')
     await expect
@@ -1454,7 +1524,7 @@ test('the size of the text is set in the body text, and the paper size in the pa
     // The "Dokument einrichten" panel has no size of the text or of the paper any more: they are the template's.
     await showExport(page)
     await expect(editor(page).getByLabel('Schriftgröße')).toHaveCount(0)
-    await expect(editor(page).getByLabel('Papierformat')).toHaveCount(0)
+    await expect(editor(page).getByLabel('Papierformat', { exact: true })).toHaveCount(0)
 
     // The size of the text changes the pages (and the template's picture).
     await choose(page, 'Fließtext')
@@ -1470,7 +1540,7 @@ test('the size of the text is set in the body text, and the paper size in the pa
 
     // The paper size is in the page section, with the margins.
     await choose(page, 'Papier und Ränder')
-    const paper = editor(page).getByLabel('Papierformat')
+    const paper = editor(page).getByLabel('Papierformat', { exact: true })
     await expect(paper).toHaveValue('a4')
     await expect(paper.locator('option')).toHaveText([
       'A3',
@@ -1539,7 +1609,8 @@ test('links and cross-references have a colour, a weight, italics and a backgrou
 
     // A colour is one control: a round swatch with the colour's name or value.
     const row = panel.locator('.row', { has: page.locator('#prop-link-color') })
-    await expect(row.locator('input, button')).toHaveCount(1)
+    // (Beside it only the button that takes it from above again, when it is set here.)
+    await expect(row.locator(':is(input, button):not(.revert button)')).toHaveCount(1)
     // It opens the colours: the palette's by name, plain ones, any colour, and its value.
     const swatch = panel.locator('#prop-link-color')
     const dot = (name: string) =>
@@ -1632,11 +1703,11 @@ test('footnotes can be printed as margin notes, in the Tufte style', async () =>
     await choose(page, 'Fußnote')
     const placement = panel.getByRole('radiogroup', { name: 'Platzierung' })
     await expect(placement.getByRole('radio', { name: 'Unten auf der Seite' })).toBeChecked()
-    await expect(panel.getByLabel('Linienart')).toBeVisible()
+    await expect(panel.getByLabel('Linienart', { exact: true })).toBeVisible()
     await placement.getByRole('radio', { name: 'Am Rand (Tufte-Stil)' }).click()
     await expect.poll(toml).toContain('placement = "margin"')
     // In the margin there is no rule above the notes, so nothing to set for it.
-    await expect(panel.getByLabel('Linienart')).toHaveCount(0)
+    await expect(panel.getByLabel('Linienart', { exact: true })).toHaveCount(0)
     await expect(panel.getByRole('heading', { name: 'Trennlinie', level: 4 })).toHaveCount(0)
     const width = panel.getByLabel('Breite der Randspalte')
     await expect(width).toHaveAttribute('data-value', '4.5cm')

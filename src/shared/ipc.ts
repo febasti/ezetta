@@ -250,10 +250,11 @@ export const ipc = {
     popupMenu: defineInvoke('app:popup-menu', popupMenuRequestSchema, popupMenuResultSchema),
     /** Sets the menu bar (macOS; elsewhere there is none). */
     setMenu: defineInvoke('app:set-menu', appMenuSchema, empty),
-    /** The app's theme, for the window's own parts (traffic lights, native menus) and the next start. */
+    /** The app's theme, for the window's own parts (traffic lights, native menus) and the next start;
+     * `system` follows the system's light or dark appearance. */
     setAppearance: defineInvoke(
       'app:set-appearance',
-      z.object({ theme: z.enum(['light', 'dark', 'sepia']) }).strict(),
+      z.object({ theme: z.enum(['light', 'dark', 'sepia', 'system']) }).strict(),
       empty,
     ),
     /** What the app does at the start: open the project that was open last, or show the welcome screen. */

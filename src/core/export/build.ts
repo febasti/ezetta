@@ -8,6 +8,7 @@ import type { QuoteStyle } from '../typst/quoteStyle'
 import { numberTargets, referenceText, scanTargets, supplementsFor } from '../typst/targets'
 import type { NumberedTarget } from '../typst/targets'
 import { checkBinding } from './profile'
+import { defaultWord } from './elements'
 import type { ExportProfile } from './profile'
 import { preprocessSheet } from './preprocess'
 import { parseStyle, styleToTypst } from './style'
@@ -203,13 +204,10 @@ function headingTexts(
   }
 }
 
-const bibliographyTitle = (language: string): string =>
-  lang(language) === 'de' ? 'Literaturverzeichnis' : 'Bibliography'
-
 /** The title the template sets for the bibliography, or the language's own. */
 const bibliographyTitleOf = (style: ResolvedStyle, language: string): string => {
   const own = style['bibliography']?.['title_text']
-  return typeof own === 'string' ? own : bibliographyTitle(language)
+  return typeof own === 'string' ? own : (defaultWord('bibliography', 'title_text', language) ?? '')
 }
 
 export function buildExport(input: BuildInput): BuildOutput {

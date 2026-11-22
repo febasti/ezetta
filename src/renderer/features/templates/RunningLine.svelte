@@ -22,8 +22,10 @@
     control: Snippet<[ElementDef, string]>
     /** The distance, drawn as a span between two things with its field beside it. */
     space: Snippet<[ElementDef, string]>
+    /** The look of the divider, right under its switch while it is on. */
+    look?: Snippet<[ElementDef]>
   }
-  let { element, values, facing, control, space }: Props = $props()
+  let { element, values, facing, control, space, look }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const footer = $derived(element.id === 'footer')
@@ -68,6 +70,7 @@
     {@render control(element, 'divider')}
     <label for="prop-{element.id}-divider">{propLabel(element.id, PROPS['divider']!, lang)}</label>
   </div>
+  {#if divider && look}<div class="look">{@render look(element)}</div>{/if}
 {/snippet}
 
 {#snippet sheet(editable: boolean)}
@@ -164,6 +167,10 @@
   }
   .gap {
     height: var(--sp-24);
+  }
+  /* The divider's colour, weight and distance, under its switch, set in from the page's edge. */
+  .look {
+    padding: var(--sp-4) 0 var(--sp-4) var(--sp-24);
   }
   /* The text of the page, as grey bars: it is the preview's job to show the real one. */
   .text {

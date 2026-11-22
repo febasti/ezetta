@@ -35,7 +35,7 @@ import { installGuards } from './security/guards'
 import { originOf } from './security/origin'
 import { ProjectHost } from './services/projectHost'
 import { SettingsStore } from './services/settings'
-import { createMainWindow, insetTitleBar, setLauncherMode } from './window'
+import { createMainWindow, insetTitleBar, setLauncherMode, themeSource } from './window'
 import type { FontFamily } from '@core/export/fonts'
 
 // Chromium sandbox on for every renderer, in every build.
@@ -358,7 +358,7 @@ void app.whenReady().then(async () => {
       },
       setAppearance: (theme) => {
         // The window's own parts (the traffic lights, the native menus) follow the app's theme.
-        nativeTheme.themeSource = theme === 'dark' ? 'dark' : 'light'
+        nativeTheme.themeSource = themeSource(theme)
         void settings.setAppTheme(theme).catch((cause) => log('could not save the theme', cause))
       },
       popupMenu: async (items, at) => {
@@ -386,7 +386,7 @@ void app.whenReady().then(async () => {
 
   // The window's own parts take the theme chosen last time, before the page can say it again.
   const lastTheme = settings.appTheme()
-  if (lastTheme) nativeTheme.themeSource = lastTheme === 'dark' ? 'dark' : 'light'
+  if (lastTheme) nativeTheme.themeSource = themeSource(lastTheme)
 
   const open = (): BrowserWindow =>
     (mainWindow = createMainWindow(

@@ -300,9 +300,10 @@
     border-radius: var(--r-md);
     background: var(--color-panel);
   }
+  /* The properties take a third of a wide window, so their names fit on one line; the pages keep the rest. */
   .properties {
     flex: none;
-    width: 380px;
+    width: clamp(380px, 32vw, 460px);
     min-height: 0;
     overflow-y: auto;
     padding-right: var(--sp-8);

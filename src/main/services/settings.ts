@@ -28,8 +28,8 @@ export interface WindowState {
   maximized: boolean
 }
 
-export type AppTheme = 'light' | 'dark' | 'sepia'
-const THEMES: readonly AppTheme[] = ['light', 'dark', 'sepia']
+export type AppTheme = 'light' | 'dark' | 'sepia' | 'system'
+const THEMES: readonly AppTheme[] = ['light', 'dark', 'sepia', 'system']
 
 /** App-level settings in the user data folder. Corrupt or missing files are replaced by defaults,
  * because nothing in here is the writer's text. */

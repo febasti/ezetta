@@ -3,7 +3,6 @@
   import { LOCALES } from '../../i18n/translate'
   import { setFootnoteMode, setTypewriter, ui } from '../../lib/ui.svelte'
   import type { FootnoteMode } from '../../lib/ui.svelte'
-  import ChoiceCards from '../../ui/kit/ChoiceCards.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import NumberField from '../../ui/kit/NumberField.svelte'
   import Dialog from '../../ui/kit/Dialog.svelte'
@@ -17,6 +16,7 @@
   import { QUOTE_STYLES } from '@core/typst/quoteStyle'
   import { FONT_KINDS, FONT_SIZE, LINE_SPACING, PARAGRAPH_GAP, TEXT_WIDTH } from '../../ui/fonts'
   import { appearance, OFFERED_THEMES } from '../../ui/theme.svelte'
+  import { scrollbar } from '../../ui/scrollbar'
   import { typography } from '../../ui/typography.svelte'
   import { project } from '../sidebar/project.svelte'
   import AboutPane from './AboutPane.svelte'
@@ -28,7 +28,6 @@
    * then a form, labels on the left and the controls on the right. Changes apply at once.
    */
   const FOOTNOTE_MODES: readonly FootnoteMode[] = ['margin', 'list', 'cards']
-  const THEME_ICONS = { light: 'sun', dark: 'moon' } as const
 </script>
 
 {#if settings.open}
@@ -51,8 +50,10 @@
     <div
       id="settings-panel"
       class="panel"
+      class:fill={settings.tab === 'shortcuts'}
       role="tabpanel"
       aria-labelledby="settings-tab-{settings.tab}"
+      use:scrollbar
     >
       {#if settings.tab === 'general'}
         <Form>
@@ -71,18 +72,6 @@
               onchange={(locale) => (i18n.locale = locale)}
             />
           </FormRow>
-          <FormRow label={i18n.t('settings.theme')}>
-            <ChoiceCards
-              label={i18n.t('settings.theme')}
-              value={appearance.theme}
-              options={OFFERED_THEMES.map((theme) => ({
-                value: theme,
-                label: i18n.t(`theme.${theme}`),
-                icon: THEME_ICONS[theme as keyof typeof THEME_ICONS],
-              }))}
-              onchange={(theme) => (appearance.theme = theme)}
-            />
-          </FormRow>
           <FormRow label={i18n.t('settings.launch')}>
             <Segmented
               label={i18n.t('settings.launch')}
@@ -96,6 +85,21 @@
           </FormRow>
         </Form>
       {:else if settings.tab === 'appearance'}
+        <Section>
+          <Form>
+            <FormRow label={i18n.t('settings.theme')}>
+              <Segmented
+                label={i18n.t('settings.theme')}
+                value={appearance.choice}
+                options={OFFERED_THEMES.map((theme) => ({
+                  value: theme,
+                  label: i18n.t(`theme.${theme}`),
+                }))}
+                onchange={(theme) => (appearance.choice = theme)}
+              />
+            </FormRow>
+          </Form>
+        </Section>
         <Section>
           <Form>
             <FormRow label={i18n.t('settings.font')}>
@@ -145,6 +149,14 @@
                 onchange={(width) => (typography.width = width)}
               />
             </FormRow>
+            <FormRow label="">
+              <!-- The writing face as it is set now: two short paragraphs, at the size, line spacing and
+                   paragraph spacing of the editor (not its width, which is wider than this dialog). -->
+              <div class="sample" aria-label={i18n.t('settings.sample.label')} role="img">
+                <p>{i18n.t('settings.sample.first')}</p>
+                <p>{i18n.t('settings.sample.second')}</p>
+              </div>
+            </FormRow>
           </Form>
         </Section>
         <Section>
@@ -173,7 +185,11 @@
             </FormRow>
           </Form>
         </Section>
-        <Section>
+        <!-- Kept in the project file, not with the app: a section of its own that says so. -->
+        <Section title={i18n.t('settings.project.title')} level={4} region={false}>
+          <p class="project-hint">
+            {project.snapshot ? i18n.t('settings.project.hint') : i18n.t('settings.noProject')}
+          </p>
           <Form>
             <FormRow label={i18n.t('settings.quoteStyle')} for="settings-quote-style">
               <Select
@@ -187,12 +203,7 @@
                 onchange={(style) => void project.setQuoteStyle(style)}
               />
             </FormRow>
-            <FormRow
-              label=""
-              hint={project.snapshot
-                ? i18n.t('settings.project.hint')
-                : i18n.t('settings.noProject')}
-            >
+            <FormRow label="">
               <Checkbox
                 checked={project.snapshot?.quoteBlockMarks === true}
                 disabled={!project.snapshot}
@@ -220,8 +231,41 @@
   .tabs :global(.tabs) {
     padding: 0 var(--inset-dialog);
   }
+  /* One height for every tab, so the dialog does not jump when the tab changes; a longer tab
+   * scrolls. The shortcuts fill it, their list scrolling under the search. */
   .panel {
-    min-height: 240px;
-    padding-top: var(--sp-16);
+    height: min(600px, calc(100vh - 240px));
+    overflow-y: auto;
+    /* Reaches into the dialog's inset at the right, so the scrollbar keeps clear of the text. */
+    margin-inline-end: calc(-1 * var(--sp-16));
+    padding: var(--sp-16) var(--sp-16) 0 0;
+  }
+  .panel.fill {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .project-hint {
+    margin: 0 0 var(--sp-8);
+    color: var(--color-label-secondary);
+    font: var(--type-caption);
+  }
+  /* The writing face's sample: the editor's own type, on the paper of the editor. */
+  .sample {
+    width: 100%;
+    padding: var(--sp-8) var(--sp-12);
+    border: 1px solid var(--color-separator);
+    border-radius: var(--r-md);
+    background: var(--color-window);
+    color: var(--color-label);
+    font-family: var(--font-writing);
+    font-size: var(--text-writing);
+    line-height: var(--line-writing);
+  }
+  .sample p {
+    margin: 0;
+  }
+  .sample p + p {
+    margin-top: var(--paragraph-gap-writing);
   }
 </style>

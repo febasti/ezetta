@@ -1,16 +1,23 @@
 <script lang="ts">
   import {
+    ALL_OF,
     ELEMENTS,
+    MODIFIERS,
     PROP_SECTIONS,
     SUB_ELEMENTS,
     propLabel,
     PROPS,
+    defaultWord,
     elementById,
+    isModifier,
     isShown,
   } from '@core/export/elements'
   import { checkValue } from '@core/export/style'
+  import { INHERIT } from '@core/export/custom'
   import { headingNumberingOf } from '@core/export/numbering'
-  import { exporting as editor, OPTIONS } from '../export/export.svelte'
+  import { exporting as editor, EXPORT, OPTIONS } from '../export/export.svelte'
+  import DocumentField from '../export/DocumentField.svelte'
+  import Link from '../../ui/kit/Link.svelte'
   import { elementFont, findFamily, hasItalic, hasWeight } from '@core/export/fonts'
   import type { FontProblem } from '@core/export/fonts'
   import FontPicker from './FontPicker.svelte'
@@ -43,6 +50,7 @@
   import type { ElementDef, PropDef } from '@core/export/elements'
   import type { StyleValue } from '@core/export/style'
   import { i18n } from '../../i18n/i18n.svelte'
+  import { project } from '../sidebar/project.svelte'
   import Icon from '../../ui/Icon.svelte'
   import IconButton from '../../ui/kit/IconButton.svelte'
   import type { IconName } from '../../ui/Icon.svelte'
@@ -66,9 +74,6 @@
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Segmented from '../../ui/kit/Segmented.svelte'
-  import Switch from '../../ui/kit/Switch.svelte'
-  import ToggleCards from '../../ui/kit/ToggleCards.svelte'
-  import ChoiceCards from '../../ui/kit/ChoiceCards.svelte'
   import Select from '../../ui/kit/Select.svelte'
   import TextField from '../../ui/kit/TextField.svelte'
 
@@ -89,7 +94,25 @@
     element,
     ...(SUB_ELEMENTS[element.id] ?? []).flatMap((id) => elementById(id) ?? []),
   ])
-  const valuesOf = (el: ElementDef): Record<string, StyleValue> => editor.resolved[el.id] ?? {}
+  /**
+   * What an element that stands for others ("Alle Überschriften") shows for a modifier: what all
+   * of them have, else nothing (they differ). A choice there is set on every one of them.
+   */
+  const groupValues = $derived<Record<string, Record<string, StyleValue>>>(
+    Object.fromEntries(
+      Object.entries(ALL_OF).map(([group, ids]) => {
+        const values = { ...editor.resolved[group] }
+        for (const prop of Object.keys(MODIFIERS)) {
+          if (!(prop in values)) continue
+          const all = new Set(ids.map((id) => editor.resolved[id]?.[prop] ?? null))
+          values[prop] = all.size === 1 ? [...all][0]! : null
+        }
+        return [group, values]
+      }),
+    ),
+  )
+  const valuesOf = (el: ElementDef): Record<string, StyleValue> =>
+    groupValues[el.id] ?? editor.resolved[el.id] ?? {}
   /** The families a property can name, with what each has: the compiler's own and the system's. */
   const families = $derived(detail?.families ?? [])
   /** The family an element is set in, as this machine has it (none when it does not). */
@@ -115,6 +138,10 @@
               ? prop === 'text_case'
               : p.kind === prop),
     )
+  /** The parts of an element (its caption, the parts of the title page) opened or closed by the writer. */
+  let openParts = $state<Record<string, boolean>>({})
+  /** Whether a part shows its settings: as chosen, else open when it is the only part. */
+  const partOpen = (part: ElementDef): boolean => openParts[part.id] ?? members.length <= 2
   /** The value whose field is pointed at or has the focus, so its drawing marks it brighter. */
   let hot = $state<{ element: string; prop: string } | null>(null)
   const hotIn = (el: ElementDef): string | null => (hot?.element === el.id ? hot.prop : null)
@@ -135,12 +162,113 @@
     detail?.overrides[el.id]?.[prop] !== undefined
   const explicit = (el: ElementDef, prop: string): boolean =>
     editor.sets[el.id]?.[prop] !== undefined
+  /**
+   * What a value is taken from when the element does not set it: the nearest element above that
+   * does, else the text around it (an element in the text) or the compiler's default.
+   */
+  function giver(el: ElementDef, prop: string): ElementDef | null {
+    for (let at = elementById(el.parent ?? ''); at; at = elementById(at.parent ?? '')) {
+      if (explicit(at, prop) || (at.defaults[prop] ?? null) !== null) return at
+    }
+    return null
+  }
+  const sourceName = (el: ElementDef, prop: string): string =>
+    giver(el, prop)?.[lang] ??
+    (IN_TEXT.has(el.id) ? i18n.t('templates.inherit.text') : i18n.t('templates.inherit.default'))
+  /**
+   * Whether a value can be taken from above: the element has one above it (or stands in the text),
+   * and no built-in value of its own, which an unset value would be instead (`resolveStyle`). A
+   * modifier (italic, the letter case, a line) is never taken from above: it is on or off.
+   */
+  const canInherit = (el: ElementDef, prop: string): boolean =>
+    (el.parent !== null || IN_TEXT.has(el.id)) &&
+    (el.defaults[prop] ?? null) === null &&
+    !isModifier(prop)
+  /** Whether a value is taken from above now: unset here, and something above gives it. */
+  const inheritsNow = (el: ElementDef, prop: string): boolean =>
+    !explicit(el, prop) && canInherit(el, prop)
+  /** What a label says about its value when pointed at: where it comes from, while it is taken from there. */
+  const origin = (el: ElementDef, prop: string): string | undefined =>
+    inheritsNow(el, prop)
+      ? i18n.t('templates.inheritedFrom', { name: sourceName(el, prop) })
+      : undefined
+  /** The value an element would take from above if it did not set it: its parent's, as shown. */
+  function inheritable(el: ElementDef, prop: string): string | null {
+    const value = el.parent ? (editor.resolved[el.parent]?.[prop] ?? null) : null
+    if (value === null || value === undefined) return null
+    const def = PROPS[prop]!
+    if (def.type === 'enum') return def.valueLabels?.[String(value)]?.[lang] ?? String(value)
+    if (def.type === 'length' || def.type === 'factor') {
+      const text = String(value)
+      return lang === 'de' ? text.replace('.', ',') : text
+    }
+    return String(value)
+  }
+  /** What the button that takes a value from above again says: the value it brings back, and from where. */
+  const revertLabel = (el: ElementDef, prop: string): string => {
+    const value = inheritable(el, prop)
+    const from = sourceName(el, prop)
+    return value === null
+      ? i18n.t('templates.revert.plain', { from })
+      : i18n.t('templates.revert.value', { value, from })
+  }
+  /** The values an element's own editor draws (on a page), which are not rows of their own. */
+  const drawnIds = (el: ElementDef): string[] => [
+    ...(RUNNING[el.id] ?? []),
+    ...(NOTES[el.id] ?? []),
+    ...(TABLES[el.id] ?? []),
+    ...(FIGURES[el.id] ?? []),
+    ...(LISTS[el.id] ?? []),
+    ...(PAGES[el.id] ?? []),
+    ...(EPIGRAPHS[el.id] ?? []),
+    ...(DIVIDERS[el.id] ?? []),
+    ...(PARAGRAPHS[el.id] ?? []),
+    ...(HEADINGS[el.id] ?? []),
+    ...(QUOTES[el.id] ?? []),
+  ]
+
+  /**
+   * The document's own settings that are about an element (they belong to the export, not to the
+   * template, and can be changed with a template that comes with the app too): shown on the
+   * element's page as well as in "Dokument einrichten", the same control on the same value.
+   */
+  const DOCUMENT_FIELDS: Readonly<Record<string, readonly string[]>> = {
+    page: ['binding'],
+    body: ['option:line_height', 'hyphenate'],
+    heading_1: ['option:chapter_new_page'],
+    title_page: ['option:title_page'],
+    contents: ['option:contents'],
+    list_of_figures: ['option:list_of_figures'],
+    list_of_tables: ['option:list_of_tables'],
+    citations: ['citationStyle'],
+  }
+  /** The template the export uses, whose options the document can change. */
+  const exportTemplate = $derived(
+    editor.info?.templates.find((t) => t.id === editor.profile?.template),
+  )
+  /** The document's settings about the element shown, with their names: only options the template offers. */
+  const documentFields = $derived(
+    (DOCUMENT_FIELDS[element.id] ?? []).flatMap((field) => {
+      if (!field.startsWith('option:')) {
+        const label =
+          field === 'binding'
+            ? i18n.t('export.binding')
+            : field === 'hyphenate'
+              ? i18n.t('export.hyphenate')
+              : i18n.t('export.citationStyle')
+        return [{ field, label }]
+      }
+      const option = exportTemplate?.options.find((o) => o.id === field.slice('option:'.length))
+      return option && !option.hidden ? [{ field, label: option.label[lang] }] : []
+    }),
+  )
 
   /** A typed value: set when it is valid for the property, and marked as refused when it is not. */
   function commit(el: ElementDef, def: PropDef, text: string): void {
     const key = `${el.id}.${def.id}`
     if (text.trim() === '') {
-      if (own(el, def.id)) void editor.set(el.id, def.id, null)
+      // An emptied field takes the value from above, whatever the template it was made from sets.
+      if (explicit(el, def.id)) void editor.set(el.id, def.id, INHERIT)
       return
     }
     if (checkValue(def, text, el.id !== 'palette') === null) {
@@ -154,9 +282,52 @@
   /** The colours of the palette, to show what a colour that names one looks like. */
   const palette = $derived(editor.resolved['palette'] ?? {})
   const field = (event: Event): string => (event.currentTarget as HTMLInputElement).value
+  /**
+   * The elements in the text that take what they leave unset from the text around them (they have
+   * no element above them): an unset value of theirs is "as in the text", not the compiler's own.
+   */
+  const IN_TEXT = new Set(['quote_inline', 'references', 'citations', 'link', 'highlight'])
+  /** What some properties are when unset, whatever the element: no ground, or the look of the text they belong to. */
+  const UNSET: Readonly<Record<string, 'none' | 'caption' | 'text'>> = {
+    fill: 'none',
+    header_fill: 'none',
+    stripe_fill: 'none',
+    label_font: 'caption',
+    label_weight: 'caption',
+    label_color: 'caption',
+    marker_font: 'text',
+    marker_weight: 'text',
+    marker_color: 'text',
+    number_color: 'text',
+  }
+  /** What an unset value is called in its field. */
+  const unsetText = (el: ElementDef, prop: string): string => {
+    const kind = UNSET[prop] ?? (IN_TEXT.has(el.id) ? 'text' : null)
+    return kind === 'none'
+      ? i18n.t('templates.unset.none')
+      : kind === 'caption'
+        ? i18n.t('templates.unset.caption')
+        : kind === 'text'
+          ? i18n.t('templates.unset.text')
+          : '—'
+  }
+  /** The language the document is written in, for the words the PDF prints where none are set. */
+  const documentLanguage = $derived(project.snapshot?.language ?? lang)
+  /** What an empty text field says: the word the PDF prints instead, or what the field is for. */
+  const textPlaceholder = (el: ElementDef, id: string): string =>
+    defaultWord(el.id, id, documentLanguage) ??
+    (id === 'number_prefix'
+      ? i18n.t('templates.affix.before')
+      : id === 'number_suffix'
+        ? i18n.t('templates.affix.after')
+        : unsetText(el, id))
   /** The values of a choice, with a dash first while nothing is chosen. */
-  const choices = (def: PropDef, value: StyleValue | null): { value: string; label: string }[] => [
-    ...(typeof value === 'string' ? [] : [{ value: '', label: '—' }]),
+  const choices = (
+    def: PropDef,
+    value: StyleValue | null,
+    el: ElementDef,
+  ): { value: string; label: string }[] => [
+    ...(typeof value === 'string' ? [] : [{ value: '', label: unsetText(el, def.id) }]),
     ...(def.values ?? []).map((v) => ({ value: v, label: def.valueLabels?.[v]?.[lang] ?? v })),
   ]
 </script>
@@ -175,6 +346,7 @@
         { value: 'justified', label: i18n.t('templates.setting.justified') },
       ]}
       value={value === true ? 'justified' : value === false ? 'ragged' : null}
+      named
       disabled={readOnly}
       onchange={(v) => void editor.set(element.id, id, v === 'justified')}
     >
@@ -182,15 +354,6 @@
         <ChoiceGlyph prop="justify" value={v} />
       {/snippet}
     </Segmented>
-  {:else if id === 'hyphenate'}
-    <span class="switch-after">
-      <Switch
-        checked={value === true}
-        disabled={readOnly}
-        onchange={(on) => void editor.set(element.id, id, on)}
-        >{i18n.t('templates.setting.hyphens')}</Switch
-      >
-    </span>
   {:else if def.type === 'bool' && TOGGLE_ICONS[id]}
     {@const family = id === 'italic' ? familyOf(element) : undefined}
     <!-- A switch of the type as its icon, as in a text editor's toolbar. Italic for a font without
@@ -223,6 +386,7 @@
         label: def.valueLabels?.[v]?.[lang] ?? v,
       }))}
       value={typeof value === 'string' ? value : null}
+      named
       disabled={readOnly}
       onchange={(v) => void editor.set(element.id, id, v)}
     >
@@ -255,6 +419,7 @@
         disabled: v === 'smallcaps' && family?.smallCaps === 'no' && value !== 'smallcaps',
       }))}
       value={typeof value === 'string' ? value : null}
+      named
       disabled={readOnly}
       onchange={(v) => void editor.set(element.id, id, v)}
     />
@@ -270,7 +435,7 @@
       id={control}
       label={propLabel(element.id, def, lang)}
       value={typeof value === 'string' ? value : ''}
-      options={choices(def, value).map((choice) => ({
+      options={choices(def, value, element).map((choice) => ({
         ...choice,
         disabled:
           family !== undefined &&
@@ -292,11 +457,12 @@
       value={typeof value === 'string' ? value : null}
       {palette}
       label={propLabel(element.id, def, lang)}
+      placeholder={unsetText(element, id)}
       tokens={element.id !== 'palette'}
       own={own(element, id)}
       invalid={editor.refused === key}
       disabled={readOnly}
-      onset={(v) => void editor.set(element.id, id, v)}
+      onset={(v) => void editor.set(element.id, id, v ?? INHERIT)}
       oncommit={(text) => commit(element, def, text)}
     />
   {:else if def.type === 'font'}
@@ -304,7 +470,7 @@
       id={control}
       value={typeof value === 'string' ? value : ''}
       {families}
-      placeholder="—"
+      placeholder={unsetText(element, id)}
       invalid={editor.refused === key}
       disabled={readOnly}
       oncommit={(text) => commit(element, def, text)}
@@ -314,29 +480,29 @@
       id={control}
       value={typeof value === 'string' ? value : null}
       label={propLabel(element.id, def, lang)}
+      placeholder={unsetText(element, id)}
       invalid={editor.refused === key}
       disabled={readOnly}
       oncommit={(text) => commit(element, def, text)}
     />
   {:else if def.type === 'factor'}
-    <!-- A factor (the line spacing) is a short number, so its field is a short one. -->
-    <span class="count">
-      <TextField
-        id={control}
-        label={propLabel(element.id, def, lang)}
-        value={typeof value === 'string' ? value : ''}
-        placeholder="—"
-        invalid={editor.refused === key}
-        disabled={readOnly}
-        onchange={(e) => commit(element, def, field(e))}
-      />
-    </span>
+    <!-- A factor (the line spacing): a short number with its arrows, as the lengths have them. -->
+    <LengthField
+      id={control}
+      factor
+      value={typeof value === 'string' ? value : null}
+      label={propLabel(element.id, def, lang)}
+      placeholder={unsetText(element, id)}
+      invalid={editor.refused === key}
+      disabled={readOnly}
+      oncommit={(text) => commit(element, def, text)}
+    />
   {:else}
     <TextField
       id={control}
       label={propLabel(element.id, def, lang)}
       value={typeof value === 'string' ? value : ''}
-      placeholder="—"
+      placeholder={textPlaceholder(element, id)}
       invalid={editor.refused === key}
       disabled={readOnly}
       onchange={(e) => commit(element, def, field(e))}
@@ -351,14 +517,13 @@
   <div
     class="row"
     class:stacked
-    class:inherited={!explicit(element, id)}
+    class:inherited={inheritsNow(element, id)}
     class:refused={editor.refused === key}
   >
-    <label for={control} title={!explicit(element, id) ? i18n.t('templates.inherited') : undefined}
-      >{propLabel(element.id, def, lang)}</label
-    >
-    <div class="control">
+    <label for={control} title={origin(element, id)}>{propLabel(element.id, def, lang)}</label>
+    <div class="control" title={origin(element, id)}>
       {@render controlOf(element, id)}
+      {@render revertOf(element, id)}
     </div>
     {#if editor.refused === key}
       <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
@@ -370,21 +535,56 @@
   </div>
 {/snippet}
 
+{#snippet controlHere(element: ElementDef, id: string)}
+  <!-- A value where it is set on a drawing: its field, and the button that takes it from above
+       again. A switch is a modifier, which is never taken from above, so it has none. -->
+  {#if PROPS[id]!.type === 'bool'}
+    {@render controlOf(element, id)}
+  {:else}
+    <span class="with-revert">
+      {@render controlOf(element, id)}
+      {@render revertOf(element, id)}
+    </span>
+  {/if}
+{/snippet}
+
+{#snippet revertOf(element: ElementDef, id: string)}
+  <!-- A value taken from above shows in the quieter tone of an empty field; typing sets it here.
+       A value set here has a button after it that takes it from above again, and says what it
+       brings back ("Zurück zu 1,4 em („Alle Überschriften“)"). A template that comes with the app
+       cannot be changed, so it has none. Its room is kept while the value is taken from above, so
+       the field does not move when it comes. -->
+  {#if !readOnly && canInherit(element, id)}
+    <span class="revert" class:away={!explicit(element, id)}>
+      <IconButton
+        icon="undo"
+        size="sm"
+        label={revertLabel(element, id)}
+        onclick={() => void editor.set(element.id, id, INHERIT)}
+      />
+    </span>
+  {/if}
+{/snippet}
+
 {#snippet together(element: ElementDef, line: PanelLine)}
   <!-- Values that belong together, side by side under one name (the size with the line spacing). -->
   <div
     class="row"
-    class:inherited={line.props.every((id) => !explicit(element, id))}
+    class:inherited={line.props.every((id) => inheritsNow(element, id))}
     class:refused={line.props.some((id) => editor.refused === `${element.id}.${id}`)}
   >
-    <label for="prop-{element.id}-{line.props[0]}">{line.shared![lang]}</label>
+    <label for="prop-{element.id}-{line.props[0]}" title={origin(element, line.props[0]!)}
+      >{line.shared![lang]}</label
+    >
     <div class="control together">
       {#each line.props as id (id)}
         <span
           class="part {PROPS[id]!.type}"
           class:glyph={GLYPHS[id] !== undefined}
           class:own={explicit(element, id)}
+          class:inherited={inheritsNow(element, id)}
           class:end={id === 'hyphenate'}
+          title={origin(element, id)}
         >
           {#if FIELD_ICONS[id]}
             <span class="field-icon" title={propLabel(element.id, PROPS[id]!, lang)}>
@@ -392,6 +592,7 @@
             </span>
           {/if}
           {@render controlOf(element, id)}
+          {@render revertOf(element, id)}
         </span>
       {/each}
     </div>
@@ -440,7 +641,7 @@
   {@const key = `${element.id}.${at.prop}`}
   <div
     class="place {place}"
-    class:inherited={!explicit(element, at.prop)}
+    class:inherited={inheritsNow(element, at.prop)}
     role="group"
     onpointerenter={() => (hot = { element: element.id, prop: at.prop })}
     onpointerleave={() => (hot = null)}
@@ -451,10 +652,11 @@
       <label
         class="short"
         for="prop-{element.id}-{at.prop}"
-        title={propLabel(element.id, PROPS[at.prop]!, lang)}>{words(at[lang], values)}</label
+        title={origin(element, at.prop) ?? propLabel(element.id, PROPS[at.prop]!, lang)}
+        >{words(at[lang], values)}</label
       >
     {/if}
-    {@render controlOf(element, at.prop)}
+    {@render controlHere(element, at.prop)}
     {#if editor.refused === key}
       <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
     {/if}
@@ -463,11 +665,11 @@
 
 {#snippet space(element: ElementDef, id: string)}
   <!-- The space between two parts that stand one under another, set where that space is. -->
-  <div class="space" class:inherited={!explicit(element, id)}>
+  <div class="space" class:inherited={inheritsNow(element, id)}>
     <svg class="span" viewBox="0 0 12 30" width="12" height="30" aria-hidden="true">
       <path d="M2 0.5H10M6 0.5V29.5M2 29.5H10" />
     </svg>
-    <span class="space-field">{@render controlOf(element, id)}</span>
+    <span class="space-field">{@render controlHere(element, id)}</span>
     <label class="short" for="prop-{element.id}-{id}"
       >{propLabel(element.id, PROPS[id]!, lang)}</label
     >
@@ -475,195 +677,106 @@
 {/snippet}
 
 {#snippet lineLook(element: ElementDef)}
-  <!-- What the divider looks like, in one row: each value with its name above it. -->
-  <div class="look" role="group" aria-label={i18n.t('templates.running.line')}>
-    {#each [['divider_color', i18n.t('templates.running.line.color')], ['divider_thickness', i18n.t('templates.running.line.weight')], ['divider_gap', i18n.t(element.id === 'footer' ? 'templates.running.line.gap.footer' : 'templates.running.line.gap.header')]] as const as [id, caption] (id)}
-      <div class="cell">
-        <label class="short" for="prop-{element.id}-{id}">{caption}</label>
-        <span class="part {PROPS[id]!.type}">{@render controlOf(element, id)}</span>
-      </div>
+  <!-- What the divider looks like: its values as rows, under its switch on the page. -->
+  <div class="rows">
+    {#each ['divider_color', 'divider_thickness', 'divider_gap'] as id (id)}
+      {@render row(element, id)}
     {/each}
   </div>
 {/snippet}
 
-{#snippet runningOptions(element: ElementDef, values: Readonly<Record<string, unknown>>)}
-  <!-- What else a header or footer does, as cards that are on or off. Mirroring is for pages that
-       face each other: with single pages it does nothing, so it is not offered. -->
-  <ToggleCards
-    label={i18n.t('templates.running.options')}
-    disabled={readOnly}
-    options={[
-      ...(facing(element)
-        ? [{ key: 'mirror', icon: 'mirror', label: i18n.t('templates.running.mirror') }]
-        : []),
-      { key: 'skip_chapter_start', icon: 'eye-off', label: i18n.t('templates.running.skip') },
-    ].map((option) => ({
-      ...option,
-      icon: option.icon as IconName,
-      name: propLabel(element.id, PROPS[option.key]!, lang),
-      checked: values[option.key] === true,
-    }))}
-    onchange={(key, on) => void editor.set(element.id, key, on)}
-  />
-{/snippet}
-
-{#snippet paragraphOptions(element: ElementDef, values: Readonly<Record<string, unknown>>)}
-  <!-- How the lines are set, ragged or justified, both in view; and whether words are divided. -->
-  <div class="settings">
-    <div class="choice">
-      <ChoiceCards
-        fill
-        label={i18n.t('templates.paragraphs.lines')}
-        value={values['justify'] === true
-          ? 'justified'
-          : values['justify'] === false
-            ? 'ragged'
-            : null}
-        disabled={readOnly}
-        options={[
-          { value: 'ragged', label: i18n.t('templates.setting.ragged'), icon: 'align-left' },
-          {
-            value: 'justified',
-            label: i18n.t('templates.setting.justified'),
-            icon: 'align-justify',
-          },
-        ]}
-        onchange={(v) => void editor.set(element.id, 'justify', v === 'justified')}
-      />
-    </div>
-    <div class="toggle">
-      <ToggleCards
-        label={i18n.t('templates.paragraphs.options')}
-        disabled={readOnly}
-        options={[
-          {
-            key: 'hyphenate',
-            icon: 'hyphenation',
-            label: i18n.t('templates.setting.hyphens'),
-            name: propLabel(element.id, PROPS['hyphenate']!, lang),
-            checked: values['hyphenate'] === true,
-          },
-        ]}
-        onchange={(key, on) => void editor.set(element.id, key, on)}
-      />
-    </div>
+{#snippet runningOptions(element: ElementDef)}
+  <!-- What else a header or footer does, as switches. Mirroring is for pages that face each other:
+       with single pages it does nothing, so it is not offered. -->
+  <div class="rows">
+    {#if facing(element)}{@render row(element, 'mirror')}{/if}
+    {@render row(element, 'skip_chapter_start')}
   </div>
 {/snippet}
 
-{#snippet headingLines(element: ElementDef, values: Readonly<Record<string, unknown>>)}
-  <!-- What a line of the heading looks like, there while the line is on. -->
-  {#each ['above', 'below'] as side (side)}
-    {#if values[`line_${side}`] === true}
-      {@const toggle = PROPS[`line_${side}`]!}
-      <div class="line-look">
-        <p class="short">{propLabel(element.id, toggle, lang)}</p>
-        <div class="grid">
-          {#each ['color', 'thickness', 'width', 'distance'] as field (field)}
-            {@render row(element, `line_${side}_${field}`, true)}
-          {/each}
-        </div>
-      </div>
+{#snippet paragraphOptions(element: ElementDef)}
+  <!-- How the lines are set (a choice, drawn) and whether words are divided (a switch): two rows, as
+       any other values. -->
+  <div class="rows">
+    {@render row(element, 'justify')}
+    {@render row(element, 'hyphenate')}
+    {#if editor.profile?.hyphenate !== undefined}
+      <!-- The document's own hyphenation is shown at the top of the page; it is the one that prints. -->
+      <p class="short note">{i18n.t('templates.document.hyphenate')}</p>
     {/if}
-  {/each}
+  </div>
 {/snippet}
 
-{#snippet quoteLooks(element: ElementDef, values: Readonly<Record<string, unknown>>)}
-  <!-- The ground of the quote, the sides that have a line, and what the lines look like. -->
-  {@render row(element, 'fill')}
-  <p class="short caption">{i18n.t('templates.quote.lines')}</p>
-  <ToggleCards
-    label={i18n.t('templates.quote.lines')}
-    disabled={readOnly}
-    options={[
-      { key: 'border_top', icon: 'border-top' },
-      { key: 'border_bottom', icon: 'border-bottom' },
-      { key: 'border_left', icon: 'border-left' },
-      { key: 'border_right', icon: 'border-right' },
-    ].map((option) => ({
-      ...option,
-      icon: option.icon as IconName,
-      label: propLabel(element.id, PROPS[option.key]!, lang),
-      name: propLabel(element.id, PROPS[option.key]!, lang),
-      checked: values[option.key] === true,
-    }))}
-    onchange={(key, on) => void editor.set(element.id, key, on)}
-  />
+{#snippet headingLine(element: ElementDef, side: 'above' | 'below')}
+  <!-- What a line of the heading looks like: its values as rows, under its switch on the page. -->
+  <div class="rows">
+    {#each ['color', 'thickness', 'width', 'distance'] as field (field)}
+      {@render row(element, `line_${side}_${field}`)}
+    {/each}
+  </div>
+{/snippet}
+
+{#snippet quoteBox(element: ElementDef)}
+  <!-- The ground of the quote, and the space inside it on the sides that have no line (a side with
+       a line has its own distance). -->
+  <div class="rows">
+    {@render row(element, 'fill')}
+    {@render row(element, 'padding')}
+  </div>
+{/snippet}
+
+{#snippet quoteLines(element: ElementDef, values: Readonly<Record<string, unknown>>)}
+  <!-- The sides that have a line, as four switches in one row, and what the lines look like. -->
+  <div class="row">
+    <span class="label">{i18n.t('templates.quote.lines')}</span>
+    <div class="control sides" role="group" aria-label={i18n.t('templates.quote.lines')}>
+      {#each ['border_top', 'border_bottom', 'border_left', 'border_right'] as id (id)}
+        <Checkbox
+          checked={values[id] === true}
+          disabled={readOnly}
+          onchange={(on) => void editor.set(element.id, id, on)}
+          >{propLabel(element.id, PROPS[id]!, lang)}</Checkbox
+        >
+      {/each}
+    </div>
+  </div>
   {#if ['border_top', 'border_bottom', 'border_left', 'border_right'].some((side) => values[side] === true)}
-    <div class="look" role="group" aria-label={i18n.t('templates.quote.look')}>
+    <div class="rows">
       {#each ['border_color', 'border_thickness', 'border_gap'] as id (id)}
-        <div class="cell">
-          <label class="short" for="prop-{element.id}-{id}"
-            >{propLabel(element.id, PROPS[id]!, lang)}</label
-          >
-          <span class="part {PROPS[id]!.type}">{@render controlOf(element, id)}</span>
-        </div>
+        {@render row(element, id)}
       {/each}
     </div>
   {/if}
-  <!-- The space inside the quote, on the sides that have no line (a side with a line has its own distance). -->
-  <div class="look">
-    <div class="cell">
-      <label class="short" for="prop-{element.id}-padding"
-        >{i18n.t('templates.quote.padding')}</label
-      >
-      <span class="part length">{@render controlOf(element, 'padding')}</span>
-    </div>
-  </div>
 {/snippet}
 
 {#snippet tableValues(element: ElementDef)}
-  <!-- The values of a table that are not a place on its page: its grounds, its bold header, its rules, its cells. -->
-  <div class="look">
-    {#each [['header_fill', 'templates.table.header'], ['stripe_fill', 'templates.table.stripes']] as const as [id, caption] (id)}
-      <div class="cell">
-        <label class="short" for="prop-{element.id}-{id}">{i18n.t(caption)}</label>
-        <span class="part color">{@render controlOf(element, id)}</span>
-      </div>
-    {/each}
-  </div>
-  {@render row(element, 'header_bold')}
-  <div class="look">
-    {#each [['rule_strong_width', 'templates.table.rule.header'], ['rule_width', 'templates.table.rule'], ['inset', 'templates.table.inset']] as const as [id, caption] (id)}
-      <div class="cell">
-        <label class="short" for="prop-{element.id}-{id}">{i18n.t(caption)}</label>
-        <span class="part length">{@render controlOf(element, id)}</span>
-      </div>
+  <!-- The values of a table that are not a place on its page: its grounds, its bold header, its
+       rules, its cells, as rows. -->
+  <div class="rows">
+    {#each ['header_fill', 'stripe_fill', 'header_bold', 'rule_strong_width', 'rule_width', 'inset'] as id (id)}
+      {@render row(element, id)}
     {/each}
   </div>
 {/snippet}
 
 {#snippet noteValues(element: ElementDef, values: Readonly<Record<string, unknown>>)}
-  <!-- The values of the notes that are not a place on their page: at the foot, the look of the rule; in the margin, the column. -->
+  <!-- The values of the notes that are not a place on their page: in the margin, the column; at the
+       foot, the rule above them, with a title of its own as its group had. -->
   {#if values['placement'] === 'margin'}
-    <div class="look wrap">
+    <div class="rows">
       {#each ['margin_width', 'margin_gap', 'note_gap'] as id (id)}
-        <div class="cell">
-          <label class="short" for="prop-{element.id}-{id}"
-            >{propLabel(element.id, PROPS[id]!, lang)}</label
-          >
-          <span class="part length">{@render controlOf(element, id)}</span>
-        </div>
+        {@render row(element, id)}
       {/each}
     </div>
   {:else}
-    <!-- The rule above the notes has a title of its own, as its group had. -->
     <Section
       title={PROP_SECTIONS.find((g) => g.id === 'separator')?.[lang]}
       level={4}
       region={false}
     >
-      <div class="look wrap">
-        <div class="cell">
-          <span class="short">{propLabel(element.id, PROPS['separator_style']!, lang)}</span>
-          {@render controlOf(element, 'separator_style')}
-        </div>
-        {#each ['rule_width', 'rule_length', 'separator_color'].filter( (id) => isShown(id, values) ) as id (id)}
-          <div class="cell">
-            <label class="short" for="prop-{element.id}-{id}"
-              >{propLabel(element.id, PROPS[id]!, lang)}</label
-            >
-            <span class="part {PROPS[id]!.type}">{@render controlOf(element, id)}</span>
-          </div>
+      <div class="rows">
+        {#each ['separator_style', 'rule_width', 'rule_length', 'separator_color'].filter( (id) => isShown(id, values) ) as id (id)}
+          {@render row(element, id)}
         {/each}
       </div>
     </Section>
@@ -677,6 +790,8 @@
     {@const paragraphs = (PARAGRAPHS[element.id] ?? []).some((id) => group.ids.includes(id))}
     {@const headings = (HEADINGS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
     {@const quotes = (QUOTES[element.id] ?? []).length > 0 && group.id === 'arrangement'}
+    {@const quoteFill = (QUOTES[element.id] ?? []).length > 0 && group.id === 'box'}
+    {@const quoteBorder = (QUOTES[element.id] ?? []).length > 0 && group.id === 'border'}
     {@const epigraphs = (EPIGRAPHS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
     {@const dividers = (DIVIDERS[element.id] ?? []).length > 0 && group.id === 'divider'}
     {@const lists = (LISTS[element.id] ?? []).length > 0 && group.id === 'list'}
@@ -685,26 +800,26 @@
     {@const framePage = element.id === 'figure' && group.id === 'frame'}
     {@const tablePage = element.id === 'table' && group.id === 'table'}
     {@const notesPage = (NOTES[element.id] ?? []).length > 0 && group.id === 'placement'}
-    {@const custom = [
-      ...(RUNNING[element.id] ?? []),
-      ...(NOTES[element.id] ?? []),
-      ...(TABLES[element.id] ?? []),
-      ...(FIGURES[element.id] ?? []),
-      ...(LISTS[element.id] ?? []),
-      ...(PAGES[element.id] ?? []),
-      ...(EPIGRAPHS[element.id] ?? []),
-      ...(DIVIDERS[element.id] ?? []),
-      ...(PARAGRAPHS[element.id] ?? []),
-      ...(HEADINGS[element.id] ?? []),
-      ...(QUOTES[element.id] ?? []),
-    ]}
+    {@const custom = drawnIds(element)}
     {@const shown = group.ids.filter((id) => isShown(id, values) && !custom.includes(id))}
     {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
     <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
-    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || epigraphs || dividers || lists || pageSetup || figurePage || framePage || tablePage || notesPage}
-      <Section title={shape.titled ? group[lang] : undefined} level={4} region={false}>
-        {#if group.id === 'type'}
+    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || quoteFill || quoteBorder || epigraphs || dividers || lists || pageSetup || figurePage || framePage || tablePage || notesPage}
+      {@const colourOnly =
+        group.id === 'type' && group.ids.length === 1 && group.ids[0] === 'color'}
+      <!-- A type group with nothing but the colour (a list's text) is the text's colour: no sample of
+           a type the element does not set. -->
+      <Section
+        title={shape.titled
+          ? colourOnly
+            ? i18n.t('templates.section.text')
+            : group[lang]
+          : undefined}
+        level={4}
+        region={false}
+      >
+        {#if group.id === 'type' && !colourOnly}
           <!-- A line of sample text in the type of the element, as the style resolves it. -->
           <TypeSpecimen {element} resolved={editor.resolved} {palette} />
         {/if}
@@ -720,7 +835,7 @@
           <FootnotePage
             {element}
             {values}
-            control={controlOf}
+            control={controlHere}
             measure={measureCm(editor.resolved['page'] ?? {})}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
           />
@@ -734,7 +849,7 @@
             {caption}
             {values}
             captionValues={valuesOf(caption)}
-            control={controlOf}
+            control={controlHere}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
           />
           {@render tableValues(element)}
@@ -747,13 +862,13 @@
             {caption}
             {values}
             captionValues={valuesOf(caption)}
-            control={controlOf}
+            control={controlHere}
             emCm={bodyCm()}
           />
         {/if}
         {#if framePage}
           <!-- The border of an image, around the picture, each value on its side. -->
-          <FramePage {element} {values} control={controlOf} emCm={bodyCm()} />
+          <FramePage {element} {values} control={controlHere} emCm={bodyCm()} />
         {/if}
         {#if pageSetup}
           <!-- The page: one or two, with the margins as bands and each value on its side. -->
@@ -761,19 +876,19 @@
             {element}
             {values}
             binding={editor.profile?.binding ?? null}
-            control={controlOf}
+            control={controlHere}
           />
         {/if}
         {#if lists}
           <!-- A list: three items between two pieces of text, each value where it is set. -->
-          <ListPage {element} {values} control={controlOf} />
+          <ListPage {element} {values} control={controlHere} />
         {/if}
         {#if epigraphs}
           <!-- An epigraph: set apart at the right under a chapter's title, each value where it is set. -->
           <EpigraphPage
             {element}
             {values}
-            control={controlOf}
+            control={controlHere}
             measure={measureCm(editor.resolved['page'] ?? {})}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
           />
@@ -783,7 +898,7 @@
           <DividerPage
             {element}
             {values}
-            control={controlOf}
+            control={controlHere}
             measure={measureCm(editor.resolved['page'] ?? {})}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
           />
@@ -793,38 +908,43 @@
           <QuotePage
             {element}
             {values}
-            control={controlOf}
+            control={controlHere}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
           />
           <!-- Where the source stands: after the last word, or on a line of its own at the right. -->
           <div class="rows">{@render row(element, 'source_position')}</div>
-          {@render quoteLooks(element, values)}
         {/if}
+        {#if quoteFill}{@render quoteBox(element)}{/if}
+        {#if quoteBorder}{@render quoteLines(element, values)}{/if}
         {#if headings}
           <!-- A heading: a page with the heading between two pieces of text, each value where it is set. -->
           <HeadingPage
             {element}
             {values}
-            control={controlOf}
+            control={controlHere}
             refused={editor.refused}
             numbering={headingNumberingOf(editor.resolved)}
             measure={measureCm(editor.resolved['page'] ?? {})}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
+            look={headingLine}
           />
-          {@render headingLines(element, values)}
         {/if}
         {#if paragraphs}
           <!-- The body text: two paragraphs, each value where it is set on them. -->
-          <ParagraphSetup {element} {values} control={controlOf} />
-          {@render paragraphOptions(element, values)}
+          <ParagraphSetup {element} {values} control={controlHere} />
+          {@render paragraphOptions(element)}
         {/if}
         {#if running}
           <!-- A header or a footer: a page with its places, where they are on it. -->
-          <RunningLine {element} {values} facing={facing(element)} control={controlOf} {space} />
-          {#if values['divider'] === true}
-            {@render lineLook(element)}
-          {/if}
-          {@render runningOptions(element, values)}
+          <RunningLine
+            {element}
+            {values}
+            facing={facing(element)}
+            control={controlHere}
+            {space}
+            look={lineLook}
+          />
+          {@render runningOptions(element)}
         {/if}
         <div class="rows">
           {#each panelLines(shown) as line (line.props[0])}
@@ -907,9 +1027,12 @@
                   onchange={(v) => void editor.setOption(option.id, { default: v })}
                 />
               {:else}
+                <!-- A number in the language's decimal mark, as "Dokument einrichten" shows it. -->
                 <TextField
                   id={control}
-                  value={option.default}
+                  value={option.type === 'number'
+                    ? String(option.default).replace('.', lang === 'de' ? ',' : '.')
+                    : option.default}
                   placeholder="—"
                   invalid={editor.refused === `option.${option.id}`}
                   disabled={readOnly}
@@ -942,26 +1065,69 @@
   {:else}
     <section class="properties" aria-label={element[lang]}>
       <h3 class="title">{element[lang]}</h3>
+      {#if documentFields.length > 0}
+        <!-- What this document sets about the element, whichever template it uses: a section of
+             its own above the template's, as "Dokument einrichten" has them. -->
+        <Section title={i18n.t('templates.document.title')} level={4}>
+          <p class="short note">
+            {i18n.t('templates.document.hint')}
+            <Link onclick={() => (editor.elementId = EXPORT)}>{i18n.t('export.panel')}</Link>
+          </p>
+          <div class="rows document">
+            {#each documentFields as { field, label } (field)}
+              {@const control = `document-${element.id}-${field.replace(':', '-')}`}
+              <div class="row">
+                <label for={control}>{label}</label>
+                <div class="control">
+                  <DocumentField {field} id={control} {label} />
+                </div>
+              </div>
+            {/each}
+          </div>
+        </Section>
+      {/if}
       {#if readOnly}
         <ReadonlyNote />
       {/if}
+      {#if element.id === 'page_number'}
+        <!-- Where the number stands is a place of the header or the footer, set there. -->
+        <p class="short note where">
+          {i18n.t('templates.pageNumber.where')}
+          <Link onclick={() => (editor.elementId = 'header')}>{elementById('header')?.[lang]}</Link>
+          ·
+          <Link onclick={() => (editor.elementId = 'footer')}>{elementById('footer')?.[lang]}</Link>
+        </p>
+      {/if}
       {#each members as member, index (member.id)}
         {@const { gap, head } = panelLayout(member)}
+        {@const open = index === 0 || partOpen(member)}
         <!-- A part of the element (a caption, a part of the title page): a line above it, then the
              space above it where there is one, then its name, standing where the part stands on the
-             page, with that place beside it. -->
+             page, with that place beside it. A part opens and closes by its name, so a page of
+             many parts stays short. -->
         <div class:member={index > 0}>
           {#if gap && isShown(gap, valuesOf(member))}
             {@render space(member, gap)}
           {/if}
           {#if index > 0}
             <div class="sub-line">
-              <h3 class="sub" style:text-align={partAlign(member)}>{member[lang]}</h3>
+              <h3 class="sub" style:text-align={partAlign(member)}>
+                <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a part's name that opens and closes it, a heading with its chevron: the kit has no disclosure -->
+                <button
+                  type="button"
+                  class="disclose"
+                  aria-expanded={open}
+                  onclick={() => (openParts[member.id] = !open)}
+                >
+                  <Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} />
+                  {member[lang]}
+                </button>
+              </h3>
               {#if head}{@render controlOf(member, head)}{/if}
             </div>
           {/if}
         </div>
-        {@render sections(member)}
+        {#if open}{@render sections(member)}{/if}
       {/each}
     </section>
   {/if}
@@ -981,6 +1147,10 @@
   .properties > :global(.callout) {
     margin-bottom: var(--sp-16);
   }
+  /* The document's own settings: under their hint. */
+  .rows.document {
+    margin-top: var(--sp-8);
+  }
   /* The part of an element shown under it (the source of an epigraph, a caption). */
   .member {
     margin: var(--sp-16) 0 var(--sp-8);
@@ -999,6 +1169,29 @@
     color: var(--color-label);
     font: var(--type-title);
   }
+  /* A part's name opens and closes it: the name with a chevron before it, as wide as it is. */
+  .disclose {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-4);
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: default;
+  }
+  .disclose:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-focus);
+  }
+  .disclose :global(svg) {
+    color: var(--color-label-secondary);
+  }
+  .where {
+    margin-bottom: var(--sp-16);
+  }
   /* The space between two parts: a span mark, the value, its name, in the middle of the panel. */
   .space {
     display: flex;
@@ -1013,7 +1206,8 @@
     stroke-width: 1;
   }
   .space-field {
-    width: 96px;
+    display: inline-flex;
+    width: auto;
   }
   .space-field :global(.text-field) {
     width: 100%;
@@ -1216,7 +1410,8 @@
     gap: var(--sp-8);
   }
   .line-look .short,
-  .caption {
+  .caption,
+  .note {
     margin: 0;
   }
   .look.wrap {
@@ -1237,7 +1432,7 @@
   /* A property: its name in a column of its own, the control beside it. */
   .row {
     display: grid;
-    grid-template-columns: var(--form-label-width) minmax(0, 1fr);
+    grid-template-columns: calc(var(--form-label-width) + var(--sp-24)) minmax(0, 1fr);
     gap: var(--sp-4) var(--sp-12);
     align-items: center;
   }
@@ -1253,11 +1448,50 @@
   .row.inherited label {
     color: var(--color-label-secondary);
   }
+  /* A value taken from above is shown as an empty field shows what applies: in its quieter tone,
+     until the field is typed into. */
+  .row.inherited > .control :global(:is(input, select):not(:focus)),
+  .row.inherited > .control :global(.name),
+  .part.inherited :global(:is(input, select):not(:focus)),
+  .part.inherited :global(.name),
+  .place.inherited :global(:is(input, select):not(:focus)),
+  .place.inherited :global(.name),
+  .space.inherited :global(:is(input, select):not(:focus)),
+  .space.inherited :global(.name) {
+    color: var(--color-label-tertiary);
+  }
+  /* The way back to the value from above: always in sight where a value is set here. */
+  .revert {
+    display: inline-flex;
+    flex: none;
+  }
+  .revert.away {
+    visibility: hidden;
+  }
+  /* A part of a line with that button is as wide as its field and the button. */
+  .part:is(.length, .factor):has(.revert) {
+    width: auto;
+  }
+  .with-revert {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+  }
   .control {
     display: flex;
     align-items: center;
     gap: var(--sp-4);
     min-width: 0;
+  }
+  .row > .label {
+    color: var(--color-label);
+    font: var(--type-body);
+  }
+  /* The four sides of a quote's lines: switches with their names, side by side. */
+  .control.sides {
+    flex-wrap: wrap;
+    gap: var(--sp-4) var(--sp-12);
   }
   .control > :global(.select),
   .control > :global(.text-field) {

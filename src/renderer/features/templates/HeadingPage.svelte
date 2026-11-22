@@ -30,8 +30,10 @@
     /** The width of the text on the page, and the size of the heading's type, both in centimetres. */
     measure: number
     emCm: number
+    /** The look of a line, right under its switch while it is on. */
+    look?: Snippet<[ElementDef, 'above' | 'below']>
   }
-  let { element, values, control, refused, numbering, measure, emCm }: Props = $props()
+  let { element, values, control, refused, numbering, measure, emCm, look }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const has = (id: string): boolean => element.props.includes(id)
@@ -83,6 +85,7 @@
     {@render control(element, id)}
     <label for="prop-{element.id}-{id}">{name(id)}</label>
   </div>
+  {#if values[id] === true && look}<div class="look">{@render look(element, side)}</div>{/if}
 {/snippet}
 
 <!-- The choices that are about the whole heading, over the page: where it breaks, where it stands. -->
@@ -150,6 +153,10 @@
 </div>
 
 <style>
+  /* The look of a line, under its switch, set in from the page's edge. */
+  .look {
+    padding: var(--sp-4) 0 var(--sp-4) var(--sp-24);
+  }
   .choices {
     display: flex;
     align-items: flex-end;

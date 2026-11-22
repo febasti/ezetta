@@ -7,7 +7,7 @@ import {
   numberSymbol,
   typstNumberingPattern,
 } from './numbering'
-import { ELEMENTS, elementById, PROPS } from './elements'
+import { ELEMENTS, MODIFIERS, elementById, groupOf, PROPS } from './elements'
 import { numberIn } from './template'
 import type { ElementDef, PropDef } from './elements'
 
@@ -164,7 +164,9 @@ export function elementTables(doc: unknown): Record<string, unknown> {
 
 /**
  * Reads a style's `[element.<id>]` tables (the format of `style.toml`, sparse or complete) and
- * resolves every element: its own value, else the element's built-in default, else its parent's. A value that is not
+ * resolves every element: its own value, else the element's built-in default, else its parent's.
+ * A modifier (`MODIFIERS`: italic, the letter case, …) is not its parent's: unset, it is what the
+ * element's group sets ("Alle Überschriften" for a level), else off. A value that is not
  * valid for its property, an element or property this engine does not know, are reported and left
  * out, so a damaged style still gives a document.
  */
@@ -197,6 +199,12 @@ export function resolveStyle(
     own.set(def.id, values)
   }
 
+  /** What the group of an element ("Alle Überschriften") sets for a modifier itself, or by default. */
+  const groupModifier = (id: string, key: string): StyleValue => {
+    const group = groupOf(id)
+    if (!group) return null
+    return own.get(group)?.[key] ?? elementById(group)!.defaults[key] ?? null
+  }
   const style: ResolvedStyle = {}
   const resolve = (def: ElementDef): Record<string, StyleValue> => {
     const done = style[def.id]
@@ -208,6 +216,7 @@ export function resolveStyle(
       const builtIn = def.defaults[key] ?? null
       if (mine !== undefined) out[key] = mine
       else if (builtIn !== null) out[key] = builtIn
+      else if (key in MODIFIERS && parent) out[key] = groupModifier(def.id, key) ?? MODIFIERS[key]!
       else if (parent && parent[key] != null) out[key] = parent[key]!
       else out[key] = null
     }

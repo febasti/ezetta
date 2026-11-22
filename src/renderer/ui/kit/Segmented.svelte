@@ -29,6 +29,8 @@
     stretch?: boolean
     /** A small picture for each option, drawn in the colour of the text, in place of its name. */
     glyph?: Snippet<[T]>
+    /** The name of the chosen option under the track, for options shown as pictures or samples only. */
+    named?: boolean
     disabled?: boolean
     onchange: (value: T) => void
   }
@@ -39,9 +41,12 @@
     size = 'md',
     stretch = false,
     glyph,
+    named = false,
     disabled = false,
     onchange,
   }: Props = $props()
+
+  const chosen = $derived(options.find((o) => o.value === value)?.label ?? '')
 
   function onKeydown(event: KeyboardEvent): void {
     const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
@@ -60,41 +65,69 @@
   }
 </script>
 
-<div
-  class="segmented {size}"
-  class:stretch
-  class:pictures={glyph !== undefined}
-  role="radiogroup"
-  aria-label={label}
-  tabindex="-1"
-  onkeydown={onKeydown}
->
-  {#each options as option, index (option.value)}
-    {@const shown = glyph !== undefined || option.icon !== undefined || option.sample !== undefined}
-    <button
-      type="button"
-      role="radio"
-      aria-checked={option.value === value}
-      aria-label={shown ? option.label : undefined}
-      title={shown ? option.label : undefined}
-      tabindex={option.value === value || (value === null && index === 0) ? 0 : -1}
-      disabled={disabled || option.disabled}
-      onclick={() => onchange(option.value)}
-    >
-      {#if glyph}
-        {@render glyph(option.value)}
-      {:else if option.icon}
-        <Icon name={option.icon} size={16} />
-      {:else if option.sample !== undefined}
-        <span class:smallcaps={option.sampleStyle === 'smallcaps'}>{option.sample}</span>
-      {:else}
-        {option.label}
-      {/if}
-    </button>
-  {/each}
-</div>
+{#snippet track()}
+  <div
+    class="segmented {size}"
+    class:stretch
+    class:pictures={glyph !== undefined}
+    role="radiogroup"
+    aria-label={label}
+    tabindex="-1"
+    onkeydown={onKeydown}
+  >
+    {#each options as option, index (option.value)}
+      {@const shown =
+        glyph !== undefined || option.icon !== undefined || option.sample !== undefined}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={option.value === value}
+        aria-label={shown ? option.label : undefined}
+        title={shown ? option.label : undefined}
+        tabindex={option.value === value || (value === null && index === 0) ? 0 : -1}
+        disabled={disabled || option.disabled}
+        onclick={() => onchange(option.value)}
+      >
+        {#if glyph}
+          {@render glyph(option.value)}
+        {:else if option.icon}
+          <Icon name={option.icon} size={16} />
+        {:else if option.sample !== undefined}
+          <span class:smallcaps={option.sampleStyle === 'smallcaps'}>{option.sample}</span>
+        {:else}
+          {option.label}
+        {/if}
+      </button>
+    {/each}
+  </div>
+{/snippet}
+
+{#if named}
+  <span class="with-name">
+    {@render track()}
+    <span class="chosen" aria-hidden="true">{chosen}</span>
+  </span>
+{:else}
+  {@render track()}
+{/if}
 
 <style>
+  /* The name of the chosen picture under it, quietly, as wide as the track. */
+  .with-name {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+  }
+  .chosen {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--color-label-secondary);
+    font: var(--type-caption);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .segmented {
     display: inline-flex;
     gap: 2px;

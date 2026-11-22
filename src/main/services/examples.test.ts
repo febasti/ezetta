@@ -61,6 +61,10 @@ const FEATURES: [name: string, pattern: RegExp][] = [
   ],
   ['source in the text', /`[^`\n]+`/],
   ['two sheets side by side, with the shortcut', /Cmd\+\\\\ /],
+  [
+    "the document's own settings, also on the element pages",
+    /„Dokument einrichten“[\s\S]*„Für dieses Dokument“|"Document Setup"[\s\S]*"For this document"/,
+  ],
 ]
 
 let dir: string | null = null

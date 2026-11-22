@@ -4,6 +4,7 @@
   import { call } from '../../lib/api'
   import { i18n } from '../../i18n/i18n.svelte'
   import Button from '../../ui/kit/Button.svelte'
+  import Link from '../../ui/kit/Link.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import { scrollbar } from '../../ui/scrollbar'
 
@@ -12,6 +13,9 @@
    * software that ships with it (Typst, LanguageTool, the Java runtime, the thesaurus files, the
    * libraries and fonts). The text is the file THIRD-PARTY-NOTICES.txt, read by the main process.
    */
+  /** Where the source code is, as the licence promises it. */
+  const SOURCE_URL = 'https://github.com/febasti/ezetta'
+
   let version = $state('')
   /** Null while it loads; empty when the file could not be read. */
   let notices = $state<string | null>(null)
@@ -32,12 +36,20 @@
     {#if version}<p class="version">{i18n.t('about.version', { version })}</p>{/if}
   </div>
   <p class="free">{i18n.t('about.free')}</p>
+  <p class="source">
+    <span>{i18n.t('about.copyright')}</span>
+    <Link onclick={() => void call(window.api.app.openExternal({ url: SOURCE_URL }))}>
+      {i18n.t('about.source')}
+    </Link>
+  </p>
 </Section>
 <Section title={i18n.t('about.log')}>
   <p class="hint">{i18n.t('about.log.hint')}</p>
-  <Button size="sm" onclick={() => void call(window.api.app.revealLog({}))}>
-    {i18n.t('about.log.show')}
-  </Button>
+  <div class="action">
+    <Button size="sm" onclick={() => void call(window.api.app.revealLog({}))}>
+      {i18n.t('about.log.show')}
+    </Button>
+  </div>
 </Section>
 <Section title={i18n.t('about.licenses')}>
   <p class="hint">{i18n.t('about.licenses.hint')}</p>
@@ -55,6 +67,18 @@
 </Section>
 
 <style>
+  /* A button as wide as its words, as everywhere else, not the column's width. */
+  .action {
+    display: flex;
+  }
+  .source {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-4) var(--sp-12);
+    margin: var(--sp-8) 0 0;
+    color: var(--color-label-secondary);
+    font: var(--type-caption);
+  }
   .identity {
     display: flex;
     align-items: baseline;

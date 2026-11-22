@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { BrowserWindow, screen } from 'electron'
+import { BrowserWindow, nativeTheme, screen } from 'electron'
 import { APP_INDEX_URL } from './protocols'
 import type { AppTheme, WindowState } from './services/settings'
 import { LAUNCHER_SIZE, MIN_SIZE, placeWindow } from './windowState'
@@ -70,11 +70,21 @@ export const insetTitleBar = (platform: NodeJS.Platform): boolean => platform ==
 const TRAFFIC_LIGHTS = { x: 18, y: 17 }
 
 /** The window's colour before the page paints, by the theme last chosen (the page's `--surface-2`). */
-const WINDOW_BACKGROUND: Record<AppTheme, string> = {
+const WINDOW_BACKGROUND: Record<Exclude<AppTheme, 'system'>, string> = {
   light: '#ffffff',
   dark: '#1f1f1e',
   sepia: '#fbf6ea',
 }
+
+/** What the window's own parts follow: the theme's light or dark, or the system's. */
+export const themeSource = (theme: AppTheme): 'light' | 'dark' | 'system' =>
+  theme === 'system' ? 'system' : theme === 'dark' ? 'dark' : 'light'
+
+/** The window's colour for a theme; the system's appearance is asked for when the theme follows it. */
+const backgroundOf = (theme: AppTheme): string =>
+  WINDOW_BACKGROUND[
+    theme === 'system' ? (nativeTheme.shouldUseDarkColors ? 'dark' : 'light') : theme
+  ]
 
 /**
  * Test runs open many windows; `EZETTA_BACKGROUND=1` (development builds only, set by the
@@ -105,7 +115,7 @@ export function createMainWindow(
     minHeight: launcher ? LAUNCHER_SIZE.height : MIN_SIZE.height,
     ...(launcher ? { resizable: false, maximizable: false, fullscreenable: false } : {}),
     show: false,
-    backgroundColor: WINDOW_BACKGROUND[options.theme ?? 'light'],
+    backgroundColor: backgroundOf(options.theme ?? 'system'),
     ...(insetTitleBar(process.platform)
       ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: TRAFFIC_LIGHTS }
       : {}),

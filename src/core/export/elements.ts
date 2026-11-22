@@ -1,3 +1,5 @@
+import { supplementsFor } from '../typst/targets'
+
 /**
  * The elements of a template and the properties each can have. The engine styles every
  * element of a document (the body text, each level of heading, quotes, figures, tables, footnotes,
@@ -114,10 +116,10 @@ const VALUE_LABELS: Record<string, Record<string, { de: string; en: string }>> =
     custom: { de: 'Eigenes Format', en: 'Custom size' },
   },
   note_numbering: {
-    arabic: { de: '1 2 3', en: '1 2 3' },
-    roman_lower: { de: 'i ii iii', en: 'i ii iii' },
-    alpha_lower: { de: 'a b c', en: 'a b c' },
-    symbols: { de: '* † ‡ §', en: '* † ‡ §' },
+    arabic: { de: '1, 2, 3', en: '1, 2, 3' },
+    roman_lower: { de: 'i, ii, iii', en: 'i, ii, iii' },
+    alpha_lower: { de: 'a, b, c', en: 'a, b, c' },
+    symbols: { de: '*, †, ‡, §', en: '*, †, ‡, §' },
   },
   marker_style: {
     super: { de: 'Hochgestellt (¹)', en: 'Superscript (¹)' },
@@ -610,6 +612,12 @@ const DIVIDER_LABELS = {
 
 /** What a property is called where its usual name would say the wrong thing. */
 const LABELS_FOR: Readonly<Record<string, Readonly<Record<string, { de: string; en: string }>>>> = {
+  body: {
+    justify: { de: 'Satzart', en: 'Line setting' },
+  },
+  quote: {
+    padding: { de: 'Innenabstand ohne Linie', en: 'Padding without a line' },
+  },
   list: {
     marker_gap: { de: 'Abstand des Zeichens zum Text', en: 'Distance of the bullet to the text' },
   },
@@ -627,6 +635,35 @@ const LABELS_FOR: Readonly<Record<string, Readonly<Record<string, { de: string; 
     caption_gap: { de: 'Abstand zur Tabelle', en: 'Distance to the table' },
     caption_fit: { de: 'Auf Tabellenbreite begrenzen', en: 'Limit to the width of the table' },
   },
+}
+
+/**
+ * What the PDF prints where a word or a title is left unset: the document language's own (Typst's
+ * words for a cross-reference, the engine's titles). The editor shows it in the empty field.
+ */
+const DEFAULT_WORDS: Readonly<
+  Record<string, Readonly<Record<string, { de: string; en: string }>>>
+> = {
+  contents: { title_text: { de: 'Inhaltsverzeichnis', en: 'Contents' } },
+  bibliography: { title_text: { de: 'Literaturverzeichnis', en: 'Bibliography' } },
+  list_of_figures: { list_title: { de: 'Abbildungsverzeichnis', en: 'List of figures' } },
+  list_of_tables: { list_title: { de: 'Tabellenverzeichnis', en: 'List of tables' } },
+}
+
+/** The word printed for an unset word or title, in a document language (`de`, `en-GB`, …); null when there is none. */
+export const defaultWord = (element: string, prop: string, language: string): string | null => {
+  const supplement = SUPPLEMENT_KINDS[prop]
+  if (element === 'references' && supplement) return supplementsFor(language)[supplement]
+  const words = DEFAULT_WORDS[element]?.[prop]
+  return words ? (language.toLowerCase().startsWith('de') ? words.de : words.en) : null
+}
+
+/** The word of a cross-reference each property sets, as the references name their kinds. */
+const SUPPLEMENT_KINDS: Readonly<Record<string, 'sec' | 'fig' | 'tbl' | 'eq'>> = {
+  supplement_section: 'sec',
+  supplement_figure: 'fig',
+  supplement_table: 'tbl',
+  supplement_equation: 'eq',
 }
 
 /** The name of a property in the editor, for one element. */
@@ -762,12 +799,14 @@ export const PROP_SECTIONS: readonly {
       'paragraph_spacing',
       'width',
       'source_position',
+      'break_before',
+      'keep_with_next',
     ],
   },
   {
     id: 'numbering',
-    de: 'Nummerierung und Umbruch',
-    en: 'Numbering and breaks',
+    de: 'Nummerierung',
+    en: 'Numbering',
     props: [
       'number_depth',
       'number_format',
@@ -778,8 +817,6 @@ export const PROP_SECTIONS: readonly {
       'number_style',
       'page_style',
       'front_format',
-      'keep_with_next',
-      'break_before',
     ],
   },
   {
@@ -794,7 +831,7 @@ export const PROP_SECTIONS: readonly {
     en: 'Bullets and numbers',
     props: ['marker_font', 'marker_weight', 'marker_color'],
   },
-  { id: 'box', de: 'Fläche', en: 'Box', props: ['fill', 'padding'] },
+  { id: 'box', de: 'Fläche', en: 'Box', props: ['fill', 'padding', 'radius'] },
   {
     id: 'frame',
     de: 'Rahmen',
@@ -838,8 +875,8 @@ export const PROP_SECTIONS: readonly {
   { id: 'equation', de: 'Nummer', en: 'Number', props: ['number_side', 'number_color'] },
   {
     id: 'caption',
-    de: 'Beschriftung',
-    en: 'Caption',
+    de: 'Aufbau',
+    en: 'Layout',
     props: ['caption_position', 'caption_separator', 'caption_gap', 'caption_fit'],
   },
   {
@@ -1209,7 +1246,7 @@ export const ELEMENTS: readonly ElementDef[] = [
     'figure_caption',
     'body',
     'figures',
-    'Bildunterschrift',
+    'Beschriftung der Abbildung',
     'Figure caption',
     [...TEXT, 'line_height', 'caption_position', 'caption_separator', 'align', ...CAPTION_LOOK],
     {
@@ -1253,7 +1290,7 @@ export const ELEMENTS: readonly ElementDef[] = [
     'table_caption',
     'figure_caption',
     'tables',
-    'Tabellenüberschrift',
+    'Beschriftung der Tabelle',
     'Table caption',
     [...TEXT, 'line_height', 'caption_position', 'caption_separator', 'align', ...CAPTION_LOOK],
     { caption_fit: false },
@@ -1447,3 +1484,29 @@ export const ELEMENTS: readonly ElementDef[] = [
 
 const BY_ID = new Map(ELEMENTS.map((e) => [e.id, e]))
 export const elementById = (id: string): ElementDef | undefined => BY_ID.get(id)
+
+/**
+ * The properties that switch a look on or off (italic, small caps or capitals, a heading's lines,
+ * the style of a caption's label), with what they are when an element leaves them unset. Unlike
+ * a value (a font, a size, a colour), a modifier is not taken from the element above: an element
+ * is italic because it says so, not because its parent is. An element with no parent leaves an
+ * unset modifier to the text around it, as before.
+ */
+export const MODIFIERS: Readonly<Record<string, string | boolean>> = {
+  italic: false,
+  text_case: 'normal',
+  line_above: false,
+  line_below: false,
+  label_style: 'inherit',
+}
+
+export const isModifier = (prop: string): boolean => prop in MODIFIERS
+
+/** The elements an element stands for as a whole: "Alle Überschriften" is every level of heading. */
+export const ALL_OF: Readonly<Record<string, readonly string[]>> = {
+  heading: ['heading_1', 'heading_2', 'heading_3', 'heading_4'],
+}
+
+/** The element that stands for this one among others (a level of heading: "Alle Überschriften"). */
+export const groupOf = (id: string): string | null =>
+  Object.entries(ALL_OF).find(([, members]) => members.includes(id))?.[0] ?? null

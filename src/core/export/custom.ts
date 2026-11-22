@@ -1,7 +1,7 @@
 import { currentTemplateId } from './legacy'
 import { parse, stringify } from 'smol-toml'
 import { isTable } from '../toml'
-import { ELEMENTS, PROPS } from './elements'
+import { ALL_OF, ELEMENTS, PROPS, isModifier } from './elements'
 import { checkValue, elementTables } from './style'
 import { numberIn } from './template'
 import type { TemplateOption } from './template'
@@ -11,7 +11,12 @@ import type { TemplateOption } from './template'
  * writer changed: `custom.toml` names it and its base, and its `style.toml` holds only those values,
  * in the format of every style (`[element.heading_2]`). What the writer did not change is read from
  * the base every time, so an improvement to the base reaches it, and "reset" is deleting the value.
+ * A value the base sets that the writer wants inherited from the element above is written as
+ * `inherit` (`INHERIT`): merged with the base, it takes the base's value away.
  */
+
+/** In a custom template's changes: this property is not set here, whatever the base sets. */
+export const INHERIT = 'inherit'
 
 /** What a style sets: element id, then property id, then the value. Sparse. */
 export type Sets = Record<string, Record<string, string | boolean>>
@@ -24,6 +29,10 @@ export function setsOf(doc: unknown): Sets {
     const raw = given[def.id]
     if (!isTable(raw)) continue
     for (const key of def.props) {
+      if (raw[key] === INHERIT) {
+        ;(sets[def.id] ??= {})[key] = INHERIT
+        continue
+      }
       const checked = checkValue(PROPS[key]!, raw[key], def.id !== 'palette')
       if (checked !== null) (sets[def.id] ??= {})[key] = checked
     }
@@ -40,12 +49,16 @@ export function parseSets(text: string): Sets {
   }
 }
 
-/** `over` on top of `base`, property by property. */
+/** `over` on top of `base`, property by property; an `INHERIT` of `over` takes the base's value away. */
 export function mergeSets(base: Sets, over: Sets): Sets {
   const out: Sets = {}
   for (const [element, values] of Object.entries(base)) out[element] = { ...values }
   for (const [element, values] of Object.entries(over))
     out[element] = { ...out[element], ...values }
+  for (const [element, values] of Object.entries(out)) {
+    for (const [prop, value] of Object.entries(values)) if (value === INHERIT) delete values[prop]
+    if (Object.keys(values).length === 0) delete out[element]
+  }
   return out
 }
 
@@ -81,15 +94,10 @@ export function setValue(
     }
     return { ok: true, sets: next }
   }
-  const checked = checkValue(prop, value, elementId !== 'palette')
+  const checked = value === INHERIT ? INHERIT : checkValue(prop, value, elementId !== 'palette')
   if (checked === null) return { ok: false, message: `${value} is not a value for ${propId}` }
   ;(next[elementId] ??= {})[propId] = checked
   return { ok: true, sets: next }
-}
-
-/** The elements an element stands for as a whole: "Alle Überschriften" is every level of heading. */
-export const ALL_OF: Readonly<Record<string, readonly string[]>> = {
-  heading: ['heading_1', 'heading_2', 'heading_3', 'heading_4'],
 }
 
 /**
@@ -97,7 +105,9 @@ export const ALL_OF: Readonly<Record<string, readonly string[]>> = {
  * there, and on every one of them that sets the property itself (in the base or in the writer's
  * changes), so the choice reaches them all; one that inherits it follows anyway. `base` is what
  * the template's base sets, `sets` the writer's changes. Taking a value back (`null`) takes back
- * only the element's own.
+ * only the element's own. `INHERIT` makes the element itself take the value from above: written
+ * only where the base sets one (else taking the writer's value back is enough). A modifier (italic,
+ * the letter case, …) is not inherited, so it is set on every one of them.
  */
 export function setValueForAll(
   base: Sets,
@@ -106,12 +116,14 @@ export function setValueForAll(
   propId: string,
   value: string | boolean | null,
 ): { ok: true; sets: Sets } | { ok: false; message: string } {
+  if (value === INHERIT && base[elementId]?.[propId] === undefined)
+    return setValue(sets, elementId, propId, null)
   const first = setValue(sets, elementId, propId, value)
-  if (!first.ok || value === null) return first
+  if (!first.ok || value === null || value === INHERIT) return first
   let next = first.sets
   for (const member of ALL_OF[elementId] ?? []) {
     const own = sets[member]?.[propId] ?? base[member]?.[propId]
-    if (own === undefined) continue
+    if (own === undefined && !isModifier(propId)) continue
     const result = setValue(next, member, propId, value)
     if (result.ok) next = result.sets
   }

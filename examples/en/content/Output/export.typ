@@ -4,6 +4,8 @@ The finished document comes from the export: project menu, "Export as PDF …" (
 
 Six templates come with the program: Monograph, Journal, Margin notes, Manuscript, Essay and Report. Pick one, look at the preview and switch. From a template you can make a copy of your own and change it element by element, from the body text to the page number.
 
+Some things the document sets itself, with a template that comes with the program as well: the binding offset, the line spacing, hyphenation, the citation style and which parts are printed, such as the table of contents. All of them are under "Document Setup", and each one also on the page of the element it is about, under "For this document".
+
 == Title page and front matter <sec-titlepage>
 
 The title page prints what is in the front matter: title, subtitle, authors with their institution, date and version. The dedication, the abstract and the preface stand before the table of contents. If an author is missing, the export tells you beforehand.

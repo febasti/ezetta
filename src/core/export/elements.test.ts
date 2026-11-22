@@ -142,6 +142,34 @@ describe('resolveStyle', () => {
     expect(style['epigraph']!['italic']).toBe(true)
   })
 
+  it('does not hand a modifier down: an element is italic only when it says so', () => {
+    const { style } = resolveStyle({
+      element: {
+        body: { italic: true },
+        quote: { italic: true },
+        figure_caption: { label_style: 'normal' },
+      },
+    })
+    expect(style['body']!['italic']).toBe(true)
+    expect(style['footnote']!['italic']).toBe(false)
+    expect(style['translation']!['italic']).toBe(false)
+    expect(style['table_caption']!['label_style']).toBe('inherit')
+  })
+
+  it('takes a level’s modifier from all headings, which stand for the levels', () => {
+    const { style } = resolveStyle({
+      element: { heading: { text_case: 'upper' }, heading_3: { text_case: 'normal' } },
+    })
+    expect(style['heading_1']!['text_case']).toBe('upper')
+    expect(style['heading_3']!['text_case']).toBe('normal')
+    expect(style['heading_2']!['italic']).toBe(false)
+  })
+
+  it('leaves an unset modifier of an element in the text to the text around it', () => {
+    const { style } = resolveStyle({ element: {} })
+    expect(style['quote_inline']!['italic']).toBeNull()
+  })
+
   it('reports and ignores unknown names and invalid values', () => {
     const { style, problems } = resolveStyle({
       element: {

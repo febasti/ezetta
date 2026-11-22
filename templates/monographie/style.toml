@@ -116,6 +116,7 @@ size = "0.95em"
 
 [element.table_caption]
 caption_position = "above"
+italic = true
 
 [element.footnote]
 size = "0.85em"
