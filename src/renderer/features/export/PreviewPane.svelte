@@ -71,6 +71,33 @@
     ]
   })
   const zoomValue = $derived(String(ui.previewZoom))
+  /** A page is wider than the desk: the pages scroll across, and can be dragged about by hand. */
+  const wide = $derived(ready && drawn.some((d) => d.width > room.width + 1))
+
+  /** A press on the pages of a zoomed preview drags them about, as the hand of a viewer does. */
+  let pan = $state<{ id: number; x: number; y: number; left: number; top: number } | null>(null)
+  function onPanStart(event: PointerEvent): void {
+    if (!desk || !wide || event.button !== 0 || event.pointerType === 'touch') return
+    if (!(event.target instanceof Element) || !event.target.closest('.sheets')) return
+    pan = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      left: desk.scrollLeft,
+      top: desk.scrollTop,
+    }
+    desk.setPointerCapture(event.pointerId)
+  }
+  function onPanMove(event: PointerEvent): void {
+    if (!desk || !pan || event.pointerId !== pan.id) return
+    desk.scrollLeft = pan.left - (event.clientX - pan.x)
+    desk.scrollTop = pan.top - (event.clientY - pan.y)
+  }
+  function onPanEnd(event: PointerEvent): void {
+    if (!desk || !pan || event.pointerId !== pan.id) return
+    if (desk.hasPointerCapture(event.pointerId)) desk.releasePointerCapture(event.pointerId)
+    pan = null
+  }
 
   /** The room on the desk: its inner size less the space around the pages. */
   function measure(): void {
@@ -180,7 +207,16 @@
 
   // A pinch on the trackpad arrives as the wheel with Ctrl; Cmd (Ctrl) with the wheel does the same.
   function onWheel(event: WheelEvent): void {
-    if (!event.ctrlKey && !event.metaKey) return
+    if (!event.ctrlKey && !event.metaKey) {
+      // Shift with a wheel that turns only up and down scrolls across, as on Linux and Windows;
+      // macOS turns it into a sideways scroll itself, which leaves nothing to do here.
+      if (event.shiftKey && event.deltaX === 0 && event.deltaY !== 0 && desk && wide) {
+        event.preventDefault()
+        const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : 1
+        desk.scrollBy({ left: event.deltaY * unit })
+      }
+      return
+    }
     event.preventDefault()
     if (!desk || !ready) return
     const box = desk.getBoundingClientRect()
@@ -358,7 +394,23 @@
       </aside>
     {/if}
 
-    <div class="desk" use:scrollbar={{ horizontal: true }} bind:this={desk} onscroll={onScroll}>
+    <!-- A region that scrolls is reached with Tab and scrolled with the keys; the pointer drags its pages. -->
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+    <div
+      class="desk"
+      class:wide
+      class:panning={pan !== null}
+      use:scrollbar={{ horizontal: true }}
+      bind:this={desk}
+      onscroll={onScroll}
+      onpointerdown={onPanStart}
+      onpointermove={onPanMove}
+      onpointerup={onPanEnd}
+      onpointercancel={onPanEnd}
+      role="region"
+      aria-label={i18n.t('preview.thumbnails')}
+      tabindex="0"
+    >
       {#if preview.status === 'error'}
         <p class="empty problem" role="alert">
           {preview.noCompiler ? i18n.t('preview.noCompiler') : i18n.t('preview.failed')}
@@ -502,6 +554,20 @@
     border: var(--r-lg) solid transparent;
     border-radius: var(--r-lg);
     background: var(--color-panel);
+  }
+  /* The desk takes the focus on a click or with Tab, so the arrow and page keys scroll it. */
+  .desk:focus {
+    outline: none;
+  }
+  .desk:focus-visible {
+    box-shadow: 0 0 0 3px var(--color-focus);
+  }
+  /* A zoomed page can be taken by hand and dragged about. */
+  .desk.wide .sheets {
+    cursor: grab;
+  }
+  .desk.panning .sheets {
+    cursor: grabbing;
   }
   /* As wide as the widest page needs, and never less than the desk: a page wider than the desk
      scrolls across, a narrower one stands in the middle. */

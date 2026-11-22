@@ -2,7 +2,7 @@ import { readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
-import { createSandbox, launchAt, MOD, TYPST } from './helpers'
+import { createSandbox, launchAt, MOD, POINTER, TYPST } from './helpers'
 import type { Sandbox } from './helpers'
 
 const SHEET = 'content/methoden/design.typ'
@@ -215,3 +215,47 @@ test('the pages zoom, and a sidebar shows them small or the headings, which lead
     await app.close()
   }
 })
+
+test(
+  'a zoomed page scrolls across: a swipe, Shift with the wheel, dragged by hand, the arrow keys',
+  POINTER,
+  async () => {
+    const { app, page } = await open()
+    try {
+      await openDialog(page)
+      await expect(pages(page).first()).toBeVisible({ timeout: 30_000 })
+      await pane(page).getByLabel('Zoom', { exact: true }).selectOption('2')
+      const desk = pane(page).locator('.desk')
+      await expect.poll(() => desk.evaluate((d) => d.scrollWidth > d.clientWidth + 100)).toBe(true)
+      const left = () => desk.evaluate((d) => d.scrollLeft)
+      // The page is wider than the desk, so it can be taken by hand.
+      await expect(desk.locator('.sheets')).toHaveCSS('cursor', 'grab')
+      const box = (await desk.boundingBox())!
+      const middle = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+      await page.mouse.move(middle.x, middle.y)
+
+      // A sideways swipe on the trackpad.
+      let before = await left()
+      await page.mouse.wheel(120, 0)
+      await expect.poll(left).toBeGreaterThan(before)
+      // Shift with a wheel that turns only up and down.
+      before = await left()
+      await page.keyboard.down('Shift')
+      await page.mouse.wheel(0, 120)
+      await page.keyboard.up('Shift')
+      await expect.poll(left).toBeGreaterThan(before)
+      // Dragged to the right by hand, the page moves right: the view goes left.
+      before = await left()
+      await page.mouse.down()
+      await page.mouse.move(middle.x + 80, middle.y, { steps: 4 })
+      await page.mouse.up()
+      expect(await left()).toBe(before - 80)
+      // The press gave the desk the focus, so the arrow keys scroll it.
+      before = await left()
+      await page.keyboard.press('ArrowRight')
+      await expect.poll(left).toBeGreaterThan(before)
+    } finally {
+      await app.close()
+    }
+  },
+)
