@@ -18,9 +18,6 @@ import type { ElementDef } from '@core/export/elements'
  */
 export type Place = 't' | 'b' | 'l' | 'r' | 'tl' | 'tr' | 'bl' | 'br' | 'a1' | 'a2' | 'a3'
 
-/** Whether a place is in the row over the drawing. */
-export const isAbove = (place: string): boolean => place.startsWith('a')
-
 /** The values of an element, as the style resolves them. */
 export type Values = Readonly<Record<string, unknown>>
 
@@ -228,149 +225,8 @@ export const SCHEMATICS: Readonly<Record<string, readonly Schematic[]>> = {
   page: [PAPER_SIZE],
 }
 
-/**
- * The values of the page that its own editor sets (`PageSetup.svelte`): the margins, the layout of the
- * pages and the columns, so the panel's rows leave them out.
- */
-export const PAGES: Readonly<Record<string, readonly string[]>> = {
-  page: [
-    'margin_top',
-    'margin_bottom',
-    'margin_inside',
-    'margin_outside',
-    'facing',
-    'columns',
-    'column_gap',
-  ],
-}
-
-/**
- * The values of a header and of a footer that their own editor sets (`RunningLine.svelte`: a page
- * with the three places where the text stands on it, and the distance to the text), so the panel's
- * rows leave them out.
- */
-export const RUNNING: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
-  ['header', 'footer'].map((id) => [
-    id,
-    ['slot_left', 'slot_center', 'slot_right', 'distance', 'mirror', 'skip_chapter_start'],
-  ]),
-)
-
-/** The values of the body text that its own editor sets (`ParagraphSetup.svelte`), so the panel's rows leave them out. */
-export const PARAGRAPHS: Readonly<Record<string, readonly string[]>> = {
-  body: ['justify', 'hyphenate', 'paragraph_spacing', 'first_line_indent'],
-}
-
-/**
- * The values of a heading that its own editor sets (`HeadingPage.svelte`): where it stands, the
- * space around it, the break before it, the text around its number, and the two lines (which the
- * panel's line sections leave out), so the panel's rows leave them out too.
- */
-export const HEADINGS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
-  ['heading', 'heading_1', 'heading_2', 'heading_3', 'heading_4'].map((id) => [
-    id,
-    ['align', 'above', 'below', 'break_before', 'number_prefix', 'number_suffix'],
-  ]),
-)
-
-/**
- * The values of a block quote that its own editor sets (`QuotePage.svelte`): the space around it, its
- * indents, its padding, its ground, its lines and where its source stands, so the panel's rows leave
- * them out.
- */
-export const QUOTES: Readonly<Record<string, readonly string[]>> = {
-  quote: [
-    'indent_left',
-    'indent_right',
-    'above',
-    'below',
-    'fill',
-    'padding',
-    'border_top',
-    'border_bottom',
-    'border_left',
-    'border_right',
-    'border_color',
-    'border_thickness',
-    'border_gap',
-    'source_position',
-  ],
-}
-
-/** The values of an epigraph that its own editor sets (`EpigraphPage.svelte`): its width and the space around it. */
-export const EPIGRAPHS: Readonly<Record<string, readonly string[]>> = {
-  epigraph: ['width', 'above', 'below'],
-}
-
-/** The values of a divider that its own editor sets (`DividerPage.svelte`): the space around it and the length of its rule. */
-export const DIVIDERS: Readonly<Record<string, readonly string[]>> = {
-  divider: ['above', 'below', 'width'],
-}
-
-/** The values of a list that its own editor sets (`ListPage.svelte`): the space around it and between its items, its indents, and the distance of a bullet to its text. */
-export const LISTS: Readonly<Record<string, readonly string[]>> = {
-  list: ['above', 'below', 'list_indent', 'level_indent', 'marker_gap', 'item_spacing'],
-}
-
-/**
- * The values of a figure and of its caption that their own editors set (`FigurePage.svelte`: the space
- * around the figure, where it stands, where its caption stands and its distance to it; `FramePage.svelte`:
- * the border), so the panel's rows leave them out.
- */
-export const FIGURES: Readonly<Record<string, readonly string[]>> = {
-  figure: [
-    'above',
-    'below',
-    'align',
-    'frame_width',
-    'frame_color',
-    'frame_radius',
-    'frame_distance',
-  ],
-  figure_caption: ['caption_position', 'caption_gap', 'align'],
-}
-
 /** Whether a length is more than nothing (a border that has a weight). */
 export const hasLength = (v: unknown): boolean => some(v)
-
-/**
- * The values of a table and of its caption that their own editor sets (`TablePage.svelte`): the space
- * around it, the kind of its rules and their weight, the alignment and the room in its cells, the ground of its header and
- * stripes, and where its caption stands and its distance to it, so the panel's rows leave them out.
- */
-export const TABLES: Readonly<Record<string, readonly string[]>> = {
-  table: [
-    'above',
-    'below',
-    'border_style',
-    'cell_align',
-    'inset',
-    'rule_width',
-    'rule_strong_width',
-    'header_fill',
-    'header_bold',
-    'stripe_fill',
-  ],
-  table_caption: ['caption_position', 'caption_gap', 'align'],
-}
-
-/**
- * The values of footnotes that their own editor sets (`FootnotePage.svelte`): where the notes stand, the
- * column in the margin, the space between the notes and their indent, and the rule above them.
- */
-export const NOTES: Readonly<Record<string, readonly string[]>> = {
-  footnote: [
-    'placement',
-    'margin_width',
-    'margin_gap',
-    'note_gap',
-    'note_indent',
-    'separator_style',
-    'rule_width',
-    'rule_length',
-    'separator_color',
-  ],
-}
 
 export const placedProps = (s: Schematic): string[] => Object.values(s.places).map((p) => p!.prop)
 
@@ -448,9 +304,10 @@ export function panelLayout(el: ElementDef): {
       groups.push({ id: section.id, de: section.de, en: section.en, ids, schematics })
   }
   // What a header or footer holds is the main thing in its panel: it comes first.
-  if (RUNNING[el.id]) groups.sort((a, b) => Number(b.id === 'running') - Number(a.id === 'running'))
+  if (el.id === 'header' || el.id === 'footer')
+    groups.sort((a, b) => Number(b.id === 'running') - Number(a.id === 'running'))
   // The look of a list's bullets follows the choice of them, which is in the list's group.
-  if (LISTS[el.id]) groups.sort((a, b) => Number(a.id === 'marker') - Number(b.id === 'marker'))
+  if (el.id === 'list') groups.sort((a, b) => Number(a.id === 'marker') - Number(b.id === 'marker'))
   const lines = LINE_SECTIONS.filter((section) => el.props.includes(section.toggle))
   // Titles over the groups only help when there is more than one group.
   return {

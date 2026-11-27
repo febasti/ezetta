@@ -36,6 +36,12 @@ const showExport = (page: Page) =>
     .getByRole('navigation', { name: 'Elemente' })
     .getByRole('button', { name: /^Dokument einrichten( \d+)?$/ })
     .click()
+/** Shows the panel of the templates: the template at the top of the list leads to it. */
+const showTemplates = (page: Page) =>
+  editor(page)
+    .getByRole('navigation', { name: 'Elemente' })
+    .getByRole('button', { name: /^Vorlage: / })
+    .click()
 /** Chooses an element in the list, opening the groups first when it is not to be seen. */
 async function choose(page: Page, name: string) {
   const nav = editor(page).getByRole('navigation', { name: 'Elemente' })
@@ -46,15 +52,6 @@ async function choose(page: Page, name: string) {
   for (let i = 0; i < count && !(await entry.isVisible()); i += 1)
     if ((await groups.nth(i).getAttribute('aria-expanded')) === 'false') await groups.nth(i).click()
   await entry.click()
-  await unfold(page)
-}
-/**
- * Opens the sections of the properties that are closed: a page starts with its first section open
- * and the others as one line each, and the tests are about the values in them.
- */
-async function unfold(page: Page) {
-  const closed = editor(page).locator('.properties button.fold[aria-expanded="false"]')
-  for (let i = 0; i < 20 && (await closed.count()) > 0; i += 1) await closed.first().click()
 }
 /** The button of a built-in template's note; the menu of a template offers the same. */
 const copyButton = (page: Page) => editor(page).getByRole('button', { name: 'Kopie anlegen …' })
@@ -85,6 +82,7 @@ async function menuOf(page: Page, app: App, name: string): Promise<Record<string
   const count = () =>
     app.evaluate(() => (globalThis as unknown as { __menus: unknown[] }).__menus.length)
   const before = await count()
+  await showTemplates(page)
   await card(page, name).click({ button: 'right' })
   await expect.poll(count).toBeGreaterThan(before)
   return app.evaluate(() => {
@@ -148,6 +146,11 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
   const { app, page } = await openWithMenus()
   try {
     await openEditor(page)
+    await expect(
+      editor(page).getByText('Mitgelieferte Vorlagen lassen sich nicht ändern'),
+    ).toBeVisible()
+    // The template at the top of the list leads to all of them.
+    await showTemplates(page)
     await expect(cards(page)).toHaveText([
       'Technischer Bericht',
       'Essay',
@@ -157,9 +160,6 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
       'Zeitschrift',
     ])
     await expect(card(page, 'Monographie')).toHaveAttribute('aria-current', 'true')
-    await expect(
-      editor(page).getByText('Mitgelieferte Vorlagen lassen sich nicht ändern'),
-    ).toBeVisible()
     await choose(page, 'Überschrift 1 (Kapitel)')
     const size = editor(page).getByLabel('Größe', { exact: true })
     await expect(size).toHaveAttribute('data-value', '2em')
@@ -190,7 +190,7 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
     await prompt(page).getByRole('button', { name: 'OK' }).click()
     await expect(card(page, 'Meine Arbeit')).toHaveAttribute('aria-current', 'true')
     await expect(readOnlyNote(page)).toHaveCount(0)
-    // Its menu has all of it; the list has no buttons of its own any more.
+    // Its menu has all of it, as the buttons under the pictures have.
     expect(Object.values(await menuOf(page, app, 'Meine Arbeit'))).toEqual([
       true,
       true,
@@ -204,11 +204,13 @@ test('a bundled template is read-only; a copy of it can be changed, and the prev
     const renaming = page.getByRole('dialog', { name: 'Vorlage umbenennen' })
     await expect(renaming).toBeVisible()
     await renaming.getByRole('button', { name: 'Abbrechen' }).click()
+    // Under the pictures, what can be done with the chosen template is offered as buttons, too.
     await expect(
-      editor(page).getByRole('complementary', { name: 'Vorlagen' }).getByRole('button', {
+      editor(page).getByRole('region', { name: 'Vorlagen' }).getByRole('button', {
         name: 'Umbenennen …',
       }),
-    ).toHaveCount(0)
+    ).toBeEnabled()
+    await choose(page, 'Überschrift 1 (Kapitel)')
     await expect(size).toBeEnabled()
     await expect(size).toHaveAttribute('data-value', '2em')
     // What the copy does not set itself is shown as inherited.
@@ -316,6 +318,7 @@ test('the copy is offered in the export dialog, and its settings survive a resta
     await expect(editor(page)).toHaveCount(0)
     // The copy is the template of the export now: the dialog opens on it again.
     await openEditor(page)
+    await showTemplates(page)
     await expect(card(page, 'Kurz')).toHaveAttribute('aria-current', 'true')
   } finally {
     await app.close()
@@ -325,6 +328,7 @@ test('the copy is offered in the export dialog, and its settings survive a resta
   try {
     await again.page.getByRole('button', { name: 'Projektmenü' }).click()
     await again.page.getByRole('menuitem', { name: 'Als PDF exportieren …' }).click()
+    await showTemplates(again.page)
     await expect(cards(again.page)).toHaveCount(7)
     // The choice of the template was remembered with the project.
     await expect(card(again.page, 'Kurz')).toHaveAttribute('aria-current', 'true')
@@ -405,6 +409,7 @@ test('a template is saved as a file and loaded again, as a template of its own',
   const first = await openWithMenus({ EZETTA_TEST_TEMPLATE_EXPORT: file })
   try {
     await openEditor(first.page)
+    await showTemplates(first.page)
     // A bundled template needs no file: it is in every copy of the app.
     expect((await menuOf(first.page, first.app, 'Monographie'))['Als Datei speichern …']).toBe(
       false,
@@ -432,6 +437,7 @@ test('a template is saved as a file and loaded again, as a template of its own',
   const second = await openWithMenus({ EZETTA_TEST_TEMPLATE_IMPORT: file })
   try {
     await openEditor(second.page)
+    await showTemplates(second.page)
     await expect(cards(second.page)).toHaveCount(6)
     await menuOf(second.page, second.app, 'Monographie')
     await chooseInMenu(second.app, 'Aus Datei laden …')
@@ -1002,7 +1008,9 @@ test('the options of the export dialog can get another default, or not be offere
     await expect(dialog.getByLabel('Abbildungsverzeichnis')).toHaveCount(0)
 
     // The bundled template is not changed.
+    await showTemplates(page)
     await card(page, 'Monographie').click()
+    await showExport(page)
     await expect(dialog.getByLabel('Abbildungsverzeichnis')).toHaveCount(1)
     await expect(dialog.getByLabel('Titelseite')).toBeChecked()
   } finally {
@@ -1265,19 +1273,23 @@ test('a colour can name a colour of the palette, and follows it when the palette
   }
 })
 
-test('the templates are a narrow column with a picture each; choosing one makes it the export’s', async () => {
+test('the templates are a panel with a picture each; choosing one makes it the export’s', async () => {
   const { app, page } = await open()
   try {
     await openEditor(page)
-    // One column of pictures, made by the compiler from a sample text, narrower than the elements.
+    // The template of the export stands at the top of the list, with a small picture of it.
+    const nav = editor(page).getByRole('navigation', { name: 'Elemente' })
+    await expect(nav.getByRole('button', { name: 'Vorlage: Monographie' })).toBeVisible()
+    await showTemplates(page)
+    // Pictures made by the compiler from a sample text, three in a line.
     const list = editor(page).getByRole('group', { name: 'Vorlagen' })
     await expect(list.locator('img')).toHaveCount(6, { timeout: 30_000 })
     const boxes = await cards(page).evaluateAll((els) =>
       els.map((el) => el.getBoundingClientRect()),
     )
-    expect(new Set(boxes.map((b) => Math.round(b.x))).size).toBe(1)
-    expect(boxes[0]!.width).toBeLessThan(150)
-    expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y)
+    expect(new Set(boxes.map((b) => Math.round(b.x))).size).toBe(3)
+    expect(boxes[1]!.y).toBe(boxes[0]!.y)
+    expect(boxes[3]!.y).toBeGreaterThan(boxes[0]!.y)
     const src = (name: string) => card(page, name).locator('img').getAttribute('src')
     expect(await src('Monographie')).toMatch(/^data:image\/png;base64,/)
     expect(await src('Essay')).not.toBe(await src('Monographie'))
@@ -1289,6 +1301,7 @@ test('the templates are a narrow column with a picture each; choosing one makes 
     const before = await stamp()
     await card(page, 'Essay').click()
     await expect(card(page, 'Essay')).toHaveAttribute('aria-current', 'true')
+    await expect(nav.getByRole('button', { name: 'Vorlage: Essay' })).toBeVisible()
     await expect.poll(stamp, { timeout: 30_000 }).not.toBe(before)
     await editor(page).getByRole('button', { name: 'Schließen' }).click()
     await expect(editor(page)).toHaveCount(0)
@@ -1298,6 +1311,7 @@ test('the templates are a narrow column with a picture each; choosing one makes 
 
     // A change of the template changes its picture, too.
     await openEditor(page)
+    await showTemplates(page)
     await expect(card(page, 'Essay')).toHaveAttribute('aria-current', 'true')
     await copyButton(page).click()
     await prompt(page).getByLabel('Name der Vorlage').fill('Groß')
@@ -1308,6 +1322,7 @@ test('the templates are a narrow column with a picture each; choosing one makes 
     const size = editor(page).getByLabel('Größe', { exact: true })
     await size.fill('3em')
     await size.press('Tab')
+    await showTemplates(page)
     await expect.poll(() => src('Groß'), { timeout: 30_000 }).not.toBe(first)
   } finally {
     await app.close()
@@ -1391,6 +1406,7 @@ test('the elements are in groups that open and close: the headings under one ent
 
     // One flat list: the groups fold out on the same level, and a group of one is just its entry.
     await expect(nav.getByRole('button')).toHaveText([
+      /Monographie\s*Vorlage/,
       /^\s*Dokument einrichten/,
       'Seite',
       'Titelseite',
@@ -1443,10 +1459,12 @@ test('the elements are in groups that open and close: the headings under one ent
     await expect(group('Überschriften')).toHaveAttribute('aria-expanded', 'false')
     await expect(inside('Überschriften')).toHaveCount(0)
     await expect(nav.locator('[aria-expanded=true]')).toHaveCount(1)
-    // The entries of the open group stand on a background of their own; they have no symbol, the groups do.
-    expect(await inside('Zitate').evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
-      'rgba(0, 0, 0, 0)',
-    )
+    // The entries of the open group are set in under it; they have no symbol, the groups do.
+    const left = (el: Element) =>
+      el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft)
+    expect(
+      await inside('Zitate').getByRole('button', { name: 'Blockzitat' }).evaluate(left),
+    ).toBeGreaterThan(await group('Zitate').evaluate(left))
     await expect(inside('Zitate').locator('svg')).toHaveCount(0)
     for (const name of [
       'Dokument einrichten',
@@ -1732,32 +1750,38 @@ test('footnotes can be printed as margin notes, in the Tufte style', async () =>
   }
 })
 
-test('a section of the properties folds to a line that says what it holds', async () => {
+test('every value of an element is a row, and the picture over them says where it applies', async () => {
   const { app, page } = await open()
   await openEditor(page)
-  await makeCopy(page, 'Gefaltet')
-  // Chosen without the helper, which opens every section.
-  const nav = editor(page).getByRole('navigation', { name: 'Elemente' })
-  await nav.getByRole('button', { name: 'Überschriften', exact: true }).click()
-  await nav.getByRole('button', { name: 'Überschrift 2', exact: true }).click()
+  await makeCopy(page, 'Zeilen')
+  await choose(page, 'Überschrift 2')
   const properties = editor(page).locator('.columns > .properties')
 
-  // A closed section is one line with what it holds. (Which sections are open is remembered from
-  // one start to the next, so the test closes the one it is about.)
-  const arrangement = properties.getByRole('button', { name: /^Anordnung/ })
-  if ((await arrangement.getAttribute('aria-expanded')) === 'true') await arrangement.click()
-  await expect(arrangement).toHaveAttribute('aria-expanded', 'false')
-  await expect(arrangement.locator('.summary')).toContainText('Abstand davor')
-  await expect(properties.getByLabel('Abstand davor')).toHaveCount(0)
+  // The picture holds no field: it names the distances, and the rows under it are where they are set.
+  const figure = properties.locator('.figure')
+  await expect(figure).toHaveCount(1)
+  await expect(figure.locator('input, select, button')).toHaveCount(0)
+  await expect(figure).toContainText('2 em')
+  const above = properties.getByLabel('Abstand davor')
+  await expect(above).toHaveCount(1)
+  await above.fill('3em')
+  await above.press('Tab')
+  await expect(figure).toContainText('3 em')
 
-  // Opened, it shows its values, and stays open on another heading.
-  await arrangement.click()
-  await expect(properties.getByLabel('Abstand davor')).toBeVisible()
-  await nav.getByRole('button', { name: 'Überschrift 3', exact: true }).click()
-  await expect(properties.getByRole('button', { name: /^Anordnung/ })).toHaveAttribute(
-    'aria-expanded',
-    'true',
-  )
+  // A click on a value in the picture leads to its row.
+  await figure.getByText('3 em').click()
+  await expect(above).toBeFocused()
 
+  // A switch stands where the controls stand, and what it turns on comes under it.
+  await expect(properties.getByLabel('Stärke', { exact: true })).toHaveCount(0)
+  await properties.getByLabel('Linie unter der Überschrift').check()
+  await expect(properties.getByLabel('Stärke', { exact: true })).toBeVisible()
+  const edge = (name: string) =>
+    properties
+      .getByLabel(name, { exact: true })
+      .evaluate((el) => Math.round(el.getBoundingClientRect().left))
+  expect(
+    Math.abs((await edge('Linie unter der Überschrift')) - (await edge('Abstand davor'))),
+  ).toBeLessThanOrEqual(1)
   await app.close()
 })

@@ -238,7 +238,7 @@
      have the most room. */
   .columns {
     display: flex;
-    gap: var(--sp-24);
+    gap: var(--sp-16);
     height: 100%;
     min-height: 0;
   }
@@ -313,5 +313,7 @@
     width: clamp(416px, 32vw, 480px);
     min-height: 0;
     overflow-y: auto;
+    /* Room for the scrollbar, clear of the buttons in the panels' right margin. */
+    padding-right: var(--sp-8);
   }
 </style>
