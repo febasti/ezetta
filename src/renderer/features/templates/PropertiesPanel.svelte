@@ -120,10 +120,6 @@
               ? prop === 'text_case'
               : p.kind === prop),
     )
-  /** The parts of an element (its caption, the parts of the title page) opened or closed by the writer. */
-  let openParts = $state<Record<string, boolean>>({})
-  /** Whether a part shows its settings: as chosen, else open when it is the only part. */
-  const partOpen = (part: ElementDef): boolean => openParts[part.id] ?? members.length <= 2
   /** The value whose field is pointed at or has the focus, so its drawing marks it brighter. */
   let hot = $state<{ element: string; prop: string } | null>(null)
   const hotIn = (el: ElementDef): string | null => (hot?.element === el.id ? hot.prop : null)
@@ -604,19 +600,6 @@
   </div>
 {/snippet}
 
-{#snippet controlHere(element: ElementDef, id: string)}
-  <!-- A value where it is set on a drawing: its field, and the button that takes it from above
-       again. A switch is a modifier, which is never taken from above, so it has none. -->
-  {#if PROPS[id]!.type === 'bool'}
-    {@render controlOf(element, id)}
-  {:else}
-    <span class="with-revert">
-      {@render controlOf(element, id)}
-      {@render revertOf(element, id)}
-    </span>
-  {/if}
-{/snippet}
-
 {#snippet revertOf(element: ElementDef, id: string, place = false)}
   <!-- A value taken from above shows in the quieter tone of an empty field; typing sets it here.
        A value set here has a button after it that takes it from above again, and says what it
@@ -1002,44 +985,18 @@
       {/if}
       {#each members as member, index (member.id)}
         {@const { gap, head } = panelLayout(member)}
-        {@const open = index === 0 || partOpen(member)}
         {@const spaced = gap !== undefined && isShown(gap, valuesOf(member))}
-        <!-- A part of the element (a caption, a part of the title page) is a line of its own under a
-             hairline: its name, which opens and closes it, so a page of many parts stays short, and
-             at the end of the line the space above the part and where it stands on the page. The
-             parts of a page are a list this way, their values in columns. -->
-        {#if index === 0}
-          {#if spaced}<div class="rows lead">{@render row(member, gap!)}</div>{/if}
-        {:else}
-          <div class="member">
-            <h3 class="sub">
-              <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a part's name that opens and closes it, a heading with its chevron: the kit has no disclosure -->
-              <button
-                type="button"
-                class="disclose"
-                aria-expanded={open}
-                onclick={() => (openParts[member.id] = !open)}
-              >
-                <Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} />
-                {member[lang]}
-              </button>
-            </h3>
-            {#if spaced}
-              <span
-                class="above"
-                class:inherited={inheritsNow(member, gap!)}
-                title={propLabel(member.id, PROPS[gap!]!, lang)}
-              >
-                <svg class="span" viewBox="0 0 12 20" width="12" height="20" aria-hidden="true">
-                  <path d="M2 0.5H10M6 0.5V19.5M2 19.5H10" />
-                </svg>
-                {@render controlHere(member, gap!)}
-              </span>
-            {/if}
-            {#if head}{@render controlOf(member, head)}{/if}
+        <!-- A part of the element (a caption, a part of the title page) follows it under a
+             hairline and its name, with its own sections: always there, as every section is. The
+             space above a part and where it stands are its first rows. -->
+        {#if index > 0}<h3 class="sub">{member[lang]}</h3>{/if}
+        {#if spaced || (index > 0 && head)}
+          <div class="rows lead">
+            {#if spaced}{@render row(member, gap!)}{/if}
+            {#if index > 0 && head}{@render row(member, head)}{/if}
           </div>
         {/if}
-        {#if open}{@render sections(member)}{/if}
+        {@render sections(member)}
       {/each}
     </section>
   {/if}
@@ -1096,57 +1053,25 @@
   .rows.lead {
     margin-bottom: var(--sp-16);
   }
-  /* A part of an element shown under it (the source of an epigraph, a caption): a line under a
-     hairline, its name first, then the space above it and where it stands. */
-  .member {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-8);
-    min-height: var(--control-md);
-    padding: var(--sp-12) 0;
-    border-top: 1px solid var(--color-separator);
+  .rows.lead + :global(.section) {
+    padding-top: 0;
   }
-  .member + :global(.section) {
-    padding-top: var(--sp-4);
-  }
+  /* A part of an element shown under it (the source of an epigraph, a caption): its name under a
+     hairline, then its sections. */
   .sub {
-    flex: 1;
-    min-width: 0;
     margin: 0;
+    padding: var(--sp-16) 0 var(--sp-12);
+    border-top: 1px solid var(--color-separator);
     color: var(--color-label);
     font: var(--type-title);
   }
-  .above {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    gap: var(--sp-4);
+  .sub + :global(.section) {
+    padding-top: 0;
   }
-  .above .span path,
   .space .span path {
     fill: none;
     stroke: var(--color-accent);
     stroke-width: 1;
-  }
-  /* A part's name opens and closes it: the name with a chevron before it, as wide as it is. */
-  .disclose {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-4);
-    padding: 0;
-    border: 0;
-    border-radius: var(--r-sm);
-    background: none;
-    color: inherit;
-    font: inherit;
-    cursor: default;
-  }
-  .disclose:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-focus);
-  }
-  .disclose :global(svg) {
-    color: var(--color-label-secondary);
   }
   .where {
     margin-bottom: var(--sp-16);
@@ -1279,8 +1204,7 @@
   .row.inherited > .control :global(:is(input, select):not(:focus)),
   .row.inherited > .control :global(.name),
   .part.inherited :global(:is(input, select):not(:focus)),
-  .part.inherited :global(.name),
-  .above.inherited :global(:is(input, select):not(:focus)) {
+  .part.inherited :global(.name) {
     color: var(--color-label-secondary);
   }
   /* The way back to the value from above: always in sight where a value is set here. */
@@ -1300,12 +1224,6 @@
   }
   .gutter {
     flex: none;
-  }
-  .with-revert {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    min-width: 0;
   }
   /* Controls that are not a field and its way back: side by side. */
   .control.plain {

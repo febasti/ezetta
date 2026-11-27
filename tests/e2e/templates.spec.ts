@@ -1386,10 +1386,21 @@ test('a value of a part is changed in the entry it is shown in', async () => {
     await makeCopy(page, 'Teile')
     const nav = editor(page).getByRole('navigation', { name: 'Elemente' })
     await choose(page, 'Titelseite')
-    // The title page has four parts, closed until one is opened by its name.
+    // The title page has four parts, each under its name with its values: nothing folds.
+    const properties = editor(page).locator('.columns > .properties')
+    await expect(properties.locator('h3.sub')).toHaveText([
+      'Titel',
+      'Untertitel',
+      'Autorin oder Autor',
+      'Datum',
+    ])
+    await expect(properties.locator(':is(h3, h4) [aria-expanded]')).toHaveCount(0)
+    // The space above a part and where it stands are rows of the part, like its other values.
+    await expect(properties.locator('#prop-title_page_subtitle-above')).toBeVisible()
+    await expect(
+      properties.locator('.row', { has: page.locator('#prop-title_page_subtitle-above') }),
+    ).toHaveCount(1)
     const subtitle = editor(page).locator('#prop-title_page_subtitle-size')
-    await expect(subtitle).toHaveCount(0)
-    await editor(page).getByRole('button', { name: 'Untertitel', exact: true }).click()
     await subtitle.fill('1.6em')
     await subtitle.press('Tab')
     await expect
