@@ -1,4 +1,5 @@
 import type { MenuSpecItem } from '@shared/menu'
+import type { IconName } from '../ui/Icon.svelte'
 import type { Shortcut } from './shortcut'
 import { toAccelerator } from './shortcut'
 
@@ -15,11 +16,30 @@ export interface MenuItem {
   role?: 'undo' | 'redo' | 'cut' | 'copy' | 'paste' | 'selectAll'
   /** A menu inside the item: one level only. */
   submenu?: MenuItem[]
+  /** A symbol before the label, in the app's own menu. */
+  icon?: IconName
+  /** A quiet word after the label: what the item stands at ("3.000", "Keine Sicherung"). */
+  detail?: string
+  /**
+   * A switch: `checked` is drawn as one, and choosing the item leaves the app's own menu open, so
+   * the writer sees it change. In a system menu it is a checked item.
+   */
+  toggle?: boolean
+  /** A caption over the items that follow; not an item. */
+  heading?: boolean
+  /**
+   * What the menu is about, at its top; not an item: a title, a line under it, and a share
+   * (0 to 1) drawn as a bar.
+   */
+  info?: { title: string; text?: string; share?: number }
 }
+
+/** The items of a menu, or what gives them: a function is read again when what it reads changes. */
+export type MenuItems = MenuItem[] | (() => MenuItem[])
 
 /** One menu at a time, shared by context menus and dropdowns. */
 export const menuState = $state<{
-  current: { x: number; y: number; items: MenuItem[]; opener: HTMLElement | null } | null
+  current: { x: number; y: number; items: MenuItems; opener: HTMLElement | null } | null
 }>({
   current: null,
 })
@@ -27,7 +47,7 @@ export const menuState = $state<{
 export function openMenuAt(
   x: number,
   y: number,
-  items: MenuItem[],
+  items: MenuItems,
   opener: HTMLElement | null = null,
 ): void {
   menuState.current = { x, y, items, opener }
@@ -38,6 +58,9 @@ function describe(items: MenuItem[]): { spec: MenuSpecItem[]; byId: Record<strin
   const byId: Record<string, MenuItem> = {}
   const one = (item: MenuItem, id: string): MenuSpecItem => {
     if (item.separator) return { type: 'separator' }
+    // A system menu has no place for a caption or a head: they are items that cannot be chosen.
+    if (item.heading || item.info)
+      return { id, type: 'normal', label: item.info?.title ?? item.label ?? '', enabled: false }
     byId[id] = item
     return {
       id,
@@ -99,8 +122,11 @@ export function openContextMenu(event: MouseEvent, items: MenuItem[]): void {
   )
 }
 
-/** Opens a dropdown just below a button. */
-export function openDropdown(button: HTMLElement, items: MenuItem[]): void {
+/**
+ * Opens a dropdown just below a button. Items given as a function follow what they read while the
+ * menu is open (a switch that is turned shows its new state).
+ */
+export function openDropdown(button: HTMLElement, items: MenuItems): void {
   const rect = button.getBoundingClientRect()
   openMenuAt(rect.left, rect.bottom + 2, items, button)
 }

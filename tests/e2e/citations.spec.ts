@@ -736,17 +736,13 @@ test('the literature files are a list in the settings: one from outside the proj
     await openSheet(page, 'methoden/design.typ')
     await expect(chips(page).nth(2)).toHaveClass(/missing/)
 
-    // The citation editor does not show the files; the project menu leads to their list.
+    // The citation editor does not show the files; their list is on the settings' "Projekt" page.
     await belegButton(page).click()
     await expect(dialog(page)).not.toContainText('library.bib')
     await page.keyboard.press('Escape')
-    await page.getByRole('button', { name: 'Projektmenü' }).click()
-    await page.getByRole('menuitem', { name: 'Literaturdateien …' }).click()
+    await page.keyboard.press(`${MOD}+,`)
     const settings = page.getByRole('dialog', { name: 'Einstellungen' })
-    await expect(settings.getByRole('tab', { name: 'Projekt' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
+    await settings.getByRole('tab', { name: 'Projekt' }).click()
     const files = settings.getByRole('list', { name: 'Literaturdateien' }).getByRole('listitem')
     await expect(files).toHaveCount(1)
     await expect(files.first()).toContainText('library.bib')

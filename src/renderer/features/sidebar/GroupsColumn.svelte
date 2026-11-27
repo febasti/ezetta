@@ -42,7 +42,7 @@
       type="button"
       aria-haspopup="menu"
       aria-label={i18n.t('project.menu')}
-      onclick={(e) => openDropdown(e.currentTarget, projectMenuItems())}
+      onclick={(e) => openDropdown(e.currentTarget, projectMenuItems)}
     >
       <span class="project-name" lang={project.snapshot?.language}>{project.snapshot?.title}</span>
       <Icon name="chevron-down" size={14} />

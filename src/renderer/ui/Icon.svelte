@@ -68,6 +68,16 @@
   import IconLetterCase from '@tabler/icons-svelte/icons/letter-case'
   import IconRegex from '@tabler/icons-svelte/icons/regex'
   import IconX from '@tabler/icons-svelte/icons/x'
+  import IconTextCaption from '@tabler/icons-svelte/icons/text-caption'
+  import IconSuperscript from '@tabler/icons-svelte/icons/superscript'
+  import IconSubscript from '@tabler/icons-svelte/icons/subscript'
+  import IconBlockquote from '@tabler/icons-svelte/icons/blockquote'
+  import IconMath from '@tabler/icons-svelte/icons/math'
+  import IconFolderOpen from '@tabler/icons-svelte/icons/folder-open'
+  import IconFolderPlus from '@tabler/icons-svelte/icons/folder-plus'
+  import IconDoorExit from '@tabler/icons-svelte/icons/door-exit'
+  import IconTarget from '@tabler/icons-svelte/icons/target'
+  import IconSettings from '@tabler/icons-svelte/icons/settings'
   import IconLayout from '@tabler/icons-svelte/icons/layout'
   import IconListTree from '@tabler/icons-svelte/icons/list-tree'
   import IconAdjustments from '@tabler/icons-svelte/icons/adjustments'
@@ -111,6 +121,16 @@
     history: IconHistory,
     selector: IconSelector,
     x: IconX,
+    'text-caption': IconTextCaption,
+    superscript: IconSuperscript,
+    subscript: IconSubscript,
+    blockquote: IconBlockquote,
+    math: IconMath,
+    'folder-open': IconFolderOpen,
+    'folder-plus': IconFolderPlus,
+    'door-exit': IconDoorExit,
+    target: IconTarget,
+    settings: IconSettings,
     lock: IconLock,
     layout: IconLayout,
     'list-tree': IconListTree,

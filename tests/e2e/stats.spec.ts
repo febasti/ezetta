@@ -69,12 +69,20 @@ test('a group and the project get a word goal from their menus, shown in the bad
 
     // The project's goal: the project menu, and "Alle Abschnitte" shows it.
     await page.getByRole('button', { name: 'Projektmenü' }).click()
-    await page.getByRole('menuitem', { name: 'Wortziel des Projekts festlegen …' }).click()
+    // The menu says what the goal is now.
+    const goal = page.getByRole('menuitem', { name: 'Wortziel …' })
+    await expect(goal).toContainText('80.000')
+    await goal.click()
     await answerGoal(page, 'Wortziel des Projekts', '50.000')
     await expect
       .poll(() => readFile(join(sandbox.projectDir, 'project.toml'), 'utf8'))
       .toMatch(/\[goals\]\s+words = 50000/)
     await expect(panel(page).getByRole('region', { name: 'Projekt' })).toContainText('von 50.000')
+    // And its head says how far the project is, in words and as a bar.
+    await page.getByRole('button', { name: 'Projektmenü' }).click()
+    await expect(page.getByRole('menu')).toContainText('36 von 50.000 Wörtern')
+    await expect(page.getByRole('menuitem', { name: 'Wortziel …' })).toContainText('50.000')
+    await page.keyboard.press('Escape')
     await page.locator('[role=treeitem][data-path=""]').click()
     await expect(page.locator('.badge')).toContainText('36 von 50.000 Wörtern')
     // An empty answer takes the goal away.

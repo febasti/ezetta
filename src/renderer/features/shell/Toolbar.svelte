@@ -16,9 +16,9 @@
 
   /** The formats in the format menu, with the key of each in the caret's format state. */
   const FORMAT_TOOLS = [
-    { id: 'superscript', formats: 'superscript' },
-    { id: 'subscript', formats: 'subscript' },
-    { id: 'smallcaps', formats: 'smallcaps' },
+    { id: 'superscript', formats: 'superscript', icon: 'superscript' },
+    { id: 'subscript', formats: 'subscript', icon: 'subscript' },
+    { id: 'smallcaps', formats: 'smallcaps', icon: 'letter-case' },
   ] as const
 
   /** The heading button shows the level of the heading the caret is in. */
@@ -140,7 +140,8 @@
         onclick={(event) =>
           openDropdown(
             event.currentTarget as HTMLElement,
-            FORMAT_TOOLS.map(({ id, formats }) => ({
+            FORMAT_TOOLS.map(({ id, formats, icon }) => ({
+              icon,
               label: editorCommands.find((c) => c.id === id)!.label(),
               checked: editor.formats[formats],
               onselect: () => editor.run(id),
@@ -165,12 +166,14 @@
         onclick={(event) =>
           openDropdown(event.currentTarget as HTMLElement, [
             {
+              icon: 'list',
               label: i18n.t('list.bullet'),
               checked: editor.paragraph.kind === 'bullet',
               shortcut: editorCommands.find((c) => c.id === 'style-bullet')?.shortcut,
               onselect: () => editor.run('style-bullet'),
             },
             {
+              icon: 'list-numbers',
               label: i18n.t('list.numbered'),
               checked: editor.paragraph.kind === 'numbered',
               shortcut: editorCommands.find((c) => c.id === 'style-numbered')?.shortcut,
@@ -193,16 +196,19 @@
         onclick={(event) =>
           openDropdown(event.currentTarget as HTMLElement, [
             {
+              icon: 'quote',
               label: i18n.t('quote.inline'),
               checked: editor.inlineQuote,
               onselect: () => editor.run('quote-inline'),
             },
             {
+              icon: 'blockquote',
               label: i18n.t('quote.block'),
               checked: editor.paragraph.kind === 'quote',
               onselect: () => editor.run('style-quote'),
             },
             {
+              icon: 'align-right',
               label: i18n.t('quote.epigraph'),
               checked: editor.paragraph.kind === 'epigraph',
               onselect: () => editor.run('style-epigraph'),
@@ -258,8 +264,16 @@
         disabled={!canEdit}
         onclick={(event) =>
           openDropdown(event.currentTarget as HTMLElement, [
-            { label: i18n.t('image.insertFigure'), onselect: () => editor.run('figure') },
-            { label: i18n.t('image.insertInline'), onselect: () => editor.run('inline-image') },
+            {
+              icon: 'text-caption',
+              label: i18n.t('image.insertFigure'),
+              onselect: () => editor.run('figure'),
+            },
+            {
+              icon: 'image',
+              label: i18n.t('image.insertInline'),
+              onselect: () => editor.run('inline-image'),
+            },
           ])}
       />
       <ToolButton
@@ -270,8 +284,13 @@
         disabled={!canEdit}
         onclick={(event) =>
           openDropdown(event.currentTarget as HTMLElement, [
-            { label: i18n.t('formula.insertInline'), onselect: () => editor.run('formula') },
             {
+              icon: 'formula',
+              label: i18n.t('formula.insertInline'),
+              onselect: () => editor.run('formula'),
+            },
+            {
+              icon: 'math',
               label: i18n.t('formula.insertDisplay'),
               onselect: () => editor.run('formula-display'),
             },

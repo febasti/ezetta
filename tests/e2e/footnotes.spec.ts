@@ -323,13 +323,18 @@ test('numbers continue across sheets, and can restart at each chapter', async ()
   try {
     // Order: einleitung (1 note), design (4 notes), then auswertung.
     await expect(markers(page)).toHaveText(['6', '7'])
+    // The project menu has it as a switch: turned, the menu stays open and shows it on.
     await page.locator('.project').click()
-    await page.getByRole('menuitem', { name: /pro Kapitel neu nummerieren/ }).click()
+    const restart = page.getByRole('menuitemcheckbox', { name: /pro Kapitel neu nummerieren/ })
+    await expect(restart).not.toBeChecked()
+    await restart.click()
+    await expect(restart).toBeChecked()
     // Per chapter: E carries on from the chapter that began in design (C, D), then "Neu" restarts at 1.
     await expect(markers(page)).toHaveText(['3', '1'])
     await expect.poll(() => read('project.toml')).toContain('restart = "chapter"')
-    await page.locator('.project').click()
-    await page.getByRole('menuitem', { name: /pro Kapitel neu nummerieren/ }).click()
+    await restart.click()
+    await expect(restart).not.toBeChecked()
+    await page.keyboard.press('Escape')
     await expect(markers(page)).toHaveText(['6', '7'])
   } finally {
     await app.close()

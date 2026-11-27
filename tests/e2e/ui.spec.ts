@@ -84,17 +84,22 @@ test('toolbar toggles show what is at the caret', async () => {
     await expect(tool(page, 'Liste')).toHaveAttribute('aria-pressed', 'true')
     await tool(page, 'Liste').click()
     const bullet = page.getByRole('menuitem', { name: 'Aufzählung' })
-    // The chosen item is highlighted, with no check mark; the others are not.
+    // The chosen item has a check mark at its end; the others have none. Every item has its
+    // symbol before its name, and its shortcut after it.
+    const numbered = page.getByRole('menuitem', { name: 'Nummerierte Liste' })
     await expect(bullet).toHaveAttribute('aria-current', 'true')
-    await expect(bullet).toHaveClass(/chosen/)
-    await expect(bullet.locator('svg')).toHaveCount(0)
-    await expect(page.getByRole('menuitem', { name: 'Nummerierte Liste' })).not.toHaveAttribute(
-      'aria-current',
-      'true',
-    )
-    expect(await bullet.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
-      'rgba(0, 0, 0, 0)',
-    )
+    await expect(bullet.locator('.check svg')).toHaveCount(1)
+    await expect(numbered).not.toHaveAttribute('aria-current', 'true')
+    await expect(numbered.locator('.check')).toHaveCount(0)
+    await expect(bullet.locator('.symbol svg')).toHaveCount(1)
+    await expect(numbered.locator('.symbol svg')).toHaveCount(1)
+    await expect(bullet.locator('.keys')).not.toBeEmpty()
+    // The item under the pointer lies on a quiet ground, the others on none.
+    const ground = (item: typeof bullet) =>
+      item.evaluate((el) => getComputedStyle(el).backgroundColor)
+    await numbered.hover()
+    expect(await ground(numbered)).not.toBe('rgba(0, 0, 0, 0)')
+    expect(await ground(bullet)).toBe('rgba(0, 0, 0, 0)')
     await page.keyboard.press('Escape')
   } finally {
     await app.close()

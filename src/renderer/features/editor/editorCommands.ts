@@ -53,6 +53,7 @@ import { insertFormulaCommand } from './formulas'
 import { chooseAndInsert, insertPlaceholder } from './images'
 import { i18n } from '../../i18n/i18n.svelte'
 import type { MessageKey } from '../../i18n/translate'
+import type { IconName } from '../../ui/Icon.svelte'
 import type { MenuItem } from '../../lib/menu.svelte'
 import { promptDialog } from '../../lib/ui.svelte'
 import type { Shortcut } from '../../lib/shortcut'
@@ -525,9 +526,24 @@ export const PARAGRAPH_STYLES: readonly ParagraphStyle[] = [
 const sameStyle = (a: ParagraphStyle, b: ParagraphStyle): boolean =>
   a.kind === b.kind && (a.kind !== 'heading' || (b.kind === 'heading' && a.level === b.level))
 
+/** The symbol of a paragraph style in a menu. */
+const paragraphIcon = (style: ParagraphStyle): IconName =>
+  style.kind === 'heading'
+    ? (`heading-${Math.min(4, Math.max(1, style.level))}` as IconName)
+    : style.kind === 'bullet'
+      ? 'list'
+      : style.kind === 'numbered'
+        ? 'list-numbers'
+        : style.kind === 'quote'
+          ? 'blockquote'
+          : style.kind === 'epigraph'
+            ? 'align-right'
+            : 'paragraph'
+
 /** The paragraph style menu, for the selection popover and the status bar. Focus returns to the editor. */
 export function paragraphMenu(view: EditorView, current: ParagraphStyle): MenuItem[] {
   return PARAGRAPH_STYLES.map((style) => ({
+    icon: paragraphIcon(style),
     label: paragraphLabel(style),
     checked: sameStyle(style, current),
     onselect: () => {
