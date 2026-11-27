@@ -21,15 +21,16 @@
     binding: unknown
     /** The control of one value, as the panel draws it. */
     control: Snippet<[ElementDef, string]>
-    /** A value as a row of the panel: its name, or another one, and its control. */
-    row: Snippet<[ElementDef, string, boolean?, string?]>
+    /** The value whose row of the panel is pointed at or has the focus, to mark it on the page. */
+    hot?: string | null
   }
-  let { element, values, binding, control, row }: Props = $props()
+  let { element, values, binding, control, hot: outer = null }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const name = (id: string): string => propLabel(element.id, PROPS[id]!, lang)
   /** The value whose field is pointed at or has the focus, so its band and its bracket are drawn stronger. */
-  let hot = $state<string | null>(null)
+  let over = $state<string | null>(null)
+  const hot = $derived(over ?? outer)
 
   const box = $derived(pageBox(values, binding, 176, 224))
   const facing = $derived(box.count === 2)
@@ -57,32 +58,15 @@
   <div
     class="field {where}"
     role="group"
-    onpointerenter={() => (hot = id)}
-    onpointerleave={() => (hot = null)}
-    onfocusin={() => (hot = id)}
-    onfocusout={() => (hot = null)}
+    onpointerenter={() => (over = id)}
+    onpointerleave={() => (over = null)}
+    onfocusin={() => (over = id)}
+    onfocusout={() => (over = null)}
   >
     <label class="short" for="prop-{element.id}-{id}" title={name(id)}>{caption}</label>
     {@render control(element, id)}
   </div>
 {/snippet}
-
-<!-- The choices that change the whole page, over it: rows, as the values under it are. -->
-<div class="choices">
-  {@render row(element, 'facing', false, i18n.t('templates.page.pages'))}
-  {@render row(element, 'columns', false, i18n.t('templates.page.columns'))}
-  {#if box.columns > 1}
-    <div
-      role="group"
-      onpointerenter={() => (hot = 'column_gap')}
-      onpointerleave={() => (hot = null)}
-      onfocusin={() => (hot = 'column_gap')}
-      onfocusout={() => (hot = null)}
-    >
-      {@render row(element, 'column_gap')}
-    </div>
-  {/if}
-</div>
 
 <div class="desk">
   <div class="stage">
@@ -196,12 +180,6 @@
     padding: var(--sp-12);
     border-radius: var(--r-lg);
     background: var(--color-panel);
-  }
-  /* The choices over the page: rows, as the values under it are. */
-  .choices {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-8);
   }
   .field {
     display: flex;

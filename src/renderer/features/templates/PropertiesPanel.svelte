@@ -3,7 +3,6 @@
     ALL_OF,
     ELEMENTS,
     MODIFIERS,
-    PROP_SECTIONS,
     SUB_ELEMENTS,
     propLabel,
     PROPS,
@@ -27,26 +26,8 @@
   import ChoiceGlyph from './ChoiceGlyph.svelte'
   import { GLYPHS } from './glyphs'
   import SchematicDrawing from './SchematicDrawing.svelte'
-  import {
-    EPIGRAPHS,
-    DIVIDERS,
-    FIGURES,
-    HEADINGS,
-    LISTS,
-    NOTES,
-    PARAGRAPHS,
-    QUOTES,
-    PAGES,
-    RUNNING,
-    TABLES,
-    isAbove,
-    lengthCm,
-    measureCm,
-    panelLayout,
-    placedProps,
-    words,
-  } from './schematics'
-  import type { Field, PanelGroup, Schematic } from './schematics'
+  import { lengthCm, measureCm, panelLayout, placedProps } from './schematics'
+  import type { PanelGroup } from './schematics'
   import { numberIn } from '@core/export/template'
   import { fontProblemText } from './fontProblems'
   import type { ElementDef, PropDef } from '@core/export/elements'
@@ -67,15 +48,12 @@
   import ListPage from './ListPage.svelte'
   import PageSetup from './PageSetup.svelte'
   import FigurePage from './FigurePage.svelte'
-  import FramePage from './FramePage.svelte'
   import TablePage from './TablePage.svelte'
   import FootnotePage from './FootnotePage.svelte'
   import TypeSpecimen from './TypeSpecimen.svelte'
   import EpigraphPage from './EpigraphPage.svelte'
   import DividerPage from './DividerPage.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
-  import FoldSection from './FoldSection.svelte'
-  import { isOpen, setOpen } from './folds.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Segmented from '../../ui/kit/Segmented.svelte'
   import Select from '../../ui/kit/Select.svelte'
@@ -149,9 +127,6 @@
   /** The value whose field is pointed at or has the focus, so its drawing marks it brighter. */
   let hot = $state<{ element: string; prop: string } | null>(null)
   const hotIn = (el: ElementDef): string | null => (hot?.element === el.id ? hot.prop : null)
-  /** The fields of a drawing that the element's values let show (the size only for a custom paper). */
-  const placedIn = (s: Schematic, values: Readonly<Record<string, unknown>>) =>
-    Object.entries(s.places).filter(([, at]) => isShown(at!.prop, values)) as [string, Field][]
   /** Whether the pages face each other (a book), which is when a header can be mirrored. */
   const facing = (_el: ElementDef): boolean => editor.resolved['page']?.['facing'] === 'facing'
   /** The size of the body text's type in centimetres, which an `em` of a heading is counted from. */
@@ -193,50 +168,76 @@
   }
   /** A length or a factor with the language's decimal mark. */
   const localNumber = (text: string): string => (lang === 'de' ? text.replace('.', ',') : text)
-  /**
-   * What a section holds, in one line, for while it is closed: its values as they apply, in the
-   * order of its rows. The type speaks for itself ("Libertinus Serif · 2 em · Fett"); elsewhere a
-   * number, a colour or a text has its name before it ("Abstand davor 1,5 em"). What is off or not
-   * there is left out.
-   */
-  function summaryOf(el: ElementDef, group: PanelGroup): string {
-    const values = valuesOf(el)
-    const parts: string[] = []
-    for (const id of idsOf(el, group)) {
-      const def = PROPS[id]!
-      const value = values[id] ?? null
-      if (!isShown(id, values) || value === null || value === '' || value === false) continue
-      if (def.type === 'bool') {
-        parts.push(propLabel(el.id, def, lang))
-        continue
-      }
-      if (def.type === 'enum') {
-        if (value !== 'none') parts.push(def.valueLabels?.[String(value)]?.[lang] ?? String(value))
-        continue
-      }
-      const text =
-        def.type === 'color'
-          ? (COLOR_TOKENS.find((token) => token.id === value)?.[lang] ?? String(value))
-          : def.type === 'length' || def.type === 'factor'
-            ? localNumber(String(value)).replace(/^(-?[\d.,]+)([a-z%]+)$/, '$1 $2')
-            : String(value)
-      parts.push(
-        group.id === 'type' && def.type !== 'factor'
-          ? text
-          : `${propLabel(el.id, def, lang)} ${text}`,
-      )
-    }
-    // As many as fit on the line whole; that there are more is said, not shown as a cut word.
-    const fit: string[] = []
-    let room = 34
-    for (const part of parts) {
-      if (fit.length > 0 && part.length + 3 > room) break
-      fit.push(part)
-      room -= part.length + 3
-    }
-    if (fit.length === 0) return i18n.t('templates.summary.none')
-    return fit.join(' · ') + (fit.length < parts.length ? ' …' : '')
+  /** What a value is, in words: null while there is none. A switch has no words. */
+  function valueText(el: ElementDef, id: string): string | null {
+    const def = PROPS[id]!
+    const value = valuesOf(el)[id] ?? null
+    if (value === null || value === '' || def.type === 'bool') return null
+    if (def.type === 'enum') return def.valueLabels?.[String(value)]?.[lang] ?? String(value)
+    if (def.type === 'color')
+      return COLOR_TOKENS.find((token) => token.id === value)?.[lang] ?? String(value)
+    if (def.type === 'length' || def.type === 'factor')
+      return localNumber(String(value)).replace(/^(-?[\d.,]+)([a-z%]+)$/, '$1 $2')
+    return String(value)
   }
+  /** The values that come first in a section, by section: the choices about the whole before the distances. */
+  const FIRST: Readonly<Record<string, readonly string[]>> = {
+    arrangement: ['break_before', 'align', 'above', 'below'],
+    running: ['slot_left', 'slot_center', 'slot_right', 'distance'],
+    table: ['border_style', 'cell_align'],
+    list: ['marker', 'enum_format'],
+  }
+  /** The rows of a section: every value it has that shows for now, the leading ones first. */
+  function rowIds(
+    el: ElementDef,
+    group: PanelGroup,
+    values: Readonly<Record<string, unknown>>,
+  ): string[] {
+    const ids = idsOf(el, group).filter(
+      (id) => isShown(id, values) && (id !== 'mirror' || facing(el)),
+    )
+    const first = (FIRST[group.id] ?? []).filter((id) => ids.includes(id))
+    return [...first, ...ids.filter((id) => !first.includes(id))]
+  }
+  /** The picture a section starts with, by element and section: what its values are about, drawn. */
+  const FIGURES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+    margins: { page: 'page' },
+    arrangement: {
+      body: 'paragraph',
+      heading: 'heading',
+      heading_1: 'heading',
+      heading_2: 'heading',
+      heading_3: 'heading',
+      heading_4: 'heading',
+      quote: 'quote',
+      epigraph: 'epigraph',
+      figure: 'figure',
+      table: 'table',
+    },
+    running: { header: 'running', footer: 'running' },
+    list: { list: 'list' },
+    divider: { divider: 'divider' },
+    placement: { footnote: 'footnote' },
+  }
+  /** The section a line with a switch (a rule above a heading, the divider of a header) is set in. */
+  const LINE_GROUPS: Readonly<Record<string, string>> = {
+    line_above: 'arrangement',
+    line_below: 'arrangement',
+    divider: 'running',
+  }
+  /**
+   * The name of a value in its row, where the element's own is longer than the row needs: the side
+   * margins are the inner and the outer one of pages that face each other, else the left and the
+   * right one.
+   */
+  const rowName = (el: ElementDef, id: string): string =>
+    id === 'margin_inside'
+      ? i18n.t(facing(el) ? 'templates.margin.inside' : 'templates.margin.left')
+      : id === 'margin_outside'
+        ? i18n.t(facing(el) ? 'templates.margin.outside' : 'templates.margin.right')
+        : propLabel(el.id, PROPS[id]!, lang)
+  /** The four sides of a block quote that can have a line: one row of four switches. */
+  const SIDES = ['border_top', 'border_bottom', 'border_left', 'border_right']
   /** What a label says about its value when pointed at: where it comes from, while it is taken from there. */
   const origin = (el: ElementDef, prop: string): string | undefined =>
     inheritsNow(el, prop)
@@ -261,21 +262,6 @@
       ? i18n.t('templates.revert.plain', { from })
       : i18n.t('templates.revert.value', { value, from })
   }
-  /** The values an element's own editor draws (on a page), which are not rows of their own. */
-  const drawnIds = (el: ElementDef): string[] => [
-    ...(RUNNING[el.id] ?? []),
-    ...(NOTES[el.id] ?? []),
-    ...(TABLES[el.id] ?? []),
-    ...(FIGURES[el.id] ?? []),
-    ...(LISTS[el.id] ?? []),
-    ...(PAGES[el.id] ?? []),
-    ...(EPIGRAPHS[el.id] ?? []),
-    ...(DIVIDERS[el.id] ?? []),
-    ...(PARAGRAPHS[el.id] ?? []),
-    ...(HEADINGS[el.id] ?? []),
-    ...(QUOTES[el.id] ?? []),
-  ]
-
   /**
    * The document's own settings that are about an element (they belong to the export, not to the
    * template, and can be changed with a template that comes with the app too): shown on the
@@ -397,7 +383,7 @@
         { value: 'justified', label: i18n.t('templates.setting.justified') },
       ]}
       value={value === true ? 'justified' : value === false ? 'ragged' : null}
-      named
+      named="beside"
       disabled={readOnly}
       onchange={(v) => void editor.set(element.id, id, v === 'justified')}
     >
@@ -437,7 +423,7 @@
         label: def.valueLabels?.[v]?.[lang] ?? v,
       }))}
       value={typeof value === 'string' ? value : null}
-      named
+      named="beside"
       disabled={readOnly}
       onchange={(v) => void editor.set(element.id, id, v)}
     >
@@ -470,7 +456,7 @@
         disabled: v === 'smallcaps' && family?.smallCaps === 'no' && value !== 'smallcaps',
       }))}
       value={typeof value === 'string' ? value : null}
-      named
+      named="beside"
       disabled={readOnly}
       onchange={(v) => void editor.set(element.id, id, v)}
     />
@@ -561,33 +547,39 @@
   {/if}
 {/snippet}
 
-{#snippet row(element: ElementDef, id: string, stacked = false, name?: string)}
+{#snippet row(element: ElementDef, id: string, sub = false, name?: string)}
   {@const def = PROPS[id]!}
   {@const key = `${element.id}.${id}`}
   {@const control = `prop-${element.id}-${id}`}
-  {#if def.type === 'bool' && !TOGGLE_ICONS[id] && id !== 'justify'}
-    <!-- A switch is a box with its name after it, flush with the names of the other rows. Under a
-         group's name it shows a short one and keeps its whole name for screen readers. -->
-    <div class="row check">
-      <Checkbox
-        id={control}
-        label={name ? propLabel(element.id, def, lang) : undefined}
-        checked={valuesOf(element)[id] === true}
-        disabled={readOnly}
-        onchange={(on) => void editor.set(element.id, id, on)}
-        >{name ?? propLabel(element.id, def, lang)}</Checkbox
-      >
-    </div>
-  {:else}
-    <div
-      class="row"
-      class:stacked
-      class:inherited={inheritsNow(element, id)}
-      class:refused={editor.refused === key}
-    >
-      <label for={control} title={origin(element, id)}
-        >{name ?? propLabel(element.id, def, lang)}</label
-      >
+  {@const hover = { element: element.id, prop: id }}
+  <!-- Every value is a row: its name, then its control. A switch is a box with its name after it,
+       where the controls stand, as in a form of the system. A value that belongs to the switch
+       above it (the colour of a line) is set in a little. The row pointed at is marked in the
+       picture of its section. -->
+  <div
+    class="row"
+    class:sub
+    class:inherited={inheritsNow(element, id)}
+    class:refused={editor.refused === key}
+    role="group"
+    onpointerenter={() => (hot = hover)}
+    onpointerleave={() => (hot = null)}
+    onfocusin={() => (hot = hover)}
+    onfocusout={() => (hot = null)}
+  >
+    {#if def.type === 'bool' && !TOGGLE_ICONS[id] && id !== 'justify'}
+      <span></span>
+      <div class="control plain">
+        <Checkbox
+          id={control}
+          checked={valuesOf(element)[id] === true}
+          disabled={readOnly}
+          onchange={(on) => void editor.set(element.id, id, on)}
+          >{name ?? rowName(element, id)}</Checkbox
+        >
+      </div>
+    {:else}
+      <label for={control} title={origin(element, id)}>{name ?? rowName(element, id)}</label>
       <div class="control" title={origin(element, id)}>
         <!-- A number takes half of the line, as in a line it shares; anything else all of it. -->
         <span class="cell {def.type}">
@@ -595,34 +587,14 @@
           {@render revertOf(element, id, true)}
         </span>
       </div>
-      {#if editor.refused === key}
-        <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
-      {/if}
-      {#if problemFor(element, id)}
-        {@const problem = problemFor(element, id)!}
-        <p class="missing">{fontProblemText(problem)}</p>
-      {/if}
-    </div>
-  {/if}
-{/snippet}
-
-{#snippet pair(name: string, first: [ElementDef, string], second: [ElementDef, string])}
-  <!-- Two values of two elements under one name (where a caption stands, and how its lines are set):
-       the two halves of a line, as the values of one element share one. -->
-  <div class="row">
-    <span class="label">{name}</span>
-    <div class="control together" role="group" aria-label={name}>
-      {#each [first, second] as [owner, id] (`${owner.id}.${id}`)}
-        <span
-          class="part {PROPS[id]!.type}"
-          class:inherited={inheritsNow(owner, id)}
-          title={origin(owner, id)}
-        >
-          {@render controlOf(owner, id)}
-          {@render revertOf(owner, id, true)}
-        </span>
-      {/each}
-    </div>
+    {/if}
+    {#if editor.refused === key}
+      <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
+    {/if}
+    {#if problemFor(element, id)}
+      {@const problem = problemFor(element, id)!}
+      <p class="missing">{fontProblemText(problem)}</p>
+    {/if}
   </div>
 {/snippet}
 
@@ -708,133 +680,96 @@
   </div>
 {/snippet}
 
-{#snippet drawing(element: ElementDef, schematic: Schematic)}
-  {@const values = valuesOf(element)}
-  {@const placed = placedIn(schematic, values)}
-  {@const above = placed.filter(([place]) => isAbove(place))}
-  {@const picture = schematic.draw(values).w ?? 128}
-  <!-- The choices that change the whole drawing in a row over it, on the same three columns. -->
-  {#if above.length > 0}
-    <div class="schematic above" style:--picture="{picture}px">
-      {#each above as [place, at] (place)}
-        {@render placeOf(element, values, place, at)}
-      {/each}
-    </div>
+{#snippet tag(element: ElementDef, id: string)}
+  <!-- A value in a picture: what it is, in words, where it applies. It is set in its row under the
+       picture, which a click on it leads to. A switch has no words: the picture shows what it does. -->
+  {#if PROPS[id]!.type !== 'bool'}
+    {@const text = valueText(element, id)}
+    <label class="tag" class:unset={text === null} for="prop-{element.id}-{id}">{text ?? '–'}</label
+    >
   {/if}
-  <!-- The drawing in the middle, each field on the side its gap is on, close to it, with its short
-       name above it. A field beside the drawing is centred on it; its name stands over it. -->
-  <div class="schematic" style:--picture="{picture}px">
-    <div class="picture">
-      <SchematicDrawing drawing={schematic.draw(values)} hot={hotIn(element)} />
-    </div>
-    {#each placed.filter(([place]) => !isAbove(place)) as [place, at] (place)}
-      {@render placeOf(element, values, place, at)}
-    {/each}
-  </div>
-{/snippet}
-
-{#snippet placeOf(
-  element: ElementDef,
-  values: Readonly<Record<string, unknown>>,
-  place: string,
-  at: Field,
-)}
-  {@const key = `${element.id}.${at.prop}`}
-  <div
-    class="place {place}"
-    class:inherited={inheritsNow(element, at.prop)}
-    role="group"
-    onpointerenter={() => (hot = { element: element.id, prop: at.prop })}
-    onpointerleave={() => (hot = null)}
-    onfocusin={() => (hot = { element: element.id, prop: at.prop })}
-    onfocusout={() => (hot = null)}
-  >
-    {#if words(at[lang], values) !== ''}
-      <label
-        class="short"
-        for="prop-{element.id}-{at.prop}"
-        title={origin(element, at.prop) ?? propLabel(element.id, PROPS[at.prop]!, lang)}
-        >{words(at[lang], values)}</label
-      >
-    {/if}
-    {@render controlHere(element, at.prop)}
-    {#if editor.refused === key}
-      <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
-    {/if}
-  </div>
 {/snippet}
 
 {#snippet space(element: ElementDef, id: string)}
-  <!-- The space between two parts that stand one under another, set where that space is. -->
-  <div class="space" class:inherited={inheritsNow(element, id)}>
+  <!-- The space between two parts that stand one under another, said where that space is. -->
+  <div class="space">
     <svg class="span" viewBox="0 0 12 30" width="12" height="30" aria-hidden="true">
       <path d="M2 0.5H10M6 0.5V29.5M2 29.5H10" />
     </svg>
-    <span class="space-field">{@render controlHere(element, id)}</span>
+    {@render tag(element, id)}
     <label class="short" for="prop-{element.id}-{id}"
       >{propLabel(element.id, PROPS[id]!, lang)}</label
     >
   </div>
 {/snippet}
 
-{#snippet lineLook(element: ElementDef)}
-  <!-- What the divider looks like: its values as rows under the page, named by its switch. -->
-  <h5 class="subhead">{propLabel(element.id, PROPS['divider']!, lang)}</h5>
-  <div class="rows">
-    {#each ['divider_color', 'divider_thickness', 'divider_gap'] as id (id)}
-      <!-- Under the divider's name the values need no "of the line". -->
-      {@render row(element, id, false, PROPS[id]![lang])}
-    {/each}
-  </div>
-{/snippet}
-
-{#snippet runningOptions(element: ElementDef)}
-  <!-- What else a header or footer does, as switches. Mirroring is for pages that face each other:
-       with single pages it does nothing, so it is not offered. -->
-  <div class="rows">
-    {#if facing(element)}{@render row(element, 'mirror')}{/if}
-    {@render row(element, 'skip_chapter_start')}
-  </div>
-{/snippet}
-
-{#snippet paragraphOptions(element: ElementDef)}
-  <!-- How the lines are set (a choice, drawn) and whether words are divided (a switch): two rows, as
-       any other values. -->
-  <div class="rows">
-    {@render row(element, 'justify')}
-    {@render row(element, 'hyphenate')}
-    {#if editor.profile?.hyphenate !== undefined}
-      <!-- The document's own hyphenation is shown at the top of the page; it is the one that prints. -->
-      <p class="short note">{i18n.t('templates.document.hyphenate')}</p>
+{#snippet figureOf(element: ElementDef, values: Readonly<Record<string, unknown>>, kind: string)}
+  {@const page = editor.resolved['page'] ?? {}}
+  {@const emCm = lengthCm(values['size'], bodyCm()) ?? bodyCm()}
+  <!-- The picture of a section: the element on its page as the template sets it, its distances
+       named where they are. Nothing is set in it; the rows under it are where the values are. -->
+  <div class="figure">
+    {#if kind === 'page'}
+      <PageSetup
+        {element}
+        {values}
+        binding={editor.profile?.binding ?? null}
+        control={tag}
+        hot={hotIn(element)}
+      />
+    {:else if kind === 'paragraph'}
+      <ParagraphSetup {element} {values} control={tag} />
+    {:else if kind === 'heading'}
+      <HeadingPage
+        {element}
+        {values}
+        control={tag}
+        numbering={headingNumberingOf(editor.resolved)}
+        measure={measureCm(page)}
+        {emCm}
+      />
+    {:else if kind === 'quote'}
+      <QuotePage {element} {values} control={tag} {emCm} />
+    {:else if kind === 'epigraph'}
+      <EpigraphPage {element} {values} control={tag} measure={measureCm(page)} {emCm} />
+    {:else if kind === 'divider'}
+      <DividerPage {element} {values} control={tag} measure={measureCm(page)} {emCm} />
+    {:else if kind === 'list'}
+      <ListPage {element} {values} control={tag} hot={hotIn(element)} />
+    {:else if kind === 'running'}
+      <RunningLine {element} {values} facing={facing(element)} control={tag} {space} />
+    {:else if kind === 'figure'}
+      {@const caption = elementById('figure_caption')!}
+      <FigurePage
+        {element}
+        {caption}
+        {values}
+        captionValues={valuesOf(caption)}
+        control={tag}
+        emCm={bodyCm()}
+      />
+    {:else if kind === 'table'}
+      {@const caption = elementById('table_caption')!}
+      <TablePage
+        {element}
+        {caption}
+        {values}
+        captionValues={valuesOf(caption)}
+        control={tag}
+        {emCm}
+      />
+    {:else if kind === 'footnote'}
+      <FootnotePage {element} {values} control={tag} measure={measureCm(page)} {emCm} />
     {/if}
   </div>
 {/snippet}
 
-{#snippet headingLine(element: ElementDef, side: 'above' | 'below')}
-  <!-- What a line of the heading looks like: its values as rows under the page, named by its switch. -->
-  <h5 class="subhead">{propLabel(element.id, PROPS[`line_${side}`]!, lang)}</h5>
-  <div class="rows">
-    {#each ['color', 'thickness', 'width', 'distance'] as field (field)}
-      {@render row(element, `line_${side}_${field}`)}
-    {/each}
-  </div>
-{/snippet}
-
-{#snippet quoteBox(element: ElementDef)}
-  <!-- The ground of the quote, and the space inside it on the sides that have no line (a side with
-       a line has its own distance). -->
-  <div class="rows">
-    {@render row(element, 'fill')}
-    {@render row(element, 'padding')}
-  </div>
-{/snippet}
-
-{#snippet quoteLines(element: ElementDef, values: Readonly<Record<string, unknown>>)}
-  <!-- The sides that have a line, as four switches in one row, and what the lines look like. -->
+{#snippet sides(element: ElementDef, values: Readonly<Record<string, unknown>>)}
+  <!-- The sides of a block quote that have a line: four switches in one row. -->
   <div class="row">
     <span class="label">{i18n.t('templates.quote.lines')}</span>
     <div class="control plain sides" role="group" aria-label={i18n.t('templates.quote.lines')}>
-      {#each ['border_top', 'border_bottom', 'border_left', 'border_right'] as id (id)}
+      {#each SIDES as id (id)}
         <Checkbox
           checked={values[id] === true}
           disabled={readOnly}
@@ -844,279 +779,83 @@
       {/each}
     </div>
   </div>
-  {#if ['border_top', 'border_bottom', 'border_left', 'border_right'].some((side) => values[side] === true)}
-    <div class="rows">
-      {#each ['border_color', 'border_thickness', 'border_gap'] as id (id)}
-        {@render row(element, id)}
-      {/each}
-    </div>
-  {/if}
 {/snippet}
 
-{#snippet tableValues(element: ElementDef)}
-  <!-- The values of a table that are not a place on its page, as rows in two groups: what the
-       header row looks like, and the rows and cells under it. Under the group's name a value has a
-       short one. -->
-  <h5 class="subhead">{i18n.t('templates.table.head')}</h5>
-  <div class="rows">
-    {@render row(element, 'header_fill', false, i18n.t('templates.table.ground'))}
-    {@render row(element, 'rule_strong_width', false, i18n.t('templates.table.rule'))}
-    {@render row(element, 'header_bold', false, i18n.t('templates.table.bold'))}
-  </div>
-  <h5 class="subhead">{i18n.t('templates.table.body')}</h5>
-  <div class="rows">
-    {@render row(element, 'stripe_fill', false, i18n.t('templates.table.stripes'))}
-    {@render row(element, 'rule_width', false, i18n.t('templates.table.rule'))}
-    {@render row(element, 'inset')}
-  </div>
-{/snippet}
-
-{#snippet noteValues(element: ElementDef, values: Readonly<Record<string, unknown>>)}
-  <!-- The values of the notes that are not a place on their page: in the margin, the column; at the
-       foot, the rule above them, with a title of its own as its group had. -->
-  {#if values['placement'] === 'margin'}
-    <div class="rows">
-      {#each ['margin_width', 'margin_gap', 'note_gap'] as id (id)}
-        {@render row(element, id)}
-      {/each}
-    </div>
-  {:else}
-    <Section
-      title={PROP_SECTIONS.find((g) => g.id === 'separator')?.[lang]}
-      level={4}
-      region={false}
-    >
-      <div class="rows">
-        {#each ['separator_style', 'rule_width', 'rule_length', 'separator_color'].filter( (id) => isShown(id, values) ) as id (id)}
-          {@render row(element, id)}
-        {/each}
-      </div>
-    </Section>
+{#snippet lineRows(
+  element: ElementDef,
+  values: Readonly<Record<string, unknown>>,
+  section: { toggle: string; fields: readonly string[] },
+)}
+  <!-- A line that a switch turns on (a rule over a heading, the divider of a header): the switch,
+       and under it, while it is on, what the line looks like. -->
+  {@render row(element, section.toggle)}
+  {#if values[section.toggle] === true}
+    {#each section.fields as id (id)}
+      {@render row(element, id, true, PROPS[id]![lang])}
+    {/each}
   {/if}
 {/snippet}
 
 {#snippet sections(element: ElementDef)}
   {@const shape = panelLayout(element)}
   {@const values = valuesOf(element)}
+  {@const has = (id: string) => shape.groups.some((group) => group.id === id)}
   {#each shape.groups as group (group.id)}
-    {@const paragraphs = (PARAGRAPHS[element.id] ?? []).some((id) => group.ids.includes(id))}
-    {@const headings = (HEADINGS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
-    {@const quotes = (QUOTES[element.id] ?? []).length > 0 && group.id === 'arrangement'}
-    {@const quoteFill = (QUOTES[element.id] ?? []).length > 0 && group.id === 'box'}
-    {@const quoteBorder = (QUOTES[element.id] ?? []).length > 0 && group.id === 'border'}
-    {@const epigraphs = (EPIGRAPHS[element.id] ?? []).length > 0 && group.id === 'arrangement'}
-    {@const dividers = (DIVIDERS[element.id] ?? []).length > 0 && group.id === 'divider'}
-    {@const lists = (LISTS[element.id] ?? []).length > 0 && group.id === 'list'}
-    {@const pageSetup = (PAGES[element.id] ?? []).length > 0 && group.id === 'margins'}
-    {@const figurePage = element.id === 'figure' && group.id === 'arrangement'}
-    {@const framePage = element.id === 'figure' && group.id === 'frame'}
-    {@const tablePage = element.id === 'table' && group.id === 'table'}
-    {@const notesPage = (NOTES[element.id] ?? []).length > 0 && group.id === 'placement'}
-    {@const custom = drawnIds(element)}
-    {@const shown = group.ids.filter((id) => isShown(id, values) && !custom.includes(id))}
-    {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
-    {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
-    <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left
-         out, and so is one the template sets nothing in while only the set values are listed. -->
-    {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || quoteFill || quoteBorder || epigraphs || dividers || lists || pageSetup || figurePage || framePage || tablePage || notesPage}
-      {@const colourOnly =
-        group.id === 'type' && group.ids.length === 1 && group.ids[0] === 'color'}
-      <!-- A type group with nothing but the colour (a list's text) is the text's colour: no sample of
+    {@const ids = rowIds(element, group, values)}
+    {@const figure = FIGURES[group.id]?.[element.id]}
+    {@const lines = shape.lines.filter((line) => LINE_GROUPS[line.toggle] === group.id)}
+    {@const drawn = group.schematics.filter((s) =>
+      placedProps(s).some((id) => isShown(id, values)),
+    )}
+    <!-- A section whose values are all hidden for now (the rule of footnotes in the margin) is left out. -->
+    {#if ids.length > 0 || figure || lines.length > 0}
+      {@const colourOnly = group.id === 'type' && ids.length === 1 && ids[0] === 'color'}
+      <!-- A type section with nothing but the colour (a list's text) is the text's colour: no sample of
            a type the element does not set. -->
-      <FoldSection
+      <Section
         title={shape.titled
           ? colourOnly
             ? i18n.t('templates.section.text')
             : group[lang]
           : undefined}
-        summary={summaryOf(element, group)}
-        open={isOpen(
-          group.id,
-          group === shape.groups[0] ||
-            drawn.length > 0 ||
-            running ||
-            paragraphs ||
-            headings ||
-            quotes ||
-            epigraphs ||
-            dividers ||
-            lists ||
-            pageSetup ||
-            figurePage ||
-            framePage ||
-            tablePage ||
-            notesPage,
-        )}
-        foldable={!only}
-        ontoggle={(open) => setOpen(group.id, open)}
+        level={4}
+        region={false}
       >
         {#if group.id === 'type' && !colourOnly}
           <!-- A line of sample text in the type of the element, as the style resolves it. -->
           <TypeSpecimen {element} resolved={editor.resolved} {palette} />
         {/if}
-        <!-- A drawing that is what a group is about (the page) comes first; one that only shows what
-             a choice above it leads to (a paper of its own size) comes after the choice. -->
-        {#if group.id !== 'format'}
-          {#each drawn as schematic, i (i)}
-            {@render drawing(element, schematic)}
-          {/each}
-        {/if}
-        {#if notesPage}
-          <!-- Footnotes: a page with the notes at its foot or in its margin, each value where it is set. -->
-          <FootnotePage
-            {element}
-            {values}
-            control={controlHere}
-            {row}
-            measure={measureCm(editor.resolved['page'] ?? {})}
-            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
-          />
-          {@render noteValues(element, values)}
-        {/if}
-        {#if tablePage}
-          <!-- A table: a page with the table drawn as the template sets it and its caption, the values under it. -->
-          {@const caption = elementById('table_caption')!}
-          <TablePage
-            {element}
-            {caption}
-            {values}
-            captionValues={valuesOf(caption)}
-            control={controlHere}
-            {row}
-            {pair}
-            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
-          />
-          {@render tableValues(element)}
-        {/if}
-        {#if figurePage}
-          <!-- A figure: a page with the figure and its caption between two pieces of text. -->
-          {@const caption = elementById('figure_caption')!}
-          <FigurePage
-            {element}
-            {caption}
-            {values}
-            captionValues={valuesOf(caption)}
-            control={controlHere}
-            {row}
-            {pair}
-            emCm={bodyCm()}
-          />
-        {/if}
-        {#if framePage}
-          <!-- The border of an image, around the picture, each value on its side. -->
-          <FramePage {element} {values} control={controlHere} emCm={bodyCm()} />
-        {/if}
-        {#if pageSetup}
-          <!-- The page: one or two, with the margins as bands and each value on its side. -->
-          <PageSetup
-            {element}
-            {values}
-            binding={editor.profile?.binding ?? null}
-            control={controlHere}
-            {row}
-          />
-        {/if}
-        {#if lists}
-          <!-- A list: three items between two pieces of text, each value where it is set. -->
-          <ListPage {element} {values} control={controlHere} />
-        {/if}
-        {#if epigraphs}
-          <!-- An epigraph: set apart at the right under a chapter's title, each value where it is set. -->
-          <EpigraphPage
-            {element}
-            {values}
-            control={controlHere}
-            measure={measureCm(editor.resolved['page'] ?? {})}
-            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
-          />
-        {/if}
-        {#if dividers}
-          <!-- A divider: a page with it between two pieces of text, each value where it is set. -->
-          <DividerPage
-            {element}
-            {values}
-            control={controlHere}
-            measure={measureCm(editor.resolved['page'] ?? {})}
-            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
-          />
-        {/if}
-        {#if quotes}
-          <!-- A block quote: a page with the quote between two pieces of text, each value where it is set. -->
-          <QuotePage
-            {element}
-            {values}
-            control={controlHere}
-            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
-          />
-          <!-- Where the source stands: after the last word, or on a line of its own at the right. -->
-          <div class="rows">{@render row(element, 'source_position')}</div>
-        {/if}
-        {#if quoteFill}{@render quoteBox(element)}{/if}
-        {#if quoteBorder}{@render quoteLines(element, values)}{/if}
-        {#if headings}
-          <!-- A heading: a page with the heading between two pieces of text, each value where it is set. -->
-          <HeadingPage
-            {element}
-            {values}
-            control={controlHere}
-            {row}
-            refused={editor.refused}
-            numbering={headingNumberingOf(editor.resolved)}
-            measure={measureCm(editor.resolved['page'] ?? {})}
-            emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
-          />
-          {#each ['above', 'below'] as const as side (side)}
-            {#if element.props.includes(`line_${side}`) && values[`line_${side}`] === true}
-              {@render headingLine(element, side)}
-            {/if}
-          {/each}
-        {/if}
-        {#if paragraphs}
-          <!-- The body text: two paragraphs, each value where it is set on them. -->
-          <ParagraphSetup {element} {values} control={controlHere} />
-          {@render paragraphOptions(element)}
-        {/if}
-        {#if running}
-          <!-- A header or a footer: a page with its places, where they are on it. -->
-          <RunningLine {element} {values} facing={facing(element)} control={controlHere} {space} />
-          {#if values['divider'] === true}{@render lineLook(element)}{/if}
-          {@render runningOptions(element)}
-        {/if}
+        {#if figure}{@render figureOf(element, values, figure)}{/if}
+        {#each drawn as schematic, i (i)}
+          <div class="figure plain">
+            <SchematicDrawing drawing={schematic.draw(values)} hot={hotIn(element)} />
+          </div>
+        {/each}
         <div class="rows">
-          {#each panelLines(shown) as line (line.props[0])}
-            {#if line.shared}
+          {#each panelLines(ids) as line (line.props[0])}
+            {#if SIDES.includes(line.props[0]!)}
+              {#if line.props[0] === SIDES[0]}{@render sides(element, values)}{/if}
+            {:else if line.shared}
               {@render together(element, line)}
             {:else}
               {@render row(element, line.props[0]!)}
             {/if}
           {/each}
-        </div>
-        {#if group.id === 'format'}
-          {#each drawn as schematic, i (i)}
-            {@render drawing(element, schematic)}
+          {#each lines as section (section.toggle)}
+            {@render lineRows(element, values, section)}
           {/each}
+        </div>
+        {#if ids.includes('hyphenate') && editor.profile?.hyphenate !== undefined}
+          <!-- The document's own hyphenation is shown at the top of the page; it is the one that prints. -->
+          <p class="short note">{i18n.t('templates.document.hyphenate')}</p>
         {/if}
-      </FoldSection>
+      </Section>
     {/if}
   {/each}
-  {#each shape.lines.filter( (l) => (l.toggle === 'divider' ? !RUNNING[element.id] : !HEADINGS[element.id]) ) as section (section.toggle)}
-    {@const on = values[section.toggle] === true}
+  <!-- A line of an element that has no section for it: a section of its own. -->
+  {#each shape.lines.filter((line) => !has(LINE_GROUPS[line.toggle] ?? '')) as section (section.toggle)}
     <Section>
-      {@render row(element, section.toggle)}
-      {#if on && section.toggle === 'divider'}
-        <!-- The divider of a header: its values as rows, like the rest of the panel. -->
-        <div class="rows">
-          {#each section.fields as id (id)}
-            {@render row(element, id)}
-          {/each}
-        </div>
-      {:else if on}
-        <div class="grid">
-          {#each section.fields as id (id)}
-            {@render row(element, id, true)}
-          {/each}
-        </div>
-      {/if}
+      <div class="rows">{@render lineRows(element, values, section)}</div>
     </Section>
   {/each}
 {/snippet}
@@ -1218,7 +957,12 @@
             {#each documentFields as { field, label, bool } (field)}
               {@const control = `document-${element.id}-${field.replace(':', '-')}`}
               {#if bool}
-                <div class="row check"><DocumentField {field} id={control} named /></div>
+                <div class="row">
+                  <span></span>
+                  <div class="control plain document">
+                    <DocumentField {field} id={control} named />
+                  </div>
+                </div>
               {:else}
                 <div class="row">
                   <label for={control}>{label}</label>
@@ -1290,9 +1034,10 @@
 
 <style>
   /* The panel keeps a margin at its right, where the buttons stand that take a value from above
-     again: the fields, the drawings and the lines between the sections end on one edge, left of it.
+     again: the fields, the pictures and the lines between the sections end on one edge, left of it.
      Alone among another panel's sections (`only`), that panel keeps the margin. */
   .properties {
+    --names: calc(var(--form-label-width) + var(--sp-32) + var(--sp-8));
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -1331,12 +1076,6 @@
     color: var(--color-label);
     font: var(--type-title);
   }
-  /* What names the rows under it, where a section holds more than one group of them. */
-  .subhead {
-    margin: var(--sp-8) 0 0;
-    color: var(--color-label-secondary);
-    font: var(--type-caption);
-  }
   .properties > :global(.callout) {
     margin-bottom: var(--sp-16);
   }
@@ -1370,7 +1109,8 @@
     align-items: center;
     gap: var(--sp-4);
   }
-  .above .span path {
+  .above .span path,
+  .space .span path {
     fill: none;
     stroke: var(--color-accent);
     stroke-width: 1;
@@ -1398,7 +1138,31 @@
   .where {
     margin-bottom: var(--sp-16);
   }
-  /* The space between two parts: a span mark, the value, its name, in the middle of the panel. */
+  /* The picture of a section: nothing is set in it, so it is as quiet as a drawing in a book. */
+  .figure {
+    min-width: 0;
+  }
+  .figure.plain {
+    display: flex;
+    justify-content: center;
+    padding: var(--sp-12);
+    border-radius: var(--r-lg);
+    background: var(--color-panel);
+  }
+  /* A value in a picture: its words, a little stronger than the name beside it. */
+  .tag {
+    flex: none;
+    color: var(--color-label);
+    font: var(--type-caption);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .tag.unset {
+    color: var(--color-label-tertiary);
+    font-weight: 400;
+  }
+  /* The space between two parts in a picture: a span mark, the value, its name. */
   .space {
     display: flex;
     align-items: center;
@@ -1406,20 +1170,38 @@
     gap: var(--sp-8);
     margin: var(--sp-8) 0;
   }
-  .space .span path {
-    fill: none;
-    stroke: var(--color-accent);
-    stroke-width: 1;
+  .short {
+    color: var(--color-label-secondary);
+    font: var(--type-caption);
   }
-  .space-field {
-    display: inline-flex;
-    width: auto;
+  .note {
+    margin: 0;
   }
-  .space-field :global(.text-field) {
-    width: 100%;
+  .rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-8);
   }
-  .space.inherited .short {
-    color: var(--color-label-tertiary);
+  /* A value: its name in a column of its own, the control beside it, on every row of the panel. */
+  .row {
+    display: grid;
+    grid-template-columns: var(--names) minmax(0, 1fr);
+    gap: var(--sp-4) var(--sp-12);
+    align-items: start;
+    margin-right: calc(-1 * var(--sp-24));
+  }
+  /* A name stands at the height of its control, however many lines the name takes. */
+  .row > label,
+  .row > .label {
+    min-width: 0;
+    padding-top: calc((var(--control-md) - 18px) / 2);
+    color: var(--color-label);
+    font: var(--type-body);
+  }
+  /* What a switch turns on stands under it, set in. */
+  .row.sub > label {
+    padding-left: var(--sp-16);
+    color: var(--color-label-secondary);
   }
   /* A line of controls is two halves. A cell is a field and, after it, the place of the button that
      takes the value from above again: kept for every value, so all fields end on one line. */
@@ -1433,9 +1215,10 @@
   .cell,
   .part {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 2px;
     min-width: 0;
+    min-height: var(--control-md);
   }
   /* One value has the whole line; a number's field is as wide as half of it, under the numbers of
      the lines above, and its way back stands at the end of the line like every other. */
@@ -1453,6 +1236,9 @@
     width: auto;
     min-width: 0;
   }
+  .cell > :global(.with-name) {
+    flex: 1;
+  }
   /* A line with switches: the menu takes what the switches leave. */
   .control.toggles {
     display: flex;
@@ -1460,6 +1246,10 @@
   }
   .toggles .part.enum {
     flex: 1;
+  }
+  /* A choice that shares its line has no room for the name of what is chosen: its tooltip says it. */
+  .part :global(.chosen) {
+    display: none;
   }
   .part :global(.segmented button) {
     padding: 0 var(--sp-8);
@@ -1471,171 +1261,14 @@
     height: var(--control-md);
     color: var(--color-label-tertiary);
   }
-  /* A drawing with the fields around it: three columns, the drawing in the middle. */
-  .schematic {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) var(--picture, 128px) minmax(0, 1fr);
-    gap: var(--sp-4);
-    align-items: center;
-    margin-bottom: var(--sp-12);
-  }
-  .schematic .picture {
-    grid-area: 2 / 2;
-  }
-  /* A place holds the field, as narrow as its value, against the drawing; its name stands above it,
-     aligned with its edge. */
-  .place {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-    max-width: 96px;
-    min-width: 0;
-  }
-  .place.l,
-  .place.tl,
-  .place.bl {
-    justify-self: end;
-  }
-  .place.r,
-  .place.tr,
-  .place.br {
-    justify-self: start;
-  }
-  .place.t,
-  .place.b {
-    justify-self: center;
-    align-items: center;
-    max-width: 128px;
-  }
-  /* Beside the drawing the field is centred on it, so its name stands above without moving it. */
-  .place.l .short,
-  .place.r .short {
-    position: absolute;
-    bottom: calc(100% + 2px);
-    left: 0;
-    white-space: nowrap;
-  }
-  .place :global(.select) {
-    width: 86px;
-  }
-  .place :global(input.text-field) {
-    width: 66px;
-  }
-  /* A choice in a place is as narrow as its pictures. */
-  .place :global(.segmented button) {
-    padding: 0 2px;
-  }
-  .place.t :global(.segmented button),
-  .place.b :global(.segmented button) {
-    padding: 0 var(--sp-8);
-  }
-  .place.t {
-    grid-area: 1 / 2;
-  }
-  .place.b {
-    grid-area: 3 / 2;
-  }
-  .place.l {
-    grid-area: 2 / 1;
-  }
-  .place.r {
-    grid-area: 2 / 3;
-  }
-  .place.tl {
-    grid-area: 1 / 1;
-  }
-  .place.tr {
-    grid-area: 1 / 3;
-  }
-  .place.bl {
-    grid-area: 3 / 1;
-  }
-  .place.br {
-    grid-area: 3 / 3;
-  }
-  /* The row over the drawing: one place over each column, against the drawing's edges like the
-     fields beside it, the middle one centred; each name centred over its choice. */
-  .schematic.above {
-    align-items: end;
-  }
-  .place.a1,
-  .place.a2,
-  .place.a3 {
-    align-items: center;
-  }
-  .place.a1 {
-    grid-area: 1 / 1;
-    justify-self: end;
-  }
-  .place.a2 {
-    grid-area: 1 / 2;
-    justify-self: center;
-  }
-  .place.a3 {
-    grid-area: 1 / 3;
-    justify-self: start;
-  }
-  .short {
-    color: var(--color-label-secondary);
-    font: var(--type-caption);
-  }
-  /* A value the template takes from the element above it: its name is quieter, as in a row. */
-  .place.inherited .short {
-    color: var(--color-label-tertiary);
-  }
-  .rows {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-8);
-  }
-  .note {
-    margin: 0;
-  }
-  /* A property: its name in a column of its own, the control beside it. */
-  .row {
-    display: grid;
-    grid-template-columns: calc(var(--form-label-width) + var(--sp-24)) minmax(0, 1fr);
-    gap: var(--sp-4) var(--sp-12);
-    align-items: start;
-    margin-right: calc(-1 * var(--sp-24));
-  }
-  .row.check {
-    margin-right: 0;
-  }
-  .row.stacked,
-  .row.check {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  /* A name stands at the height of its control's first line, whatever is under that (the name of a
-     choice drawn as pictures) and however many lines the name takes. */
-  .row > label,
-  .row > .label {
-    min-width: 0;
-    padding-top: calc((var(--control-md) - 18px) / 2);
-    color: var(--color-label);
-    font: var(--type-body);
-  }
-  .row.check :global(.checkbox) {
-    min-height: var(--control-md);
-  }
-  /* A value the template takes from the element above it: its name is quieter. */
-  .row.inherited label {
-    color: var(--color-label-secondary);
-  }
-  /* A value taken from above is shown as an empty field shows what applies: in its quieter tone,
-     until the field is typed into. */
+  /* A value the template takes from the element above it is a little quieter than one it sets, and
+     reads as well: it is what applies. */
   .row.inherited > .control :global(:is(input, select):not(:focus)),
   .row.inherited > .control :global(.name),
   .part.inherited :global(:is(input, select):not(:focus)),
   .part.inherited :global(.name),
-  .place.inherited :global(:is(input, select):not(:focus)),
-  .place.inherited :global(.name),
-  .space.inherited :global(:is(input, select):not(:focus)),
-  .space.inherited :global(.name),
   .above.inherited :global(:is(input, select):not(:focus)) {
-    color: var(--color-label-tertiary);
+    color: var(--color-label-secondary);
   }
   /* The way back to the value from above: always in sight where a value is set here. */
   .revert {
@@ -1666,12 +1299,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-  }
-  /* The document's own fields end where the template's do. */
-  .control.document {
-    padding-right: var(--sp-24);
-  }
-  .control.sides {
+    min-height: var(--control-md);
     padding-right: var(--sp-24);
   }
   .control.document > :global(:is(.select, .text-field)) {
@@ -1681,20 +1309,11 @@
   .control.sides {
     gap: var(--sp-4) var(--sp-12);
   }
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--sp-8) var(--sp-12);
-  }
   .invalid {
     grid-column: 2;
     margin: 0;
     color: var(--color-danger);
     font: var(--type-caption);
-  }
-  .stacked .invalid,
-  .stacked .missing {
-    grid-column: 1;
   }
   /* The options as a table: the name, its default, and whether the export dialog offers it. */
   .option {

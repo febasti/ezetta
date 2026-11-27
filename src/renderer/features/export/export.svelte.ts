@@ -25,6 +25,9 @@ export type PropValue = string | boolean
 /** The id of the panel with what the export itself needs: citation style, options, warnings, the result. */
 export const EXPORT = '__export'
 
+/** The id of the panel with the templates: choosing one, copying, renaming, saving and deleting it. */
+export const TEMPLATES = '__templates'
+
 /** The id of the panel for the options of the template, which the "Dokument einrichten" panel offers. */
 export const OPTIONS = '__options'
 
@@ -47,7 +50,7 @@ class ExportStore {
 
   list = $state.raw<TemplateEntry[]>([])
   detail = $state.raw<TemplateDetail | null>(null)
-  /** The panel shown: an element's id, or one of `EXPORT`, `OPTIONS`. */
+  /** The panel shown: an element's id, or one of `EXPORT`, `TEMPLATES`, `OPTIONS`. */
   elementId = $state(EXPORT)
   /** The id of a property whose last value was refused, to mark it. */
   refused = $state<string | null>(null)

@@ -29,8 +29,11 @@
     stretch?: boolean
     /** A small picture for each option, drawn in the colour of the text, in place of its name. */
     glyph?: Snippet<[T]>
-    /** The name of the chosen option under the track, for options shown as pictures or samples only. */
-    named?: boolean
+    /**
+     * The name of the chosen option, for options shown as pictures or samples only: under the track,
+     * or `beside` it, on the track's line (in a row that is to stay one line high).
+     */
+    named?: boolean | 'beside'
     disabled?: boolean
     onchange: (value: T) => void
   }
@@ -103,7 +106,7 @@
 {/snippet}
 
 {#if named}
-  <span class="with-name">
+  <span class="with-name" class:beside={named === 'beside'}>
     {@render track()}
     <span class="chosen" aria-hidden="true">{chosen}</span>
   </span>
@@ -130,8 +133,26 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* Beside the track the name takes what room is left, on two short lines at most: the height of
+     the track. */
+  .with-name.beside {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--sp-8);
+  }
+  .beside .chosen {
+    display: -webkit-box;
+    flex: 1;
+    padding-left: 0;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
   .segmented {
     display: inline-flex;
+    flex: none;
     gap: 2px;
     height: var(--control-md);
     padding: 2px;

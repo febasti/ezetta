@@ -12,7 +12,7 @@
   import PropertiesPanel from '../templates/PropertiesPanel.svelte'
   import ExportPanel from './ExportPanel.svelte'
   import PreviewPane from './PreviewPane.svelte'
-  import { EXPORT, OPTIONS, exporting } from './export.svelte'
+  import { EXPORT, OPTIONS, TEMPLATES, exporting } from './export.svelte'
   import { EXPORT_ICON, GROUP_ICONS, OPTIONS_ICON } from './groupIcons'
   import TemplateList from './TemplateList.svelte'
   import { scrollbar } from '../../ui/scrollbar'
@@ -20,6 +20,8 @@
   const lang = $derived(i18n.locale)
   const detail = $derived(exporting.detail)
   const panel = $derived(exporting.elementId)
+  /** The template the dialog is about: the export's, and the one whose elements are listed. */
+  const template = $derived(exporting.list.find((t) => t.id === exporting.selectedId))
 
   /** The group that is open in the list: one at a time, or none. The group of the chosen element opens. */
   let expanded = $state<string | null>(null)
@@ -120,11 +122,39 @@
     {/snippet}
 
     <div class="columns">
-      <aside class="templates" aria-label={i18n.t('templates.title')}>
-        <TemplateList />
-      </aside>
-
-      <nav class="elements" use:scrollbar aria-label={i18n.t('templates.elements')}>
+      <!-- One list leads to everything: the template at its top, the document's settings, then the
+           elements of the template in groups. -->
+      <nav class="sidebar" use:scrollbar aria-label={i18n.t('templates.elements')}>
+        {#if template}
+          {@const chosen = panel === TEMPLATES}
+          {@const show = () => (exporting.elementId = TEMPLATES)}
+          <ListRow
+            title={template.name[lang]}
+            subtitle={i18n.t('templates.current')}
+            selected={chosen}
+            role="button"
+            tabindex={0}
+            aria-selected={undefined}
+            aria-current={chosen ? 'true' : undefined}
+            aria-label={i18n.t('templates.choose', { name: template.name[lang] })}
+            onclick={show}
+            onkeydown={press(show)}
+          >
+            {#snippet leading()}
+              <span class="taster" class:waiting={!exporting.thumbnails[template.id]}>
+                {#if exporting.thumbnails[template.id]}
+                  <img src={exporting.thumbnails[template.id]} alt="" draggable="false" />
+                {/if}
+              </span>
+            {/snippet}
+            {#snippet accessory()}
+              <span class="chevron">
+                {#if template.builtin}<Icon name="lock" size={12} />{/if}
+                <Icon name="chevron-right" size={14} />
+              </span>
+            {/snippet}
+          </ListRow>
+        {/if}
         <h3>{i18n.t('export.group')}</h3>
         {@render row(
           EXPORT_ICON,
@@ -155,20 +185,24 @@
             >
               {#snippet accessory()}
                 <span class="chevron"
-                  ><Icon name={open ? 'chevron-up' : 'chevron-down'} size={14} /></span
+                  ><Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} /></span
                 >
               {/snippet}
             </ListRow>
             {#if open}
               <div class="entries" role="group" aria-label={group[lang]}>
                 {#each entries as e (e.id)}
-                  {@render row(
-                    undefined,
-                    e[lang],
-                    e.id === panel,
-                    null,
-                    () => (exporting.elementId = e.id),
-                  )}
+                  <ListRow
+                    title={e[lang]}
+                    depth={1}
+                    selected={e.id === panel}
+                    role="button"
+                    tabindex={0}
+                    aria-selected={undefined}
+                    aria-current={e.id === panel ? 'true' : undefined}
+                    onclick={() => (exporting.elementId = e.id)}
+                    onkeydown={press(() => (exporting.elementId = e.id))}
+                  />
                 {/each}
               </div>
             {/if}
@@ -185,7 +219,9 @@
       </nav>
 
       <div class="properties" use:scrollbar>
-        {#if panel === EXPORT}
+        {#if panel === TEMPLATES}
+          <TemplateList />
+        {:else if panel === EXPORT}
           <ExportPanel />
         {:else}
           <PropertiesPanel />
@@ -198,24 +234,23 @@
 {/if}
 
 <style>
-  /* Four columns: the templates, the elements, the properties of the one chosen, and the pages. */
+  /* Three parts: the list of what can be set, the values of the one chosen, and the pages, which
+     have the most room. */
   .columns {
     display: flex;
-    gap: var(--sp-16);
+    gap: var(--sp-24);
     height: 100%;
     min-height: 0;
   }
-  .templates {
+  /* The list lies on the sidebar's ground, as the list of a window does. */
+  .sidebar {
     flex: none;
-    width: 144px;
-    min-height: 0;
-  }
-  .elements {
-    flex: none;
-    width: 208px;
+    width: 224px;
     min-height: 0;
     overflow-y: auto;
-    padding-right: var(--sp-8);
+    padding: var(--sp-8);
+    border-radius: var(--r-lg);
+    background: var(--color-sidebar);
   }
   h3 {
     margin: var(--sp-16) 0 var(--sp-4);
@@ -223,8 +258,23 @@
     color: var(--color-label-tertiary);
     font: var(--type-caption);
   }
-  h3:first-child {
-    margin-top: 0;
+  /* The template at the top of the list: a small picture of it before its name. */
+  .taster {
+    display: block;
+    width: var(--control-lg);
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--color-paper);
+    box-shadow: var(--shadow-paper);
+  }
+  .taster.waiting {
+    aspect-ratio: 90 / 63;
+  }
+  .taster img {
+    display: block;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
   }
   .status {
     display: flex;
@@ -247,8 +297,9 @@
   }
   .chevron {
     display: inline-flex;
+    align-items: center;
+    gap: var(--sp-4);
     color: var(--color-label-tertiary);
-    font: var(--type-caption);
   }
   /* What is still open in the export: a number the eye is drawn to, not one among the others. */
   .count {
@@ -256,19 +307,11 @@
     color: var(--color-warning);
     font: var(--type-emphasis);
   }
-  /* The entries of the open group lie on the panel's ground, so they are seen to belong to it. */
-  .entries {
-    margin: var(--sp-4) 0 var(--sp-8);
-    padding: var(--sp-4);
-    border-radius: var(--r-md);
-    background: var(--color-panel);
-  }
-  /* The properties take a third of a wide window, so their names fit on one line; the pages keep the rest. */
+  /* The values take as much as their names and fields need; the pages keep the rest. */
   .properties {
     flex: none;
-    width: clamp(404px, 34vw, 484px);
+    width: clamp(416px, 32vw, 480px);
     min-height: 0;
     overflow-y: auto;
-    padding-right: var(--sp-8);
   }
 </style>

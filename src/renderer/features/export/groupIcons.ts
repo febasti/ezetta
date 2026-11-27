@@ -18,3 +18,6 @@ export const GROUP_ICONS: Readonly<Record<string, IconName>> = {
 /** The symbols of the two panels that are not an element's. */
 export const EXPORT_ICON: IconName = 'file-export'
 export const OPTIONS_ICON: IconName = 'adjustments'
+
+/** The panel with the templates. */
+export const TEMPLATES_ICON: IconName = 'pages'

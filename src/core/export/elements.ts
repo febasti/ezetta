@@ -920,8 +920,8 @@ export const PROP_SECTIONS: readonly {
   },
   {
     id: 'margins',
-    de: 'Ränder und Spalten',
-    en: 'Margins and columns',
+    de: 'Ränder',
+    en: 'Margins',
     props: ['margin_top', 'margin_bottom', 'margin_inside', 'margin_outside'],
   },
   {

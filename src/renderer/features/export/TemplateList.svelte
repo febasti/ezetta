@@ -3,12 +3,17 @@
   import { openContextMenu } from '../../lib/menu.svelte'
   import type { MenuItem } from '../../lib/menu.svelte'
   import Icon from '../../ui/Icon.svelte'
+  import Button from '../../ui/kit/Button.svelte'
+  import Section from '../../ui/kit/Section.svelte'
   import { exporting } from './export.svelte'
-  import { scrollbar } from '../../ui/scrollbar'
+  import { TEMPLATES_ICON } from './groupIcons'
 
   const lang = $derived(i18n.locale)
 
   type Entry = (typeof exporting.list)[number]
+  /** The template that is chosen: what the buttons under the pictures are about. */
+  const current = $derived(exporting.list.find((t) => t.id === exporting.selectedId))
+  const own = $derived(current !== undefined && !current.builtin && !exporting.busy)
 
   /** Makes a template the chosen one, unless it is: what a menu does is done to the chosen one. */
   const chosen = (t: Entry): Promise<void> =>
@@ -69,12 +74,17 @@
   }
 </script>
 
-<div class="templates">
-  <h3>{i18n.t('templates.title')}</h3>
+<!-- The templates as a panel of the dialog: a picture of each, the chosen one marked, and under
+     them what can be done with the chosen one, as buttons (a right click on a picture offers the
+     same). -->
+<section class="templates" aria-label={i18n.t('templates.title')}>
+  <header class="head">
+    <Icon name={TEMPLATES_ICON} size={16} />
+    <h3 class="title">{i18n.t('templates.title')}</h3>
+  </header>
   <!-- The empty part of the list has a menu of its own: a template from a file. -->
   <div
     class="grid"
-    use:scrollbar
     role="group"
     aria-label={i18n.t('templates.list')}
     oncontextmenu={(e) => e.target === e.currentTarget && openContextMenu(e, [loadItem()])}
@@ -106,30 +116,70 @@
       </button>
     {/each}
   </div>
-</div>
+
+  {#if current}
+    <Section title={current.name[lang]} level={4}>
+      <p class="about">
+        {current.builtin ? i18n.t('templates.about.builtin') : i18n.t('templates.about.own')}
+      </p>
+      <div class="actions">
+        <Button size="sm" disabled={exporting.busy} onclick={() => void exporting.duplicate()}>
+          {i18n.t('templates.duplicate')}
+        </Button>
+        {#if !current.builtin}
+          <Button size="sm" icon="pencil" disabled={!own} onclick={() => void exporting.rename()}>
+            {i18n.t('templates.rename')}
+          </Button>
+          <Button size="sm" disabled={!own} onclick={() => void exporting.exportFile()}>
+            {i18n.t('templates.file.save')}
+          </Button>
+          <Button size="sm" icon="trash" disabled={!own} onclick={() => void exporting.remove()}>
+            {i18n.t('templates.remove')}
+          </Button>
+        {/if}
+      </div>
+    </Section>
+  {/if}
+  <Section title={i18n.t('templates.more')} level={4}>
+    <div class="actions">
+      <Button size="sm" disabled={exporting.busy} onclick={() => void exporting.importFile()}>
+        {i18n.t('templates.file.load')}
+      </Button>
+    </div>
+  </Section>
+</section>
 
 <style>
   .templates {
     display: flex;
     flex-direction: column;
-    min-height: 0;
-    height: 100%;
+    min-width: 0;
+    padding-right: var(--sp-24);
   }
-  h3 {
-    margin: 0 0 var(--sp-4);
-    padding: 0 var(--sp-8);
-    color: var(--color-label-tertiary);
-    font: var(--type-caption);
+  /* The head of every panel of the dialog: its name stays in sight, a hairline below it. */
+  .head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-8);
+    padding-bottom: var(--sp-12);
+    border-bottom: 1px solid var(--color-separator);
+    background: var(--color-window);
+    color: var(--color-label-secondary);
   }
+  .title {
+    margin: 0;
+    color: var(--color-label);
+    font: var(--type-title);
+  }
+  /* Three pictures in a line, so the templates are seen together. */
   .grid {
     display: grid;
-    flex: 1;
-    grid-template-columns: minmax(0, 1fr);
-    grid-auto-rows: max-content;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--sp-8);
-    min-height: 0;
-    overflow-y: auto;
-    padding: var(--sp-4);
+    padding: var(--sp-16) 0;
   }
   /* A template is a small picture of its first page and its name under it; the chosen one lies on
    * the selection's ground. */
@@ -137,9 +187,9 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: var(--sp-4);
+    gap: var(--sp-8);
     min-width: 0;
-    padding: var(--sp-4);
+    padding: var(--sp-8);
     border: 0;
     border-radius: var(--r-md);
     background: transparent;
@@ -189,5 +239,15 @@
     display: inline-flex;
     flex: none;
     color: var(--color-label-tertiary);
+  }
+  .about {
+    margin: 0;
+    color: var(--color-label-secondary);
+    font: var(--type-body);
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-8);
   }
 </style>

@@ -18,13 +18,16 @@
     values: Readonly<Record<string, unknown>>
     /** The control of one value, as the panel draws it. */
     control: Snippet<[ElementDef, string]>
+    /** The value whose row of the panel is pointed at or has the focus, to mark it in the picture. */
+    hot?: string | null
   }
-  let { element, values, control }: Props = $props()
+  let { element, values, control, hot: outer = null }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const name = (id: string): string => propLabel(element.id, PROPS[id]!, lang)
   /** The value whose field is pointed at or has the focus, so its span is drawn stronger. */
-  let hot = $state<string | null>(null)
+  let over = $state<string | null>(null)
+  const hot = $derived(over ?? outer)
   /** The bullet of a level: the template's own, or Typst's (a dot, and a triangle one level down). */
   const shape = (level: 1 | 2): string => {
     const marker = values['marker']
@@ -53,10 +56,10 @@
   <div
     class="between"
     role="group"
-    onpointerenter={() => (hot = id)}
-    onpointerleave={() => (hot = null)}
-    onfocusin={() => (hot = id)}
-    onfocusout={() => (hot = null)}
+    onpointerenter={() => (over = id)}
+    onpointerleave={() => (over = null)}
+    onfocusin={() => (over = id)}
+    onfocusout={() => (over = null)}
   >
     <span class="vspan" class:hot={hot === id} aria-hidden="true"></span>
     <span class="field">{@render control(element, id)}</span>
@@ -70,10 +73,10 @@
     class="between slim"
     role="group"
     aria-hidden="false"
-    onpointerenter={() => (hot = id)}
-    onpointerleave={() => (hot = null)}
-    onfocusin={() => (hot = id)}
-    onfocusout={() => (hot = null)}
+    onpointerenter={() => (over = id)}
+    onpointerleave={() => (over = null)}
+    onfocusin={() => (over = id)}
+    onfocusout={() => (over = null)}
   >
     <span class="vspan" class:hot={hot === id} aria-hidden="true"></span>
     <span class="field">{@render control(element, id)}</span>
@@ -86,10 +89,10 @@
   <div
     class="cell"
     role="group"
-    onpointerenter={() => (hot = id)}
-    onpointerleave={() => (hot = null)}
-    onfocusin={() => (hot = id)}
-    onfocusout={() => (hot = null)}
+    onpointerenter={() => (over = id)}
+    onpointerleave={() => (over = null)}
+    onfocusin={() => (over = id)}
+    onfocusout={() => (over = null)}
   >
     <label class="short" for="prop-{element.id}-{id}">{caption}</label>
     <span class="field">{@render control(element, id)}</span>

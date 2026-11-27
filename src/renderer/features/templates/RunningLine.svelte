@@ -1,7 +1,7 @@
 <script lang="ts">
   import PageSheet from './PageSheet.svelte'
   import type { Snippet } from 'svelte'
-  import { PROPS, propLabel } from '@core/export/elements'
+  import { PROPS } from '@core/export/elements'
   import type { ElementDef } from '@core/export/elements'
   import { i18n } from '../../i18n/i18n.svelte'
 
@@ -62,26 +62,16 @@
   </div>
 {/snippet}
 
-{#snippet line()}
-  <!-- The divider: drawn where it is printed, its switch on it; its look is set under the page. -->
-  <div class="toggle">
-    {@render control(element, 'divider')}
-    <label for="prop-{element.id}-divider">{propLabel(element.id, PROPS['divider']!, lang)}</label>
-  </div>
-{/snippet}
-
 {#snippet sheet(editable: boolean)}
   <PageSheet top={footer ? 'torn' : 'edge'} bottom={footer ? 'edge' : 'torn'} gap="small">
     {#if footer}
       {@render text()}
       {#if editable}{@render space(element, 'distance')}{:else}<div class="gap"></div>{/if}
-      {#if editable}{@render line()}{/if}
       {#if divider}<div class="rule"></div>{/if}
       {@render band(editable)}
     {:else}
       {@render band(editable)}
       {#if divider}<div class="rule"></div>{/if}
-      {#if editable}{@render line()}{/if}
       {#if editable}{@render space(element, 'distance')}{:else}<div class="gap"></div>{/if}
       {@render text()}
     {/if}
@@ -154,13 +144,6 @@
   .rule {
     height: 1px;
     background: var(--color-label-secondary);
-  }
-  .toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-8);
-    color: var(--color-label);
-    font: var(--type-body);
   }
   .gap {
     height: var(--sp-24);

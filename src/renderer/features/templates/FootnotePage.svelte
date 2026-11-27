@@ -20,13 +20,11 @@
     values: Readonly<Record<string, unknown>>
     /** The control of one value, as the panel draws it. */
     control: Snippet<[ElementDef, string]>
-    /** A value as a row of the panel: its name, or another one, and its control. */
-    row: Snippet<[ElementDef, string, boolean?, string?]>
     /** The width of the text on the page and the size of the notes' type, both in centimetres. */
     measure: number
     emCm: number
   }
-  let { element, values, control, row, measure, emCm }: Props = $props()
+  let { element, values, control, measure, emCm }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const name = (id: string): string => propLabel(element.id, PROPS[id]!, lang)
@@ -99,9 +97,6 @@
   </div>
 {/snippet}
 
-<!-- Where the notes stand: the choice of the group, over the page. -->
-<div class="choices">{@render row(element, 'placement')}</div>
-
 <div class="desk">
   <PageSheet top="torn" bottom={margin ? 'torn' : 'edge'} gap="medium">
     {#if margin}
@@ -150,12 +145,6 @@
 </div>
 
 <style>
-  /* The choices over the page: rows, as the values under it are. */
-  .choices {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-8);
-  }
   /* The page lies on the panel's ground, as on a desk. */
   .desk {
     padding: var(--sp-12);
@@ -262,7 +251,7 @@
     background: var(--color-accent);
   }
   .field {
-    min-width: 96px;
+    display: inline-flex;
   }
   .short {
     color: var(--color-label-secondary);

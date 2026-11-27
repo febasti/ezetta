@@ -94,21 +94,25 @@
               </FormRow>
             {/if}
           {/each}
+          <span></span>
+          <div class="checks">
+            <DocumentField field="hyphenate" id="export-hyphenate" named />
+          </div>
         </Form>
-        <div class="checks">
-          <DocumentField field="hyphenate" id="export-hyphenate" named />
-        </div>
       </Section>
 
       {#if offered.some((o) => o.type === 'bool')}
         <Section title={i18n.t('export.parts')} level={4}>
-          <div class="checks">
-            {#each offered as option (option.id)}
-              {#if option.type === 'bool'}
-                <DocumentField field="option:{option.id}" id="export-option-{option.id}" named />
-              {/if}
-            {/each}
-          </div>
+          <Form labels="start">
+            <span></span>
+            <div class="checks">
+              {#each offered as option (option.id)}
+                {#if option.type === 'bool'}
+                  <DocumentField field="option:{option.id}" id="export-option-{option.id}" named />
+                {/if}
+              {/each}
+            </div>
+          </Form>
         </Section>
       {/if}
     {/if}
@@ -304,7 +308,10 @@
   }
   /* The names and the fields stand where the template's properties have theirs, on every panel. */
   .panel :global(.form) {
-    grid-template-columns: calc(var(--form-label-width) + var(--sp-24)) minmax(0, 1fr);
+    grid-template-columns: calc(var(--form-label-width) + var(--sp-32) + var(--sp-8)) minmax(
+        0,
+        1fr
+      );
   }
   .checks {
     display: flex;

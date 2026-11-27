@@ -23,17 +23,13 @@
     values: Readonly<Record<string, unknown>>
     /** The control of one value, as the panel draws it. */
     control: Snippet<[ElementDef, string]>
-    /** The value whose last input was refused (`element.property`), or null. */
-    refused: string | null
     /** How the template numbers headings, for the sample number. */
     numbering: HeadingNumbering
     /** The width of the text on the page, and the size of the heading's type, both in centimetres. */
     measure: number
     emCm: number
-    /** A value as a row of the panel: its name, or another one, and its control. */
-    row: Snippet<[ElementDef, string, boolean?, string?]>
   }
-  let { element, values, control, row, refused, numbering, measure, emCm }: Props = $props()
+  let { element, values, control, numbering, measure, emCm }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const has = (id: string): boolean => element.props.includes(id)
@@ -79,44 +75,25 @@
   {/if}
 {/snippet}
 
-{#snippet toggle(side: 'above' | 'below')}
-  {@const id = `line_${side}`}
-  <div class="toggle">
-    {@render control(element, id)}
-    <label for="prop-{element.id}-{id}">{name(id)}</label>
-  </div>
-{/snippet}
-
-<!-- The choices that are about the whole heading, over the page: where it breaks, where it stands. -->
-<div class="choices">
-  {#if has('break_before')}{@render row(element, 'break_before')}{/if}
-  {@render row(element, 'align')}
-</div>
-
 {#snippet inside()}
   {#if has('above')}{@render between('above')}{/if}
   {#if has('line_above')}
-    {@render toggle('above')}
     {@render rule('above')}
   {/if}
 
   <div class="heading" style:justify-content={place === 'end' ? 'flex-end' : place}>
-    {#if has('number_prefix')}
+    {#if has('number_prefix') && values['number_prefix']}
       <span class="affix">{@render control(element, 'number_prefix')}</span>
     {/if}
     <span class="number" class:none={sample === '–'} aria-hidden="true">{sample}</span>
-    {#if has('number_suffix')}
+    {#if has('number_suffix') && values['number_suffix']}
       <span class="affix">{@render control(element, 'number_suffix')}</span>
     {/if}
     <span class="title" aria-hidden="true"></span>
   </div>
-  {#if refused === `${element.id}.number_prefix` || refused === `${element.id}.number_suffix`}
-    <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
-  {/if}
 
   {#if has('line_below')}
     {@render rule('below')}
-    {@render toggle('below')}
   {/if}
   {#if has('below')}{@render between('below')}{/if}
   {@render text([100, 100, 58])}
@@ -144,12 +121,6 @@
 </div>
 
 <style>
-  /* The choices over the page: rows, as the values under it are. */
-  .choices {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-8);
-  }
   /* The page lies on the panel's ground, as on a desk. */
   .desk {
     padding: var(--sp-12);
@@ -209,19 +180,11 @@
     background: var(--color-accent);
   }
   .field {
-    min-width: 96px;
+    display: inline-flex;
   }
   .short {
     color: var(--color-label-secondary);
     font: var(--type-caption);
-  }
-  .toggle {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-8);
-    padding: var(--sp-4) 0;
-    color: var(--color-label);
-    font: var(--type-body);
   }
   .rule {
     display: flex;
@@ -238,18 +201,6 @@
     align-items: center;
     gap: var(--sp-4);
     padding: var(--sp-8) 0;
-  }
-  .invalid {
-    margin: 0 0 var(--sp-8);
-    color: var(--color-danger);
-    font: var(--type-caption);
-  }
-  /* The text around the number is as wide as it is, with room for a short one. */
-  .affix :global(.text-field) {
-    width: auto;
-    min-width: 40px;
-    max-width: 120px;
-    field-sizing: content;
   }
   .number {
     display: inline-flex;
