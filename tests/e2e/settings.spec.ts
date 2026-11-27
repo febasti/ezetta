@@ -1,4 +1,4 @@
-import { readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
@@ -355,6 +355,53 @@ test('the monospace face is used for the writing, and for code and formulas too'
     await expect
       .poll(() => page.locator('.cm-scroller').evaluate((el) => getComputedStyle(el).fontFamily))
       .toContain('IBM Plex Mono')
+  } finally {
+    await app.close()
+  }
+})
+
+test('the project page sets whether versions are kept and where the project is backed up to, and leads to both', async () => {
+  const backupDir = join(sandbox.base, 'Sicherungen')
+  await mkdir(backupDir)
+  const { app, page } = await launchAt(sandbox, 'methoden/design.typ', {
+    env: { EZETTA_TEST_BACKUP: backupDir },
+  })
+  try {
+    const toml = () => readFile(join(sandbox.projectDir, 'project.toml'), 'utf8')
+    await page.keyboard.press(`${MOD}+,`)
+    await dialog(page).getByRole('tab', { name: 'Projekt' }).click()
+    const section = dialog(page).getByRole('region', { name: 'Versionen und Sicherung' })
+
+    // Versions are kept unless the writer says otherwise; the choice is the project file's.
+    const auto = section.getByRole('checkbox', { name: 'Automatisch Versionen speichern' })
+    await expect(auto).toBeChecked()
+    await auto.uncheck()
+    await expect.poll(toml).toMatch(/\[history\]\s+enabled = false/)
+    await auto.check()
+    await expect.poll(toml).not.toContain('enabled = false')
+
+    // No backup folder yet: said so, and chosen here. It is this project's, kept with the app.
+    await expect(section).toContainText('Keiner: Das Projekt wird nicht gesichert.')
+    await section.getByRole('button', { name: 'Wählen …' }).click()
+    await expect(section).toContainText('Sicherungen')
+    await expect(section).toContainText(/Zuletzt gesichert: /, { timeout: 15_000 })
+    expect(await toml()).not.toContain('Sicherungen')
+    await expect(section.getByRole('button', { name: 'Ändern …' })).toBeVisible()
+
+    // The links lead to the dialog where versions and backups are looked at.
+    await section.getByRole('button', { name: 'Sicherungen ansehen …' }).click()
+    await expect(dialog(page)).toHaveCount(0)
+    const versions = page.getByRole('dialog', { name: 'Versionen und Sicherung' })
+    await expect(versions.getByRole('tab', { name: 'Sicherung' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await versions.getByRole('button', { name: 'Schließen' }).click()
+
+    // Switched off here, the project is not backed up any more.
+    await page.keyboard.press(`${MOD}+,`)
+    await section.getByRole('button', { name: 'Ausschalten' }).click()
+    await expect(section).toContainText('Keiner: Das Projekt wird nicht gesichert.')
   } finally {
     await app.close()
   }
