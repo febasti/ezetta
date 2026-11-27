@@ -5,7 +5,7 @@
   import FormRow from '../../ui/kit/FormRow.svelte'
   import IconButton from '../../ui/kit/IconButton.svelte'
   import Section from '../../ui/kit/Section.svelte'
-  import Switch from '../../ui/kit/Switch.svelte'
+  import Segmented from '../../ui/kit/Segmented.svelte'
   import TextField from '../../ui/kit/TextField.svelte'
   import { project } from '../sidebar/project.svelte'
   import { scrollbar } from '../../ui/scrollbar'
@@ -174,10 +174,19 @@
     <Section title={i18n.t('titelei.section.more')} region={false}>
       <Form>
         <FormRow label={i18n.t('titelei.field.date')}>
+          <!-- The day of the export, or a day that stays: a choice of two, and for a fixed day the
+               day itself beside it. -->
           <div class="date">
-            {#if date === ''}
-              <span class="today">{i18n.t('titelei.dateToday')}</span>
-            {:else}
+            <Segmented
+              label={i18n.t('titelei.field.date')}
+              value={date === '' ? 'today' : 'fixed'}
+              options={[
+                { value: 'today', label: i18n.t('titelei.dateToday') },
+                { value: 'fixed', label: i18n.t('titelei.dateFixed') },
+              ]}
+              onchange={(choice) => setDate(choice === 'fixed' ? today() : '')}
+            />
+            {#if date !== ''}
               <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a date picker: the kit has no block for a day -->
               <input
                 class="day"
@@ -189,9 +198,6 @@
                 }}
               />
             {/if}
-            <Switch checked={date !== ''} onchange={(on) => setDate(on ? today() : '')}
-              >{i18n.t('titelei.dateFixed')}</Switch
-            >
           </div>
         </FormRow>
         <FormRow label={i18n.t('titelei.field.version')} for="titelei-version">
@@ -249,13 +255,10 @@
   }
   .date {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--sp-12);
+    gap: var(--sp-8);
     min-height: var(--control-md);
-  }
-  .today {
-    color: var(--color-label-secondary);
-    font: var(--type-body);
   }
   .day {
     height: var(--control-md);

@@ -120,6 +120,11 @@
     padding: var(--sp-8) var(--sp-8) var(--sp-16);
     overflow-y: auto;
   }
+  /* The heading of a section stands on the pane's inset, where the tabs and the scope stand; the
+     rows under it keep the small inset of a list, whose chosen row reaches further out. */
+  .body :global(.section > header) {
+    padding: 0 var(--sp-8);
+  }
   .works {
     display: flex;
     flex-direction: column;
@@ -134,7 +139,8 @@
     display: grid;
     grid-template-columns: var(--sp-8) minmax(0, 1fr) auto;
     align-items: start;
-    gap: var(--sp-4);
+    /* The reference starts where the name of a row above it starts. */
+    gap: calc(var(--sp-4) + 2px);
   }
   .dot {
     width: 6px;

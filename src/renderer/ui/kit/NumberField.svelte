@@ -1,10 +1,10 @@
 <script lang="ts">
   import { i18n } from '../../i18n/i18n.svelte'
   import Icon from '../Icon.svelte'
-  import TextField from './TextField.svelte'
 
   /**
-   * A field for one number within a range, with its unit after it. Typing is committed with Return
+   * A field for one number within a range, with its unit after the number, inside the field (as
+   * the lengths of a template have theirs). Typing is committed with Return
    * or when the focus leaves: the number is read with the language's decimal mark, brought into the
    * range and rounded to the step, and the field shows what was kept. The arrow keys change it by
    * one step, as do the two small buttons at its end. Whatever is typed in between is left alone.
@@ -16,7 +16,7 @@
     step: number
     id?: string
     label?: string
-    /** What the number counts, after the field: "px", "×". */
+    /** What the number counts, after the number: "px", "×". */
     unit?: string
     onchange: (value: number) => void
   }
@@ -58,65 +58,89 @@
   }
 </script>
 
-<span class="with-unit">
-  <span class="number">
-    <TextField
-      {id}
-      {label}
-      inputmode="numeric"
-      value={shown}
-      onvalue={(text) => (draft = text)}
-      onchange={commit}
-      onkeydown={onKeydown}
-    />
-    <span class="steppers">
-      <button
-        type="button"
-        tabindex="-1"
-        aria-label="+"
-        disabled={value >= max}
-        onclick={() => nudge(1)}
-      >
-        <Icon name="chevron-up" size={12} />
-      </button>
-      <button
-        type="button"
-        tabindex="-1"
-        aria-label="−"
-        disabled={value <= min}
-        onclick={() => nudge(-1)}
-      >
-        <Icon name="chevron-down" size={12} />
-      </button>
-    </span>
+<span class="number">
+  <input
+    {id}
+    type="text"
+    inputmode="decimal"
+    aria-label={label}
+    value={shown}
+    oninput={(event) => (draft = event.currentTarget.value)}
+    onchange={commit}
+    onkeydown={onKeydown}
+  />
+  <span class="unit" aria-hidden="true">{unit ?? ''}</span>
+  <span class="steppers">
+    <button
+      type="button"
+      tabindex="-1"
+      aria-label="+"
+      disabled={value >= max}
+      onclick={() => nudge(1)}
+    >
+      <Icon name="chevron-up" size={12} />
+    </button>
+    <button
+      type="button"
+      tabindex="-1"
+      aria-label="−"
+      disabled={value <= min}
+      onclick={() => nudge(-1)}
+    >
+      <Icon name="chevron-down" size={12} />
+    </button>
   </span>
-  {#if unit}<span class="unit">{unit}</span>{/if}
 </span>
 
 <style>
-  .with-unit {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-8);
-  }
-  .unit {
-    color: var(--color-label-secondary);
-    font: var(--type-body);
-  }
   .number {
     position: relative;
-    display: inline-block;
-    width: 80px;
+    display: inline-flex;
+    align-items: center;
+    width: 96px;
+    height: var(--control-md);
+    border: 1px solid var(--color-field-border);
+    border-radius: var(--r-sm);
+    background: var(--color-field);
+    box-sizing: border-box;
   }
-  .number :global(.text-field) {
-    padding-right: var(--sp-24);
+  .number:focus-within {
+    box-shadow: 0 0 0 3px var(--color-focus);
   }
+  /* The number as wide as its text, so its unit follows it with a small space. */
+  input {
+    flex: none;
+    field-sizing: content;
+    min-width: 1ch;
+    max-width: 100%;
+    height: 100%;
+    padding: 0 0 0 var(--sp-8);
+    border: 0;
+    background: none;
+    color: var(--color-label);
+    font: var(--type-body);
+    outline: none;
+  }
+  .unit {
+    flex: 1;
+    min-width: 0;
+    padding-left: var(--sp-4);
+    overflow: hidden;
+    color: var(--color-label-tertiary);
+    font: var(--type-body);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  /* The steppers: a narrow column at the end, set off by a hairline. */
   .steppers {
-    position: absolute;
-    inset: 2px 2px 2px auto;
     display: flex;
+    flex: none;
     flex-direction: column;
+    align-self: stretch;
     width: var(--sp-16);
+    border-left: 1px solid var(--color-field-border);
+    border-radius: 0 var(--r-sm) var(--r-sm) 0;
+    background: var(--color-control);
   }
   button {
     display: flex;
@@ -125,7 +149,6 @@
     justify-content: center;
     padding: 0;
     border: 0;
-    border-radius: var(--r-sm);
     background: transparent;
     color: var(--color-label-secondary);
     cursor: default;

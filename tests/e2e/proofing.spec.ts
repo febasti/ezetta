@@ -245,8 +245,8 @@ test('the language, the kinds and the meticulous mode are chosen in the Prüfung
     await kinds.getByRole('checkbox', { name: 'Typografie' }).uncheck()
     await expect.poll(() => read('project.toml')).toContain('typography')
 
-    // The meticulous mode is a switch, off at first, and kept in the project too.
-    const picky = panel(page).getByRole('switch', { name: 'Akribischer Modus' })
+    // The meticulous mode is a box like the kinds above it, off at first, and kept in the project too.
+    const picky = panel(page).getByRole('checkbox', { name: 'Akribischer Modus' })
     await expect(picky).not.toBeChecked()
     await picky.check()
     await expect.poll(() => read('project.toml')).toContain('picky')

@@ -45,7 +45,8 @@
     flex: none;
     min-width: 0;
     height: 100%;
-    background: var(--color-window);
+    /* The same ground as the left sidebar: the two frame the white of the text between them. */
+    background: var(--color-sidebar);
     border-left: 1px solid var(--color-separator);
   }
   .panel {

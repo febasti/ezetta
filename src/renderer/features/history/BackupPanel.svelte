@@ -21,7 +21,7 @@
       : `${formatNumber(Math.round(bytes / (1024 * 1024)), i18n.locale)} MB`
 </script>
 
-<div class="backup">
+<div class="backup" class:empty={!status?.configured}>
   {#if !status?.configured}
     <EmptyState icon="archive" title={i18n.t('backup.none')} text={i18n.t('backup.intro')}>
       {#snippet action()}
@@ -119,6 +119,10 @@
     flex-direction: column;
     max-width: 680px;
     padding-top: var(--sp-16);
+  }
+  /* Nothing set up yet: what to do stands in the middle of the dialog, not of a column at its left. */
+  .backup.empty {
+    max-width: none;
   }
   .value {
     padding-top: calc((var(--control-md) - 18px) / 2);

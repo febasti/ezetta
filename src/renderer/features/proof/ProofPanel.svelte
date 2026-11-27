@@ -10,7 +10,6 @@
   import ListRow from '../../ui/kit/ListRow.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Select from '../../ui/kit/Select.svelte'
-  import Switch from '../../ui/kit/Switch.svelte'
   import Spinner from '../../ui/Spinner.svelte'
   import { editor } from '../editor/editorSession.svelte'
   import { project } from '../sidebar/project.svelte'
@@ -110,9 +109,9 @@
         {/each}
       </fieldset>
       <div class="picky">
-        <Switch checked={picky} onchange={(on) => void proof.setPicky(on)}>
+        <Checkbox checked={picky} onchange={(on) => void proof.setPicky(on)}>
           {i18n.t('proof.picky')}
-        </Switch>
+        </Checkbox>
         <p class="hint">{i18n.t('proof.pickyHint')}</p>
       </div>
     </div>
@@ -327,8 +326,10 @@
     color: var(--color-label-secondary);
     font: var(--type-caption);
   }
+  /* Under the name of its box, not under the box. */
   .picky .hint {
     margin: 0;
+    padding-left: calc(var(--sp-16) + var(--sp-4) + 2px);
     color: var(--color-label-tertiary);
     font: var(--type-caption);
   }

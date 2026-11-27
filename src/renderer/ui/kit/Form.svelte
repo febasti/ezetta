@@ -2,22 +2,22 @@
   import type { Snippet } from 'svelte'
 
   /**
-   * A form as in the system's settings: rows of a label on the left (right-aligned, in a column of
-   * its own) and the control on the right. `stacked` puts each label above its control instead, for
-   * a narrow dialog or a single field. `FormRow` is one row. `labels="start"` sets the labels flush
-   * left, as in a panel of properties; the system's settings set them at the end.
+   * A form: rows of a name on the left, in a column of its own, and the control on the right. The
+   * names stand flush left, so every row of a form, a panel or a dialog starts on one edge.
+   * `stacked` puts each name above its control instead, for a narrow dialog or a single field.
+   * `FormRow` is one row; a row without a name (a checkbox, whose name stands after it) leaves the
+   * first column empty.
    */
   interface Props {
     /** The width of the label column. */
     labelWidth?: 'narrow' | 'wide'
     stacked?: boolean
-    labels?: 'start' | 'end'
     children: Snippet
   }
-  let { labelWidth = 'narrow', stacked = false, labels = 'end', children }: Props = $props()
+  let { labelWidth = 'narrow', stacked = false, children }: Props = $props()
 </script>
 
-<div class="form {labelWidth}" class:stacked class:start={labels === 'start'}>
+<div class="form {labelWidth}" class:stacked>
   {@render children()}
 </div>
 
@@ -35,12 +35,8 @@
     grid-template-columns: minmax(0, 1fr);
     gap: var(--sp-4);
   }
-  .start > :global(label) {
-    text-align: left;
-  }
   .stacked > :global(label) {
     padding-top: 0;
-    text-align: left;
   }
   .stacked > :global(label:not(:first-child)) {
     margin-top: var(--sp-8);

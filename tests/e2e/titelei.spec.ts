@@ -53,10 +53,13 @@ test('the title page fields are edited on the Titelei page and kept in project.t
     )
 
     // The date: the day of the export, or a fixed one.
-    await expect(page.getByText('Am Tag des Exports')).toBeVisible()
-    await page.getByRole('switch', { name: 'Festes Datum' }).click()
+    const day = page.getByRole('radiogroup', { name: 'Datum' })
+    await expect(day.getByRole('radio', { name: 'Am Tag des Exports' })).toBeChecked()
+    await expect(page.getByLabel('Datum der Titelseite')).toHaveCount(0)
+    await day.getByRole('radio', { name: 'Festes Datum' }).click()
     await expect.poll(manifest).toMatch(/date = "\d{4}-\d{2}-\d{2}"/)
-    await page.getByRole('switch', { name: 'Festes Datum' }).click()
+    await expect(page.getByLabel('Datum der Titelseite')).toBeVisible()
+    await day.getByRole('radio', { name: 'Am Tag des Exports' }).click()
     await expect.poll(manifest).not.toContain('date = ')
 
     // The project title is the title field.

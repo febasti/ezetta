@@ -27,7 +27,6 @@
     padding-top: calc((var(--control-md) - 18px) / 2);
     color: var(--color-label);
     font: var(--type-body);
-    text-align: right;
   }
   .control {
     display: flex;

@@ -83,7 +83,7 @@
 
     {#if template}
       <Section title={i18n.t('export.layout')} level={4}>
-        <Form labels="start">
+        <Form>
           <FormRow label={i18n.t('export.binding')} for="export-binding">
             <DocumentField field="binding" id="export-binding" />
           </FormRow>
@@ -103,7 +103,7 @@
 
       {#if offered.some((o) => o.type === 'bool')}
         <Section title={i18n.t('export.parts')} level={4}>
-          <Form labels="start">
+          <Form>
             <span></span>
             <div class="checks">
               {#each offered as option (option.id)}
@@ -126,7 +126,7 @@
     </Section>
 
     <Section title={i18n.t('export.content')} level={4}>
-      <Form labels="start">
+      <Form>
         <FormRow label={i18n.t('export.citationStyle')} for="export-style">
           <DocumentField field="citationStyle" id="export-style" />
         </FormRow>
