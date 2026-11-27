@@ -172,6 +172,14 @@ class ProjectStore {
         void window.api.app.flushDone({ unsaved })
       })
     })
+    // Leaving a sheet whose text could not be written asks the same question as quitting.
+    editor.askUnsaved = (path) =>
+      confirmDialog({
+        title: i18n.t('quit.unsaved.message'),
+        message: i18n.t('quit.unsaved.detail', { name: this.sheetLabel(path) }),
+        confirmLabel: i18n.t('quit.unsaved.discard'),
+        cancelLabel: i18n.t('quit.unsaved.cancel'),
+      })
     const current = await call(window.api.project.current({}))
     if (current?.snapshot) this.apply(current.snapshot, true)
     await this.refreshRecent()
@@ -211,7 +219,7 @@ class ProjectStore {
   /** Makes a project that the main process opened (a restored backup) the open one. */
   async adopt(snapshot: SnapshotDto | null | undefined): Promise<void> {
     if (!snapshot) return
-    await editor.close()
+    await editor.close({ force: true })
     split.reset()
     this.selectedGroup = ''
     this.selection = []
@@ -222,7 +230,7 @@ class ProjectStore {
   }
 
   async createProject(): Promise<void> {
-    await editor.flush()
+    if (!(await editor.settle())) return
     const result = await call(
       window.api.project.create({
         language: i18n.locale,
@@ -233,7 +241,7 @@ class ProjectStore {
   }
 
   async openProject(): Promise<void> {
-    await editor.flush()
+    if (!(await editor.settle())) return
     const result = await call(
       window.api.project.open({ dialogTitle: i18n.t('dialog.openProject') }),
     )
@@ -245,7 +253,7 @@ class ProjectStore {
    * A copy the writer has changed is kept unless they say to start over: the original is never touched.
    */
   async openExample(): Promise<void> {
-    await editor.flush()
+    if (!(await editor.settle())) return
     const language = i18n.locale === 'de' ? 'de' : 'en'
     let result = await call(window.api.project.openExample({ language }))
     if (result?.status === 'modified') {
@@ -266,14 +274,14 @@ class ProjectStore {
   }
 
   async openRecent(path: string): Promise<void> {
-    await editor.flush()
+    if (!(await editor.settle())) return
     const result = await call(window.api.project.openRecent({ path }))
     await this.adopt(result?.snapshot)
     await this.refreshRecent()
   }
 
   async closeProject(): Promise<void> {
-    await editor.close()
+    if (!(await editor.close())) return
     split.reset()
     await call(window.api.project.close({}))
     this.snapshot = null
@@ -287,35 +295,52 @@ class ProjectStore {
   // --- selection ------------------------------------------------------------------------------
 
   selectGroup(path: string): void {
+    const before = { group: this.selectedGroup, selection: this.selection, anchor: this.anchor }
     this.selectedGroup = path
     this.selection = []
     this.anchor = null
-    if (path === TITELEI) void this.showTitelei()
-    else void this.enterFlow('group')
+    void (path === TITELEI ? this.showTitelei() : this.enterFlow('group')).then((moved) => {
+      // The writer went back to text that could not be saved: the columns show its place again.
+      if (moved || this.selectedGroup !== path) return
+      this.selectedGroup = before.group
+      this.selection = before.selection
+      this.anchor = before.anchor
+    })
   }
 
   /** Shows the form of the title page fields in the editor area. Unsaved text is written first. */
-  async showTitelei(): Promise<void> {
+  async showTitelei(): Promise<boolean> {
+    if (this.mode !== 'titelei' && !(await editor.close())) return false
     this.selection = []
-    if (this.mode !== 'titelei') await editor.close()
     this.mode = 'titelei'
+    return true
   }
 
   /** Shows the continuous view. Unsaved text is written first and the editor is released, so the
    * view reads current files and coming back to a sheet reads them fresh. */
-  async enterFlow(kind: 'group' | 'selection'): Promise<void> {
+  async enterFlow(kind: 'group' | 'selection'): Promise<boolean> {
+    if (this.mode !== 'flow' && !(await editor.close())) return false
     this.flowKind = kind
-    if (this.mode !== 'flow') await editor.close()
     this.mode = 'flow'
+    return true
   }
 
   /** A click on a sheet row: one sheet opens for editing, several show together. */
   async clickRow(path: string, how: { extend?: boolean; toggle?: boolean } = {}): Promise<void> {
+    const open = editor.path
     this.select(path, how)
     const sheets = this.selection.filter((p) => this.node(p)?.kind === 'sheet')
-    if (sheets.length > 1) await this.enterFlow('selection')
-    else if (sheets.length === 1) await this.openSheet(sheets[0]!)
-    else await this.enterFlow('group')
+    const moved =
+      sheets.length > 1
+        ? await this.enterFlow('selection')
+        : sheets.length === 1
+          ? await this.openSheet(sheets[0]!)
+          : await this.enterFlow('group')
+    // The writer went back to text that could not be saved: its row is the selected one again.
+    if (!moved && open !== null && editor.path === open) {
+      this.selection = [open]
+      this.anchor = open
+    }
   }
 
   /** Selects a row of the sheets column. `extend` is shift, `toggle` is cmd or ctrl. */
@@ -340,9 +365,9 @@ class ProjectStore {
     path: string,
     cursor?: number,
     options: { scroll?: number; restore?: KeptState | null; loaded?: () => void } = {},
-  ): Promise<void> {
+  ): Promise<boolean> {
     this.mode = 'editor'
-    await editor.open(path, cursor, options)
+    return editor.open(path, cursor, options)
   }
 
   /**
@@ -350,7 +375,10 @@ class ProjectStore {
    * nothing to stand beside: it opens in the editor.
    */
   async openBeside(path: string): Promise<void> {
-    if (this.mode !== 'editor' || editor.path === null) return this.openSheet(path)
+    if (this.mode !== 'editor' || editor.path === null) {
+      await this.openSheet(path)
+      return
+    }
     split.openBeside(path)
   }
 
@@ -475,7 +503,7 @@ class ProjectStore {
     })
     if (!confirmed) return
     for (const node of nodes) {
-      if (editor.isAffected(node.path)) await editor.close()
+      if (editor.isAffected(node.path)) await editor.close({ force: true })
       if (split.other !== null && isSameOrBelow(split.other, node.path)) split.close()
       const result = await call(window.api.project.remove({ path: node.path }))
       if (!result) return

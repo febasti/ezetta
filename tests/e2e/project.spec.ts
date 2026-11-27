@@ -568,6 +568,66 @@ test('keeps both versions when the writer moves to another sheet while a conflic
   }
 })
 
+test('text that cannot be saved is not left behind without asking, for another sheet or another view', async () => {
+  // A folder that cannot be written: a test of permissions, which Windows does not have this way.
+  test.skip(process.platform === 'win32', 'folder permissions')
+  const { app, page } = await launch(sandbox)
+  const folder = join(sandbox.projectDir, 'content', 'methoden')
+  const question = page.getByRole('alertdialog')
+  try {
+    await openSheet(page, 'methoden', 'methoden/auswertung.typ')
+    await chmod(folder, 0o555)
+    await page.locator('.cm-content').click()
+    await page.keyboard.type('Nicht zu sichern. ')
+    // Another sheet: the writer is asked, and goes back to the text.
+    await row(page, 'methoden/design.typ').click()
+    await expect(question).toContainText('konnten nicht gespeichert werden')
+    await question.getByRole('button', { name: 'Zurück zum Text' }).click()
+    await expect(page.locator('.cm-content')).toContainText('Nicht zu sichern.')
+    // Another view (the group's sheets together): asked again.
+    await group(page, 'einleitung').click()
+    await expect(question).toBeVisible()
+    await question.getByRole('button', { name: 'Zurück zum Text' }).click()
+    await expect(page.locator('.cm-content')).toContainText('Nicht zu sichern.')
+    // Once the folder can be written again, moving on saves the text and asks nothing.
+    await chmod(folder, 0o755)
+    await row(page, 'methoden/design.typ').click()
+    await expect(page.locator('.cm-content')).toContainText('Das Design der Studie')
+    await expect(question).toHaveCount(0)
+    expect(await read('content/methoden/auswertung.typ')).toContain('Nicht zu sichern.')
+  } finally {
+    await chmod(folder, 0o755)
+    await app.close()
+  }
+})
+
+test('the writer can give up text that cannot be saved, and the sheet on disk stays as it was', async () => {
+  test.skip(process.platform === 'win32', 'folder permissions')
+  const { app, page } = await launch(sandbox)
+  const folder = join(sandbox.projectDir, 'content', 'methoden')
+  try {
+    await openSheet(page, 'methoden', 'methoden/auswertung.typ')
+    await chmod(folder, 0o555)
+    await page.locator('.cm-content').click()
+    await page.keyboard.type('Nicht zu sichern. ')
+    await row(page, 'methoden/design.typ').click()
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Änderungen verwerfen' })
+      .click()
+    await expect(page.locator('.cm-content')).toContainText('Das Design der Studie')
+    await chmod(folder, 0o755)
+    // Nothing of it is written later either.
+    await page.locator('.cm-content').click()
+    await page.keyboard.type('Weiter. ')
+    await expect.poll(() => read('content/methoden/design.typ')).toContain('Weiter.')
+    expect(await read('content/methoden/auswertung.typ')).toBe('Die Auswertung folgt später.\n')
+  } finally {
+    await chmod(folder, 0o755)
+    await app.close()
+  }
+})
+
 test('a save never overwrites a file that changed on disk since the editor read it', async () => {
   const { app, page } = await launch(sandbox)
   try {

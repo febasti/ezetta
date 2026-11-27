@@ -210,26 +210,28 @@ class EditorStore {
    * Opens a sheet. Unsaved text of the previous one is written first. `scroll` starts the text
    * scrolled that far; `restore` is a kept state of this sheet (with its undo history), taken only if
    * its text is exactly what the file holds now, else the sheet opens fresh from the file; `loaded`
-   * runs in the same moment the sheet is taken, so what depends on it changes with it.
+   * runs in the same moment the sheet is taken, so what depends on it changes with it. Resolves
+   * false only when the editor stayed with its sheet, whose text could not be written (`settle`).
    */
   async open(
     path: string,
     cursor?: number,
     options: { scroll?: number; restore?: KeptState | null; loaded?: () => void } = {},
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (path === this.path && cursor === undefined && options.restore === undefined) {
       this.handle?.focus()
-      return
+      return true
     }
     const ticket = ++this.opening
-    await this.flush()
+    if (!(await this.settle())) return false
     const result = await call(window.api.project.readSheet({ path }))
-    if (ticket !== this.opening || result === null) return
+    if (ticket !== this.opening || result === null) return true
     this.initialCursor = cursor
     this.initialScroll = options.scroll
     this.restore = options.restore?.path === path ? options.restore : null
     options.loaded?.()
     this.load(path, result.content)
+    return true
   }
 
   /**
@@ -270,9 +272,15 @@ class EditorStore {
     this.liveStats = analyzeSheet(content)
   }
 
-  async close(): Promise<void> {
+  /**
+   * Closes the open sheet. Resolves false when it stays open: its text could not be written, and
+   * the writer went back to it. With `force` it closes whatever happens (its file is going away, or
+   * the project has already been replaced).
+   */
+  async close(options: { force?: boolean } = {}): Promise<boolean> {
     this.opening += 1
-    await this.flush()
+    if (options.force) await this.flush()
+    else if (!(await this.settle())) return false
     this.path = null
     this.initial = ''
     this.initialCursor = undefined
@@ -284,6 +292,30 @@ class EditorStore {
     this.base = null
     this.saver.discard()
     this.mountKey += 1
+    return true
+  }
+
+  /**
+   * Asks the writer about text that could not be written, before it is left behind: true to give
+   * it up, false to go back to it. Set by the project, which knows what the sheets are called.
+   * Until then nothing is given up.
+   */
+  askUnsaved: (path: string) => Promise<boolean> = () => Promise.resolve(false)
+
+  /**
+   * Writes what is unsaved, before the text in the editor is left (another sheet, another view,
+   * another project). Text that could not be written (a full disk, a folder that is gone) is not
+   * dropped silently: the writer is asked. Resolves true when the editor may move on.
+   */
+  async settle(): Promise<boolean> {
+    await this.flush()
+    // This save found that the file changed on disk: moving on settles it for the writer's text,
+    // and the file's goes to the trash as a copy (see `write`).
+    if (this.saver.hasPending && this.conflict) await this.flush()
+    if (!this.saver.hasPending || this.path === null) return true
+    if (!(await this.askUnsaved(this.path))) return false
+    this.saver.discard()
+    return true
   }
 
   async flush(): Promise<void> {

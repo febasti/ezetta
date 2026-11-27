@@ -9,7 +9,7 @@ type OpenSheet = (
   path: string,
   cursor: number,
   options: { scroll?: number; restore?: KeptState | null; loaded?: () => void },
-) => Promise<void>
+) => Promise<unknown>
 
 /**
  * Two sheets side by side. There is still one editor: it stands in one pane, and the other pane shows

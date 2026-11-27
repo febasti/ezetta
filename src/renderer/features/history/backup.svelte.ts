@@ -83,7 +83,7 @@ class BackupStore {
     if (!confirmed) return false
     this.busy = true
     try {
-      await editor.flush()
+      if (!(await editor.settle())) return false
       const result = await call(
         window.api.backup.restore({ name, dialogTitle: i18n.t('backup.restoreTitle') }),
       )
@@ -101,6 +101,7 @@ class BackupStore {
     if (this.busy) return false
     this.busy = true
     try {
+      if (!(await editor.settle())) return false
       const result = await call(
         window.api.backup.restoreFile({
           fileDialogTitle: i18n.t('backup.restoreFileTitle'),
