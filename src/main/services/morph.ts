@@ -1,6 +1,6 @@
 import { execFile, spawn } from 'node:child_process'
 import { existsSync, statSync } from 'node:fs'
-import { delimiter, dirname, join } from 'node:path'
+import { basename, delimiter, dirname, join } from 'node:path'
 import { z } from 'zod'
 import type { Inflected, MorphPort, Reading } from '@core/thesaurus/lookup'
 import { executable } from './executable'
@@ -201,7 +201,7 @@ export function prepareMorph(options: {
   out: string
   installation: Installation
 }): Promise<boolean> {
-  const classFile = join(options.out, 'Morph.class')
+  const classFile = join(options.out, `${basename(options.source, '.java')}.class`)
   const fresh =
     existsSync(classFile) &&
     (!existsSync(options.source) || statSync(classFile).mtimeMs >= statSync(options.source).mtimeMs)

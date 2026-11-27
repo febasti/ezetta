@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SIZE, MIN_SIZE, placeWindow } from './windowState'
+import { DEFAULT_SIZE, MIN_SIZE, placeWindow, reloadLimit } from './windowState'
 
 const main = { x: 0, y: 25, width: 1440, height: 875 }
 const right = { x: 1440, y: 0, width: 1920, height: 1080 }
@@ -32,5 +32,19 @@ describe('placeWindow', () => {
       width: 1440,
       height: MIN_SIZE.height,
     })
+  })
+})
+
+describe('reloadLimit', () => {
+  it('allows a few reloads close together, then no more', () => {
+    const limit = reloadLimit(3, 60_000)
+    expect([0, 1000, 2000].map((at) => limit.allowed(at))).toEqual([true, true, true])
+    expect(limit.allowed(3000)).toBe(false)
+  })
+
+  it('allows them again once the earlier ones are long ago', () => {
+    const limit = reloadLimit(3, 60_000)
+    for (const at of [0, 1000, 2000]) limit.allowed(at)
+    expect(limit.allowed(61_500)).toBe(true)
   })
 })

@@ -170,21 +170,29 @@ export class SettingsStore {
     await this.save()
   }
 
-  private async save(): Promise<void> {
-    await writeFileAtomic(
-      this.file,
-      JSON.stringify(
-        {
-          recent: this.recent,
-          words: this.words,
-          backups: this.backups,
-          window: this.window,
-          theme: this.theme,
-          reopenLast: this.reopenLast,
-        },
-        null,
-        2,
-      ),
-    )
+  /** The write in progress: saves follow one another, so the newest state is the last on disk. */
+  private saving: Promise<void> = Promise.resolve()
+
+  private save(): Promise<void> {
+    const write = (): Promise<void> =>
+      writeFileAtomic(
+        this.file,
+        JSON.stringify(
+          {
+            recent: this.recent,
+            words: this.words,
+            backups: this.backups,
+            window: this.window,
+            theme: this.theme,
+            reopenLast: this.reopenLast,
+          },
+          null,
+          2,
+        ),
+      )
+    // Each write takes the state as it is when its turn comes; a failed one does not stop the next.
+    const run = this.saving.then(write, write)
+    this.saving = run.catch(() => undefined)
+    return run
   }
 }

@@ -1,5 +1,6 @@
 import { rm } from 'node:fs/promises'
-import { expect, test } from '@playwright/test'
+import { resolve } from 'node:path'
+import { _electron as electron, expect, test } from '@playwright/test'
 import { createSandbox, launch, quietFor } from './helpers'
 import type { Sandbox } from './helpers'
 
@@ -68,6 +69,58 @@ test('shows the welcome screen when no project is open', async () => {
     // Nothing asks for a project's state before one is open, so no error is shown.
     await quietFor(page, 1000)
     await expect(page.getByText(/Es ist kein Projekt geöffnet|No project is open/)).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
+test('a second start with the same data folder ends, and the first goes on', async () => {
+  const { app, page } = await launch(sandbox)
+  try {
+    await expect(page.locator('[role=treeitem]').first()).toBeVisible()
+    // The second process finds the first and quits by itself, before it opens a window.
+    const second = await electron
+      .launch({
+        args: [resolve('.'), `--user-data-dir=${sandbox.userData}`, '--lang=de'],
+        env: { ...process.env, EZETTA_BACKGROUND: '1', EZETTA_PROJECT: sandbox.projectDir },
+      })
+      .catch(() => null) // it was gone before the test could reach it
+    if (second) {
+      try {
+        await expect.poll(() => second.process().exitCode, { timeout: 10_000 }).not.toBeNull()
+      } finally {
+        second.process().kill()
+      }
+    }
+    expect(app.windows()).toHaveLength(1)
+    const chrome = await page.evaluate(() => window.api.app.windowChrome({}))
+    expect(chrome).toMatchObject({ ok: true })
+  } finally {
+    await app.close()
+  }
+})
+
+test('a page that ended unexpectedly is loaded again, with the project still open', async () => {
+  const { app, page } = await launch(sandbox)
+  try {
+    await expect(page.locator('[role=treeitem]').first()).toBeVisible()
+    const crashed = page.waitForEvent('crash')
+    await app.evaluate(({ BrowserWindow }) =>
+      BrowserWindow.getAllWindows()[0]!.webContents.forcefullyCrashRenderer(),
+    )
+    await crashed
+    // Asked through the main process: the test's own hold on the page ended with the page.
+    await expect
+      .poll(() =>
+        app.evaluate(({ BrowserWindow }) => {
+          const contents = BrowserWindow.getAllWindows()[0]!.webContents
+          if (contents.isCrashed() || contents.isLoading()) return false
+          return contents.executeJavaScript(
+            "document.querySelector('[role=treeitem]') !== null",
+          ) as Promise<boolean>
+        }),
+      )
+      .toBe(true)
   } finally {
     await app.close()
   }

@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
 import { existsSync, readdirSync } from 'node:fs'
 import { createServer } from 'node:net'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { z } from 'zod'
 import type { AnnotationPart } from '@core/proof/extract'
 import type { CheckerMatch } from '@core/proof/issues'
@@ -316,20 +316,41 @@ export const jvmFlags = (heapMb: number): string[] => [
   '-XX:G1PeriodicGCInterval=10000',
 ]
 
-/** Starts `java -cp languagetool-server.jar org.languagetool.server.HTTPServer`. */
-export function launchServer(installation: Installation, port: number): ServerProcess {
+/** The class that ends the server with the app (`tools/morph/Guard.java`). */
+const GUARD = 'Guard'
+
+/**
+ * Starts `java -cp languagetool-server.jar org.languagetool.server.HTTPServer`. With the guard's
+ * class in `guardClasses` the server is started through it and ends when this process does, even
+ * one that crashed or was forced to quit: the guard waits for the end of its standard input, which
+ * is held open here and never written to. Without the class the server is started as it is.
+ */
+export function launchServer(
+  installation: Installation,
+  port: number,
+  guardClasses?: string,
+): ServerProcess {
+  const guarded = guardClasses !== undefined && existsSync(join(guardClasses, `${GUARD}.class`))
   const child: ChildProcess = spawn(
     installation.java,
     [
       ...jvmFlags(768),
       '-cp',
-      'languagetool-server.jar',
-      'org.languagetool.server.HTTPServer',
+      guarded
+        ? [guardClasses, 'languagetool-server.jar'].join(delimiter)
+        : 'languagetool-server.jar',
+      guarded ? GUARD : 'org.languagetool.server.HTTPServer',
       '--port',
       String(port),
     ],
-    { cwd: installation.home, stdio: 'ignore', shell: false, windowsHide: true },
+    {
+      cwd: installation.home,
+      stdio: [guarded ? 'pipe' : 'ignore', 'ignore', 'ignore'],
+      shell: false,
+      windowsHide: true,
+    },
   )
+  child.stdin?.on('error', () => undefined)
   const exited = new Promise<number | null>((resolve) => {
     child.once('exit', (code) => resolve(code))
     child.once('error', () => resolve(null))

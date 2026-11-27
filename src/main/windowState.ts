@@ -49,3 +49,19 @@ export function placeWindow(
     maximized: saved.maximized,
   }
 }
+
+/**
+ * Whether a page that ended unexpectedly may be loaded again: at most `max` times within `withinMs`,
+ * so a page that fails every time it starts is not loaded for ever.
+ */
+export function reloadLimit(max = 3, withinMs = 60_000): { allowed(now: number): boolean } {
+  let recent: number[] = []
+  return {
+    allowed(now) {
+      recent = recent.filter((at) => now - at < withinMs)
+      if (recent.length >= max) return false
+      recent.push(now)
+      return true
+    },
+  }
+}

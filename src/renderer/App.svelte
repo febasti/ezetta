@@ -20,6 +20,9 @@
   import SettingsDialog from './features/settings/SettingsDialog.svelte'
   import { settings } from './features/settings/settings.svelte'
   import Dialogs from './ui/Dialogs.svelte'
+  import Guarded from './ui/Guarded.svelte'
+  import { exporting } from './features/export/export.svelte'
+  import { history } from './features/history/history.svelte'
   import MenuHost from './ui/MenuHost.svelte'
   import Toast from './ui/Toast.svelte'
   import { initWindowChrome } from './lib/windowChrome'
@@ -74,11 +77,11 @@
     <Toolbar />
     <div class="shell">
       {#if ui.outlineVisible || ui.groupsVisible || ui.sheetsVisible}
-        <Sidebar />
+        <Guarded pane><Sidebar /></Guarded>
       {/if}
-      <EditorPane />
+      <Guarded pane><EditorPane /></Guarded>
       {#if ui.rightSidebarVisible && fittedWidths().right !== null}
-        <RightSidebar />
+        <Guarded pane><RightSidebar /></Guarded>
       {/if}
     </div>
     <StatusBar />
@@ -93,10 +96,10 @@
 
 <MenuHost />
 <Dialogs />
-<ExportDialog />
-<HistoryDialog />
-<SynonymDialog />
-<SettingsDialog />
+<Guarded onfail={() => void exporting.close()}><ExportDialog /></Guarded>
+<Guarded onfail={() => history.close()}><HistoryDialog /></Guarded>
+<Guarded><SynonymDialog /></Guarded>
+<Guarded onfail={() => settings.close()}><SettingsDialog /></Guarded>
 <Toast />
 <TablePicker />
 <GroupEditor />

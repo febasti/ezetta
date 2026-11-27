@@ -1,4 +1,4 @@
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { attachedServer, createLanguageTool, findInstallation } from './languageTool'
 import type { LanguageToolDeps, ServerProcess } from './languageTool'
@@ -283,6 +283,7 @@ describe('the LanguageTool service', () => {
 
 // With LanguageTool in `.dev/languagetool` and Java installed, one real check goes all the way.
 import { freePort, launchServer } from './languageTool'
+import { prepareMorph } from './morph'
 
 const installation = findInstallation({
   appPath: process.cwd(),
@@ -291,9 +292,16 @@ const installation = findInstallation({
 })
 describe.skipIf(!installation)('with the real LanguageTool server', () => {
   it('finds a spelling error and a grammar error, and keeps the offsets of the source', async () => {
+    // Started the way the app starts it: through the guard, once its class is compiled.
+    const classes = resolve('.dev/morph')
+    await prepareMorph({
+      source: resolve('tools/morph/Guard.java'),
+      out: classes,
+      installation: installation!,
+    })
     const service = createLanguageTool({
       find: () => installation,
-      launch: launchServer,
+      launch: (found, port) => launchServer(found, port, classes),
       freePort,
       fetch,
       log: () => undefined,

@@ -37,11 +37,17 @@ import { originOf } from './security/origin'
 import { ProjectHost } from './services/projectHost'
 import { SettingsStore } from './services/settings'
 import { createMainWindow, insetTitleBar, setLauncherMode, themeSource } from './window'
+import { reloadLimit } from './windowState'
 import type { FontFamily } from '@core/export/fonts'
 
 // Chromium sandbox on for every renderer, in every build.
 app.enableSandbox()
 registerSchemes()
+// One process for each data folder: a second start hands over to the first and ends. Two at once
+// would both save the same sheets, both take versions of the same project, and overwrite each
+// other's settings.
+const primary = app.requestSingleInstanceLock()
+if (!primary) app.quit()
 
 /** A variable of the environment, read only in development and tests; empty counts as unset. */
 const devEnv = (name: string): string | undefined =>
@@ -62,8 +68,11 @@ const log = (message: string, cause?: unknown): void => {
   logFile?.write(message, cause)
 }
 process.on('unhandledRejection', (cause) => log('unhandled rejection', cause))
+// Only noted: what happens after an error nobody caught stays as it is.
+process.on('uncaughtExceptionMonitor', (cause) => log('uncaught error', cause))
 
 let mainWindow: BrowserWindow | undefined
+const pageReloads = reloadLimit()
 /** The window's page, while there is one: a closed window's `webContents` throws when read. */
 const contents = (): Electron.WebContents | undefined =>
   mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : undefined
@@ -174,6 +183,7 @@ if (background) {
 }
 
 void app.whenReady().then(async () => {
+  if (!primary) return
   logFile = createLogFile(join(app.getPath('userData'), 'logs'))
   logFile.write(
     `start ${app.getVersion()} (${process.platform} ${process.arch}, Electron ${process.versions.electron})`,
@@ -185,9 +195,14 @@ void app.whenReady().then(async () => {
         logFile?.write(`[page] ${message.message}`, `(${message.sourceId}:${message.lineNumber})`)
     })
   })
-  app.on('render-process-gone', (_event, _page, details) =>
-    log(`page process gone: ${details.reason} (exit code ${details.exitCode})`),
-  )
+  app.on('render-process-gone', (_event, page, details) => {
+    log(`page process gone: ${details.reason} (exit code ${details.exitCode})`)
+    // The window would stay empty: its page is loaded again. What was typed is on disk up to the
+    // last autosave, and the project is still open here.
+    if (details.reason === 'clean-exit' || page.isDestroyed()) return
+    if (pageReloads.allowed(Date.now())) page.reload()
+    else log('the page is not loaded again: it ended too often')
+  })
   app.on('child-process-gone', (_event, details) =>
     log(`${details.type} process gone: ${details.reason} (exit code ${details.exitCode})`),
   )
@@ -246,9 +261,17 @@ void app.whenReady().then(async () => {
       home: devEnv('EZETTA_LANGUAGETOOL'),
       java: devEnv('EZETTA_JAVA'),
     })
+  // The server is started through a small class that ends it when this process is gone, however
+  // that happened. Packaging ships the class; development compiles it (it needs `javac`), and
+  // until it is there the server starts without it.
+  const guardClasses = resourceDir('morph', '.dev/morph')
+  const guardSource = app.isPackaged ? null : join(app.getAppPath(), 'tools', 'morph', 'Guard.java')
   const proof = createLanguageTool({
     find: findLanguageTool,
-    launch: launchServer,
+    launch: (installation, port) => {
+      if (guardSource) void prepareMorph({ source: guardSource, out: guardClasses, installation })
+      return launchServer(installation, port, guardClasses)
+    },
     freePort,
     ...(runningPort > 0 ? attachedServer(runningPort) : {}),
     fetch,
@@ -257,7 +280,7 @@ void app.whenReady().then(async () => {
   })
   // Synonyms: the thesaurus files, and LanguageTool's morphology for the base form of a word and
   // the forms of its synonyms. Packaging ships both; development reads `.dev/`.
-  const morphClasses = resourceDir('morph', '.dev/morph')
+  const morphClasses = guardClasses
   const morph = createMorph({
     find: () => {
       const installation = findLanguageTool()
@@ -416,6 +439,13 @@ void app.whenReady().then(async () => {
   open()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) open()
+  })
+  // The app was started a second time: its window comes to the front instead.
+  app.on('second-instance', () => {
+    const window = dialogParent() ?? open()
+    if (window.isMinimized()) window.restore()
+    window.show()
+    window.focus()
   })
 
   // Quitting (Cmd+Q, app.quit) must write unsaved text first. A window's own close handler cannot

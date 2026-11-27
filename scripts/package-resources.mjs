@@ -6,7 +6,8 @@
 //   languagetool/   LanguageTool from `.dev/languagetool`, with the data of German and English only
 //   java/           a Java runtime trimmed with jlink, from the JDK in EZETTA_JDK, else the one
 //                   `java_home` finds on macOS (17+), else JAVA_HOME
-//   morph/          the synonyms' morphology helper, compiled against that LanguageTool
+//   morph/          the synonyms' morphology helper, compiled against that LanguageTool, and the
+//                   guard that ends the spelling server with the app
 //   thesaurus/      the thesaurus files from `.dev/thesaurus`
 //
 // At the end the trimmed LanguageTool is started with the trimmed Java and asked to check a German
@@ -182,8 +183,9 @@ function java() {
     '-cp',
     [lt, join(lt, 'libs', '*')].join(delimiter),
     join(root, 'tools', 'morph', 'Morph.java'),
+    join(root, 'tools', 'morph', 'Guard.java'),
   ])
-  step(`Java: runtime from ${home}, and the morphology helper`)
+  step(`Java: runtime from ${home}, the morphology helper and the server's guard`)
 }
 
 function thesaurus() {
@@ -205,7 +207,10 @@ const freePort = () =>
     })
   })
 
-/** Starts the trimmed server with the trimmed Java and checks a sentence in each language. */
+/**
+ * Starts the trimmed server with the trimmed Java, the way the app does (through its guard), checks
+ * a sentence in each language, and sees that the server ends when its input closes.
+ */
 async function smokeTest() {
   const port = await freePort()
   const server = spawn(
@@ -213,13 +218,14 @@ async function smokeTest() {
     [
       '-Xmx768m',
       '-cp',
-      'languagetool-server.jar',
-      'org.languagetool.server.HTTPServer',
+      [join(out, 'morph'), 'languagetool-server.jar'].join(delimiter),
+      'Guard',
       '--port',
       String(port),
     ],
-    { cwd: join(out, 'languagetool'), stdio: 'ignore', windowsHide: true },
+    { cwd: join(out, 'languagetool'), stdio: ['pipe', 'ignore', 'ignore'], windowsHide: true },
   )
+  const ended = new Promise((done) => server.once('exit', done))
   try {
     const url = `http://127.0.0.1:${port}/v2`
     for (let i = 0; ; i += 1) {
@@ -245,6 +251,13 @@ async function smokeTest() {
         throw new Error(`The trimmed LanguageTool did not find "${word}" (${language})`)
     }
     step('Checked: the trimmed LanguageTool finds a German and an English typo')
+    server.stdin.end()
+    const left = await Promise.race([
+      ended.then(() => true),
+      new Promise((done) => setTimeout(() => done(false), 10_000)),
+    ])
+    if (!left) throw new Error('The server did not end when its input closed')
+    step('Checked: the server ends with the app that started it')
   } finally {
     server.kill()
   }
