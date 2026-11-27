@@ -242,6 +242,8 @@
             : propLabel(el.id, PROPS[id]!, lang)
   /** The four sides of a block quote that can have a line: one row of four switches. */
   const SIDES = ['border_top', 'border_bottom', 'border_left', 'border_right']
+  /** Their buttons, in the order they stand in: the sides of the text first, then above and below. */
+  const SIDE_BUTTONS = ['border_left', 'border_right', 'border_top', 'border_bottom']
   /** What a label says about its value when pointed at: where it comes from, while it is taken from there. */
   const origin = (el: ElementDef, prop: string): string | undefined =>
     inheritsNow(el, prop)
@@ -769,17 +771,24 @@
 {/snippet}
 
 {#snippet sides(element: ElementDef, values: Readonly<Record<string, unknown>>)}
-  <!-- The sides of a block quote that have a line: four switches in one row. -->
+  <!-- The sides of a block quote that have a line: four buttons in one row, each a picture of its
+       side, pressed while that side has a line. -->
   <div class="row">
     <span class="label">{i18n.t('templates.quote.lines')}</span>
     <div class="control plain sides" role="group" aria-label={i18n.t('templates.quote.lines')}>
-      {#each SIDES as id (id)}
-        <Checkbox
-          checked={values[id] === true}
+      {#each SIDE_BUTTONS as id (id)}
+        <IconButton
+          id="prop-{element.id}-{id}"
+          label={propLabel(element.id, PROPS[id]!, lang)}
+          pressed={values[id] === true}
+          filled
           disabled={readOnly}
-          onchange={(on) => void editor.set(element.id, id, on)}
-          >{propLabel(element.id, PROPS[id]!, lang)}</Checkbox
+          onclick={() => void editor.set(element.id, id, values[id] !== true)}
         >
+          {#snippet glyph()}
+            <ChoiceGlyph prop="border_side" value={id.replace('border_', '')} />
+          {/snippet}
+        </IconButton>
       {/each}
     </div>
   </div>
@@ -1309,9 +1318,9 @@
   .control.document > :global(:is(.select, .text-field)) {
     flex: 1;
   }
-  /* The four sides of a quote's lines: switches with their names, side by side. */
+  /* The four sides of a quote's lines: buttons side by side. */
   .control.sides {
-    gap: var(--sp-4) var(--sp-12);
+    gap: var(--sp-4);
   }
   .invalid {
     grid-column: 2;

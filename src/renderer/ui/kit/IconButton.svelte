@@ -1,13 +1,18 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte'
   import Icon from '../Icon.svelte'
   import type { IconName } from '../Icon.svelte'
 
   /**
    * A button that is only an icon, for actions everyone knows by their sign (+, ×, a gear). Its
    * label is for screen readers and the tooltip. `pressed` makes it a toggle that shows its state.
+   * A small picture of the caller's own (`glyph`) can stand in the icon's place, for a sign the icon
+   * set has none for.
    */
   interface Props {
-    icon: IconName
+    icon?: IconName
+    /** A small picture in place of the icon, drawn in the colour of the text. */
+    glyph?: Snippet
     label: string
     /** For a label elsewhere (`for`), or for tests to find it. */
     id?: string
@@ -22,6 +27,7 @@
   }
   let {
     icon,
+    glyph,
     label,
     id,
     size = 'md',
@@ -45,7 +51,11 @@
   {disabled}
   {onclick}
 >
-  <Icon name={icon} size={size === 'sm' ? 14 : 16} />
+  {#if glyph}
+    {@render glyph()}
+  {:else if icon}
+    <Icon name={icon} size={size === 'sm' ? 14 : 16} />
+  {/if}
 </button>
 
 <style>

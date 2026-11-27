@@ -762,8 +762,20 @@ test('tables have rules, a header and stripes; a block quote can have lines on i
     await choose(page, 'Blockzitat')
     // The look of the lines is there as soon as one side has a line.
     await expect(editor(page).locator('#prop-quote-border_thickness')).toHaveCount(0)
-    await editor(page).getByLabel('Links', { exact: true }).check()
-    await editor(page).getByLabel('Oben', { exact: true }).check()
+    // Each side is a button with a picture of it, pressed while the side has a line.
+    const sides = editor(page).getByRole('group', { name: 'Seiten', exact: true })
+    await expect(sides.getByRole('button')).toHaveCount(4)
+    await expect(sides.getByRole('checkbox')).toHaveCount(0)
+    await sides.getByRole('button', { name: 'Links', exact: true }).click()
+    await sides.getByRole('button', { name: 'Oben', exact: true }).click()
+    await expect(sides.getByRole('button', { name: 'Links', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(sides.getByRole('button', { name: 'Unten', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
     await expect(editor(page).locator('#prop-quote-border_thickness')).toHaveAttribute(
       'data-value',
       '2pt',
