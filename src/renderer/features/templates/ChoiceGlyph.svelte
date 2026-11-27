@@ -109,24 +109,6 @@
         height="2.5"
         rx="1"
       />
-    {:else if prop === 'marker'}
-      {#if value === 'default'}
-        <circle class="fill" cx="4.5" cy="4" r="1.5" />
-        <path class="fill" d="M8 8.2l2.6 1.5-2.6 1.5z" />
-        <rect class="fill" x="4" y="13" width="3" height="1.2" />
-        <path class="stroke thin" d="M8 4h11M13 9.7h6M9.5 13.6h9.5" />
-      {:else}
-        {#if value === 'bullet'}
-          <circle class="fill" cx="5" cy="8" r="2" />
-        {:else if value === 'dash'}
-          <rect class="fill" x="3" y="7.3" width="4.5" height="1.5" />
-        {:else if value === 'circle'}
-          <circle class="stroke" cx="5" cy="8" r="2" />
-        {:else}
-          <rect class="fill" x="3.2" y="6.2" width="3.6" height="3.6" />
-        {/if}
-        <path class="stroke thin" d="M10 8h9" />
-      {/if}
     {:else if prop === 'divider_mark'}
       <!-- A break between two passages of text: what stands in it. -->
       <rect class="fill soft" x="3" y="1.5" width="16" height="2" rx="1" />

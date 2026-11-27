@@ -10,6 +10,5 @@ export const GLYPHS: Readonly<Record<string, readonly string[]>> = {
   border_style: ['rows', 'booktabs', 'grid', 'none'],
   placement: ['bottom', 'margin'],
   number_style: ['inline', 'hanging'],
-  marker: ['default', 'bullet', 'dash', 'circle', 'square'],
   divider_mark: ['asterisks', 'asterism', 'line', 'space'],
 }

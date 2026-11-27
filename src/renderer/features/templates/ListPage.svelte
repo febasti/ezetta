@@ -6,43 +6,29 @@
   import { i18n } from '../../i18n/i18n.svelte'
 
   /**
-   * The editor of a list, in three small specimens, each showing one thing: where the list stands on the
-   * page (the space above and below it, and its indent), what lies between a bullet and its text, and how
-   * the levels and the items are spaced. A distance across is a field in a row of its own over the list,
-   * in the column of the stretch it measures, with a bracket in the list's row under it; a distance down
-   * is a row between two things, its span as high as the row. Spans and brackets are quiet until their
-   * field is pointed at or has the focus. The bullets are drawn as the template has them.
+   * The picture of a list: one page with a list of two levels between two pieces of text, and each
+   * of its distances named where it is. A distance down (the space above and below the list, the
+   * space between its items) is a row between two things, its span as high as the row. A distance
+   * across (the indent of the list, the bullet's distance to its text, the indent of a level) is a
+   * bracket in the row of an item, as wide as the stretch it measures, with its name over it. Spans
+   * and brackets are quiet until their row of the panel, or their name here, is pointed at. A dot
+   * stands for what an item starts with, a bullet or a number: the picture is about the distances,
+   * and they are the same for both.
    */
   interface Props {
     element: ElementDef
-    values: Readonly<Record<string, unknown>>
     /** The control of one value, as the panel draws it. */
     control: Snippet<[ElementDef, string]>
     /** The value whose row of the panel is pointed at or has the focus, to mark it in the picture. */
     hot?: string | null
   }
-  let { element, values, control, hot: outer = null }: Props = $props()
+  let { element, control, hot: outer = null }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const name = (id: string): string => propLabel(element.id, PROPS[id]!, lang)
   /** The value whose field is pointed at or has the focus, so its span is drawn stronger. */
   let over = $state<string | null>(null)
   const hot = $derived(over ?? outer)
-  /** The bullet of a level: the template's own, or Typst's (a dot, and a triangle one level down). */
-  const shape = (level: 1 | 2): string => {
-    const marker = values['marker']
-    return marker === 'bullet'
-      ? 'dot'
-      : marker === 'circle'
-        ? 'ring'
-        : marker === 'square'
-          ? 'square'
-          : marker === 'dash'
-            ? 'dash'
-            : level === 1
-              ? 'dot'
-              : 'triangle'
-  }
 </script>
 
 {#snippet text(widths: number[])}
@@ -51,183 +37,124 @@
   </div>
 {/snippet}
 
-{#snippet between(id: string)}
+{#snippet between(id: string, caption = name(id))}
   <!-- The space between two things: the row is the space, and its span measures it. -->
   <div
     class="between"
     role="group"
     onpointerenter={() => (over = id)}
     onpointerleave={() => (over = null)}
-    onfocusin={() => (over = id)}
-    onfocusout={() => (over = null)}
   >
     <span class="vspan" class:hot={hot === id} aria-hidden="true"></span>
-    <span class="field">{@render control(element, id)}</span>
-    <label class="short" for="prop-{element.id}-{id}">{name(id)}</label>
-  </div>
-{/snippet}
-
-{#snippet slim(id: string)}
-  <!-- The space between the items: a slim row, so the list stays close; its span measures the row. -->
-  <div
-    class="between slim"
-    role="group"
-    aria-hidden="false"
-    onpointerenter={() => (over = id)}
-    onpointerleave={() => (over = null)}
-    onfocusin={() => (over = id)}
-    onfocusout={() => (over = null)}
-  >
-    <span class="vspan" class:hot={hot === id} aria-hidden="true"></span>
-    <span class="field">{@render control(element, id)}</span>
-    <label class="short" for="prop-{element.id}-{id}">{name(id)}</label>
-  </div>
-{/snippet}
-
-{#snippet cell(id: string, caption: string)}
-  <!-- A distance across, as a field where it is in the item, with a bracket under it as wide as it. -->
-  <div
-    class="cell"
-    role="group"
-    onpointerenter={() => (over = id)}
-    onpointerleave={() => (over = null)}
-    onfocusin={() => (over = id)}
-    onfocusout={() => (over = null)}
-  >
+    {@render control(element, id)}
     <label class="short" for="prop-{element.id}-{id}">{caption}</label>
-    <span class="field">{@render control(element, id)}</span>
   </div>
 {/snippet}
 
-{#snippet bracket(id: string)}
-  <!-- The stretch a distance across measures, marked in the list's row. -->
-  <span class="hspan" class:hot={hot === id} aria-hidden="true"></span>
+{#snippet named(id: string, caption: string, at: 'margin' | 'bullet' | 'body')}
+  <!-- The name of a distance across, over the bracket that measures it in the item under it. -->
+  <div
+    class="named {at}"
+    role="group"
+    onpointerenter={() => (over = id)}
+    onpointerleave={() => (over = null)}
+  >
+    {@render control(element, id)}
+    <label class="short" for="prop-{element.id}-{id}">{caption}</label>
+  </div>
+{/snippet}
+
+{#snippet bracket(id: string, kind: 'indent' | 'gap')}
+  <!-- The stretch a distance across measures, in the row of an item. -->
+  <span class="column {kind}"><span class="hspan" class:hot={hot === id}></span></span>
+{/snippet}
+
+{#snippet item(level: 1 | 2, measured: string | null, short = false)}
+  <!-- An item: the list's indent, its bullet, the distance to its text, the text. One level down it
+       starts where the text of the item above it starts. The stretch `measured` is a bracket. -->
+  <div class="item" aria-hidden="true">
+    {#if measured === 'list_indent'}
+      {@render bracket('list_indent', 'indent')}
+    {:else}
+      <span class="column indent"></span>
+    {/if}
+    {#if level === 2}
+      <span class="bullet"></span>
+      <span class="column gap"></span>
+      {#if measured === 'level_indent'}
+        {@render bracket('level_indent', 'gap')}
+      {:else}
+        <span class="column gap"></span>
+      {/if}
+    {/if}
+    <span class="bullet"><span class="marker"></span></span>
+    {#if measured === 'marker_gap'}
+      {@render bracket('marker_gap', 'gap')}
+    {:else}
+      <span class="column gap"></span>
+    {/if}
+    <span class="bar" class:short></span>
+  </div>
 {/snippet}
 
 <div class="desk">
-  <!-- 1. Where the list stands on the page. -->
-  <section class="part" aria-label={i18n.t('templates.list.part.place')}>
-    <h4>{i18n.t('templates.list.part.place')}</h4>
-    <PageSheet top="torn" bottom="torn">
-      {@render text([100, 64])}
-      {@render between('above')}
-      <div class="ruler">{@render cell('list_indent', i18n.t('templates.list.indent'))}</div>
-      <div class="list" aria-hidden="true">
-        <div class="item">
-          {@render bracket('list_indent')}
-          <span class="marker {shape(1)}"></span>
-          <span class="pad"></span>
-          <span class="bar"></span>
-        </div>
-        <div class="item">
-          <span class="column"></span>
-          <span class="marker {shape(1)}"></span>
-          <span class="pad"></span>
-          <span class="bar short-bar"></span>
-        </div>
-      </div>
-      {@render between('below')}
-      {@render text([100, 100, 58])}
-    </PageSheet>
-  </section>
-
-  <!-- 2. What lies between a bullet and its text. -->
-  <section class="part" aria-label={i18n.t('templates.list.part.bullet')}>
-    <h4>{i18n.t('templates.list.part.bullet')}</h4>
-    <PageSheet top="torn" bottom="torn">
-      <div class="ruler">
-        <span class="lead"></span>
-        {@render cell('marker_gap', i18n.t('templates.list.gap'))}
-      </div>
-      <div class="list" aria-hidden="true">
-        <div class="item">
-          <span class="marker {shape(1)}"></span>
-          {@render bracket('marker_gap')}
-          <span class="pad"></span>
-          <span class="bar"></span>
-        </div>
-        <div class="item">
-          <span class="marker {shape(1)}"></span>
-          <span class="column"></span>
-          <span class="pad"></span>
-          <span class="bar short-bar"></span>
-        </div>
-      </div>
-    </PageSheet>
-  </section>
-
-  <!-- 3. The levels, and the space between the items. -->
-  <section class="part" aria-label={i18n.t('templates.list.part.levels')}>
-    <h4>{i18n.t('templates.list.part.levels')}</h4>
-    <PageSheet top="torn" bottom="torn">
-      <div class="ruler">
-        <span class="lead nested"></span>
-        {@render cell('level_indent', i18n.t('templates.list.level'))}
-      </div>
-      <div class="list" aria-hidden="true">
-        <div class="item">
-          <span class="marker {shape(1)}"></span>
-          <span class="pad"></span>
-          <span class="bar"></span>
-        </div>
-        <!-- One level down: it starts where the text above it starts. -->
-        <div class="item">
-          <span class="lead nested"></span>
-          {@render bracket('level_indent')}
-          <span class="marker {shape(2)}"></span>
-          <span class="pad"></span>
-          <span class="bar"></span>
-        </div>
-        {@render slim('item_spacing')}
-        <div class="item">
-          <span class="marker {shape(1)}"></span>
-          <span class="pad"></span>
-          <span class="bar short-bar"></span>
-        </div>
-      </div>
-    </PageSheet>
-  </section>
+  <PageSheet top="torn" bottom="torn">
+    {@render text([100, 64])}
+    {@render between('above')}
+    <div class="list">
+      {@render named('list_indent', i18n.t('templates.list.indent'), 'margin')}
+      {@render item(1, 'list_indent')}
+      {@render named('marker_gap', i18n.t('templates.list.gap'), 'bullet')}
+      {@render item(1, 'marker_gap', true)}
+      {@render named('level_indent', i18n.t('templates.list.level'), 'body')}
+      {@render item(2, 'level_indent')}
+      {@render between('item_spacing', i18n.t('templates.list.items'))}
+      {@render item(1, null, true)}
+    </div>
+    {@render between('below')}
+    {@render text([100, 100, 58])}
+  </PageSheet>
 </div>
 
 <style>
   /* The page lies on the panel's ground, as on a desk. */
   .desk {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-16);
+    --indent: calc(var(--sp-32) + var(--sp-16));
+    --gap: calc(var(--sp-32) + var(--sp-8));
+    --bullet: var(--sp-8);
     padding: var(--sp-12);
     border-radius: var(--r-lg);
     background: var(--color-panel);
-  }
-  .part h4 {
-    margin: 0 0 var(--sp-8);
-    padding: 0 var(--sp-4);
-    color: var(--color-label-tertiary);
-    font: var(--type-caption);
   }
   .text {
     display: flex;
     flex-direction: column;
     gap: var(--sp-8);
   }
-  .text span {
+  .text span,
+  .bar {
     display: block;
     height: var(--sp-4);
     border-radius: var(--r-sm);
     background: var(--color-control-pressed);
   }
+  /* A distance down: its span, what it is, its name. */
   .between {
     display: flex;
     align-items: stretch;
     gap: var(--sp-8);
-    min-height: var(--control-lg);
-    padding: var(--sp-8) 0;
+    min-height: var(--control-md);
+    padding: var(--sp-4) 0;
   }
-  .between .field,
-  .between .short {
+  .between > :global(*):not(.vspan) {
     align-self: center;
   }
-  /* The spans: quiet until their field is pointed at or has the focus. */
+  .short {
+    color: var(--color-label-secondary);
+    font: var(--type-caption);
+    white-space: nowrap;
+  }
+  /* The spans and brackets: quiet until what they measure is pointed at. */
   .vspan {
     position: relative;
     width: var(--sp-8);
@@ -247,8 +174,8 @@
   }
   .hspan {
     position: relative;
-    flex: none;
-    width: 76px;
+    display: block;
+    flex: 1;
     height: var(--sp-8);
     border-right: 1px solid var(--color-accent);
     border-left: 1px solid var(--color-accent);
@@ -268,108 +195,64 @@
   .hspan.hot {
     opacity: 1;
   }
-  .field {
-    width: 84px;
-  }
-  .short {
-    color: var(--color-label-secondary);
-    font: var(--type-caption);
-    white-space: nowrap;
-  }
-  /* The ruler: the three fields over the columns of the list. */
-  .ruler {
-    display: flex;
-    align-items: flex-end;
-    padding-top: var(--sp-8);
-  }
-  /* What lies before the field of a ruler: the bullet's own width, or the text's start one level up. */
-  .ruler > .lead {
-    flex: none;
-    width: var(--sp-8);
-  }
-  .lead.nested {
-    flex: none;
-    width: calc(var(--sp-8) + var(--sp-8));
-  }
-  .cell {
-    display: flex;
-    flex: none;
-    flex-direction: column;
-    gap: var(--sp-4);
-    width: 76px;
-  }
-  .cell .field {
-    width: 100%;
-  }
-  /* A caption is as wide as its column, and goes on a second line where it needs one. */
-  .cell .short {
-    min-height: calc(2 * var(--sp-8) - var(--sp-4) + var(--sp-8) - var(--sp-4));
-    white-space: normal;
-    text-wrap: balance;
-  }
-  /* A little narrower than a length elsewhere, so the three stand in the columns of the list. */
-  .cell :global(.length) {
-    width: 76px;
-  }
-  /* The list: close, each item as high as a line of its text. */
+  /* The list: its items close together, each as high as a line of its text. */
   .list {
     display: flex;
     flex-direction: column;
-    gap: var(--sp-8);
-    padding: var(--sp-8) 0;
   }
   .item {
     display: flex;
     align-items: center;
-    min-height: var(--sp-16);
+    height: var(--sp-16);
   }
-  /* The columns of the first item: the indent, the bullet, the distance, and the little before the text. */
+  /* The columns of an item: the indent, the bullet, the distance to the text. A bracket fills its
+     column but for a hair at each side, so it does not touch the bullet. */
   .column {
+    display: flex;
     flex: none;
-    width: 76px;
+    align-items: center;
   }
-  .pad {
+  .column.indent {
+    width: var(--indent);
+    padding-right: 2px;
+  }
+  .column.gap {
+    width: var(--gap);
+    padding: 0 2px;
+  }
+  .bullet {
+    display: flex;
     flex: none;
-    width: var(--sp-8);
-  }
-  .item > .bar.short-bar {
-    margin-right: var(--sp-32);
+    align-items: center;
+    width: var(--bullet);
   }
   .item > .bar {
     flex: 1;
     min-width: 0;
   }
-  .between.slim {
-    min-height: var(--control-md);
-    padding: 0;
+  .item > .bar.short {
+    margin-right: var(--sp-32);
   }
-  .bar {
-    display: block;
-    min-width: 0;
-    height: var(--sp-4);
-    border-radius: var(--r-sm);
-    background: var(--color-control-pressed);
+  /* The name of a distance across stands over its bracket, from where the bracket starts. */
+  .named {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-4);
+    padding-top: var(--sp-8);
   }
-  /* The bullets, as the template has them: a dot, a ring, a square, a dash, a triangle. */
+  .named.bullet {
+    padding-left: calc(var(--indent) + var(--bullet));
+  }
+  .named.body {
+    padding-left: calc(var(--indent) + var(--bullet) + var(--gap));
+  }
+  /* What an item starts with, a bullet or a number: a dot stands for either. */
   .marker {
     display: block;
     flex: none;
     width: var(--sp-8);
     height: var(--sp-8);
+    border-radius: 50%;
     background: var(--color-label-secondary);
-  }
-  .marker.dot {
-    border-radius: 50%;
-  }
-  .marker.ring {
-    border: 1px solid var(--color-label-secondary);
-    border-radius: 50%;
-    background: none;
-  }
-  .marker.dash {
-    height: 2px;
-  }
-  .marker.triangle {
-    clip-path: polygon(0 0, 100% 50%, 0 100%);
   }
 </style>

@@ -185,7 +185,7 @@
     arrangement: ['break_before', 'align', 'above', 'below'],
     running: ['slot_left', 'slot_center', 'slot_right', 'distance'],
     table: ['border_style', 'cell_align'],
-    list: ['marker', 'enum_format'],
+    list: ['marker', 'enum_format', 'above', 'below', 'list_indent', 'marker_gap', 'level_indent'],
   }
   /** The rows of a section: every value it has that shows for now, the leading ones first. */
   function rowIds(
@@ -228,14 +228,18 @@
   /**
    * The name of a value in its row, where the element's own is longer than the row needs: the side
    * margins are the inner and the outer one of pages that face each other, else the left and the
-   * right one.
+   * right one; the distances of a list have the names its picture gives them.
    */
   const rowName = (el: ElementDef, id: string): string =>
     id === 'margin_inside'
       ? i18n.t(facing(el) ? 'templates.margin.inside' : 'templates.margin.left')
       : id === 'margin_outside'
         ? i18n.t(facing(el) ? 'templates.margin.outside' : 'templates.margin.right')
-        : propLabel(el.id, PROPS[id]!, lang)
+        : el.id === 'list' && id === 'marker_gap'
+          ? i18n.t('templates.list.gap')
+          : el.id === 'list' && id === 'item_spacing'
+            ? i18n.t('templates.list.items')
+            : propLabel(el.id, PROPS[id]!, lang)
   /** The four sides of a block quote that can have a line: one row of four switches. */
   const SIDES = ['border_top', 'border_bottom', 'border_left', 'border_right']
   /** What a label says about its value when pointed at: where it comes from, while it is taken from there. */
@@ -735,7 +739,7 @@
     {:else if kind === 'divider'}
       <DividerPage {element} {values} control={tag} measure={measureCm(page)} {emCm} />
     {:else if kind === 'list'}
-      <ListPage {element} {values} control={tag} hot={hotIn(element)} />
+      <ListPage {element} control={tag} hot={hotIn(element)} />
     {:else if kind === 'running'}
       <RunningLine {element} {values} facing={facing(element)} control={tag} {space} />
     {:else if kind === 'figure'}

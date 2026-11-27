@@ -1139,10 +1139,7 @@ test('lists, footnotes, equations and code blocks can be set', async () => {
     const toml = () => readFile(style('mehr'), 'utf8').catch(() => '')
 
     await choose(page, 'Aufzählungen')
-    await editor(page)
-      .getByRole('radiogroup', { name: 'Aufzählungszeichen' })
-      .getByRole('radio', { name: 'Strich (–)' })
-      .click()
+    await editor(page).getByLabel('Aufzählungszeichen').selectOption({ label: 'Strich (–)' })
     await editor(page).getByLabel('Nummerierte Listen').selectOption({ label: 'a) b) c)' })
     const gap = editor(page).getByLabel('Abstand zwischen den Punkten')
     await gap.fill('0.8em')

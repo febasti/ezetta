@@ -308,6 +308,14 @@ export function panelLayout(el: ElementDef): {
     groups.sort((a, b) => Number(b.id === 'running') - Number(a.id === 'running'))
   // The look of a list's bullets follows the choice of them, which is in the list's group.
   if (el.id === 'list') groups.sort((a, b) => Number(a.id === 'marker') - Number(b.id === 'marker'))
+  // The space around a list is drawn in the list's own picture, with its other distances: one
+  // section holds them all.
+  const around = groups.findIndex((group) => group.id === 'arrangement')
+  const lists = groups.find((group) => group.id === 'list')
+  if (el.id === 'list' && around >= 0 && lists) {
+    lists.ids = [...groups[around]!.ids, ...lists.ids]
+    groups.splice(around, 1)
+  }
   const lines = LINE_SECTIONS.filter((section) => el.props.includes(section.toggle))
   // Titles over the groups only help when there is more than one group.
   return {

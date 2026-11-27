@@ -146,6 +146,7 @@
     flex: 1;
     padding-left: 0;
     white-space: normal;
+    text-wrap: balance;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-clamp: 2;
