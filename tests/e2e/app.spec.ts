@@ -105,9 +105,11 @@ test('a page that ended unexpectedly is loaded again, with the project still ope
   try {
     await expect(page.locator('[role=treeitem]').first()).toBeVisible()
     const crashed = page.waitForEvent('crash')
-    await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows()[0]!.webContents.forcefullyCrashRenderer(),
-    )
+    // The process is killed, as the system would kill it. Electron's `forcefullyCrashRenderer`
+    // does not end it on Linux CI: the page logs "Crashing because hung" and lives on.
+    await app.evaluate(({ BrowserWindow }) => {
+      process.kill(BrowserWindow.getAllWindows()[0]!.webContents.getOSProcessId(), 'SIGKILL')
+    })
     await crashed
     // Asked through the main process: the test's own hold on the page ended with the page.
     await expect
