@@ -609,15 +609,38 @@ class ProjectStore {
     if (result) this.apply(result.snapshot)
   }
 
-  /** Asks for a .bib file with the system dialog and makes it the project's bibliography. */
-  async chooseBibliography(): Promise<void> {
+  /** Asks for a .bib file with the system dialog and adds it to the project's literature files. */
+  async addBibliography(): Promise<void> {
     const result = await call(
-      window.api.project.chooseBibliography({
+      window.api.project.addBibliography({
         dialogTitle: i18n.t('dialog.chooseBibliography'),
         filterName: i18n.t('dialog.bibliographyFilter'),
       }),
     )
     if (result?.snapshot) this.apply(result.snapshot)
+  }
+
+  /** Takes a literature file out of the project's list; the file stays where it is. */
+  async removeBibliography(path: string): Promise<void> {
+    const result = await call(window.api.project.removeBibliography({ path }))
+    if (result) this.apply(result.snapshot)
+  }
+
+  /** Asks for the .bib file that takes the place of a literature file that moved or is gone. */
+  async relinkBibliography(path: string): Promise<void> {
+    const result = await call(
+      window.api.project.relinkBibliography({
+        path,
+        dialogTitle: i18n.t('dialog.chooseBibliography'),
+        filterName: i18n.t('dialog.bibliographyFilter'),
+      }),
+    )
+    if (result?.snapshot) this.apply(result.snapshot)
+  }
+
+  /** Shows a literature file in the system's file manager. */
+  async revealBibliography(path: string): Promise<void> {
+    await call(window.api.project.revealBibliography({ path }))
   }
 
   /** Changes the spelling and grammar settings of the project. */

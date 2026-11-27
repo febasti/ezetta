@@ -67,10 +67,30 @@ describe('parseManifest', () => {
     const { manifest } = parseOk('[project]\nversion = 1\ntitle = "X"\n')
     expect(manifest.project).toMatchObject({
       language: 'de',
-      bibliography: 'library.bib',
+      bibliography: ['library.bib'],
       citationStyle: 'apa-7',
     })
     expect(manifest.order).toEqual({})
+  })
+
+  it('reads the literature files as one path or a list, and writes one path as it always was', () => {
+    const one = parseOk('[project]\nversion = 1\ntitle = "X"\nbibliography = "refs/a.bib"\n')
+    expect(one.manifest.project.bibliography).toEqual(['refs/a.bib'])
+    expect(serializeManifest(one.manifest)).toContain('bibliography = "refs/a.bib"')
+
+    const several = parseOk(
+      '[project]\nversion = 1\ntitle = "X"\nbibliography = ["a.bib", "/home/me/b.bib", "a.bib", 3, ""]\n',
+    )
+    expect(several.manifest.project.bibliography).toEqual(['a.bib', '/home/me/b.bib'])
+    expect(parseOk(serializeManifest(several.manifest)).manifest.project.bibliography).toEqual([
+      'a.bib',
+      '/home/me/b.bib',
+    ])
+
+    // None at all is kept as none: the project's own file does not come back by itself.
+    const none = parseOk('[project]\nversion = 1\ntitle = "X"\nbibliography = []\n')
+    expect(none.manifest.project.bibliography).toEqual([])
+    expect(parseOk(serializeManifest(none.manifest)).manifest.project.bibliography).toEqual([])
   })
 
   it('reports invalid TOML instead of throwing', () => {

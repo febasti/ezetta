@@ -145,8 +145,9 @@ test('the quotation marks of block quotes are a project setting kept in the proj
   const { app, page } = await open()
   try {
     await page.keyboard.press(`${MOD}+,`)
-    await dialog(page).getByRole('tab', { name: 'Darstellung' }).click()
-    await expect(dialog(page).getByRole('heading', { name: 'Dieses Projekt' })).toBeVisible()
+    // What belongs to the project has a page of its own.
+    await dialog(page).getByRole('tab', { name: 'Projekt' }).click()
+    await expect(dialog(page).getByRole('heading', { name: 'Anführungszeichen' })).toBeVisible()
     await expect(dialog(page)).toContainText('gelten nur für das geöffnete Projekt')
     await dialog(page).getByRole('checkbox', { name: 'Blockzitate mit Anführungszeichen' }).click()
     await expect
@@ -161,7 +162,7 @@ test('the kind of quotation marks is a project setting kept in the project file'
   const { app, page } = await open()
   try {
     await page.keyboard.press(`${MOD}+,`)
-    await dialog(page).getByRole('tab', { name: 'Darstellung' }).click()
+    await dialog(page).getByRole('tab', { name: 'Projekt' }).click()
     await dialog(page)
       .getByRole('combobox', { name: 'Anführungszeichen', exact: true })
       .selectOption('de-guillemets')

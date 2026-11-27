@@ -1,8 +1,14 @@
 import { call } from '../../lib/api'
 
-export type SettingsTab = 'general' | 'appearance' | 'shortcuts' | 'about'
+export type SettingsTab = 'general' | 'appearance' | 'project' | 'shortcuts' | 'about'
 
-export const SETTINGS_TABS: readonly SettingsTab[] = ['general', 'appearance', 'shortcuts', 'about']
+export const SETTINGS_TABS: readonly SettingsTab[] = [
+  'general',
+  'appearance',
+  'project',
+  'shortcuts',
+  'about',
+]
 
 /**
  * The settings window's state. It holds only whether the window is open and on which

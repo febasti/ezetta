@@ -549,10 +549,15 @@ describe('the bibliography', () => {
     const fs = project()
     fs.files.set('/home/me/zotero/library.bib', BIB)
     const session = await open(fs)
-    expectOk(await session.setBibliography('/home/me/zotero/library.bib'))
-    expect(session.snapshot().bibliographyPath).toBe('/home/me/zotero/library.bib')
+    // In the place of the project's own file: that one is taken out, the other one added.
+    expectOk(await session.removeBibliography('library.bib'))
+    expectOk(await session.addBibliography('/home/me/zotero/library.bib'))
+    expect(session.snapshot().bibliographyFiles).toEqual([
+      { path: '/home/me/zotero/library.bib', works: 1, shadowed: 0, missing: false },
+    ])
     expect(session.library().entries.map((e) => e.key)).toEqual(['smith2020'])
-    expect(session.externalBibliography()).toBe('/home/me/zotero/library.bib')
+    expect(session.externalBibliographies()).toEqual(['/home/me/zotero/library.bib'])
+    // One file is written as a project always had it.
     expect(fs.files.get('project.toml')).toContain('bibliography = "/home/me/zotero/library.bib"')
     expect([...fs.files.keys()].filter((k) => k.endsWith('.bib')).sort()).toEqual([
       '/home/me/zotero/library.bib',
@@ -582,26 +587,104 @@ describe('the bibliography', () => {
     fs.files.set('refs/mine.bib', BIB)
     fs.files.set('notes.txt', 'x')
     const session = await open(fs)
-    expectOk(await session.setBibliography('refs/mine.bib'))
-    expect(session.externalBibliography()).toBeNull()
+    expectOk(await session.addBibliography('refs/mine.bib'))
+    expect(session.externalBibliographies()).toEqual([])
     expect(session.library().entries).toHaveLength(1)
-    expect(await session.setBibliography('notes.txt')).toMatchObject({
+    expect(await session.addBibliography('notes.txt')).toMatchObject({
       ok: false,
       error: { code: 'not_a_bibliography' },
     })
-    expect(await session.setBibliography('missing.bib')).toMatchObject({ ok: false })
-    expect(await session.setBibliography('../escape.bib')).toMatchObject({ ok: false })
-    expect(session.snapshot().bibliographyPath).toBe('refs/mine.bib')
+    expect(await session.addBibliography('missing.bib')).toMatchObject({ ok: false })
+    expect(await session.addBibliography('../escape.bib')).toMatchObject({ ok: false })
+    const paths = () => session.snapshot().bibliographyFiles.map((file) => file.path)
+    expect(paths()).toEqual(['library.bib', 'refs/mine.bib'])
+    // A file that is one of them already is not added twice.
+    expectOk(await session.addBibliography('refs/mine.bib'))
+    expect(paths()).toEqual(['library.bib', 'refs/mine.bib'])
+  })
+
+  it('reads several files in their order: a key two of them have is the work of the first', async () => {
+    const fs = project()
+    fs.files.set('library.bib', BIB)
+    fs.files.set(
+      'refs/more.bib',
+      '@book{smith2020, author = {Other, A}, title = {Nicht dieses}, year = {1999}}\n' +
+        '@book{jones2019, author = {Jones, B}, title = {Zwei}, year = {2019}}',
+    )
+    const session = await open(fs)
+    expectOk(await session.addBibliography('refs/more.bib'))
+    expect(session.snapshot().bibliographyFiles).toEqual([
+      { path: 'library.bib', works: 1, shadowed: 0, missing: false },
+      { path: 'refs/more.bib', works: 2, shadowed: 1, missing: false },
+    ])
+    const works = session.library().entries
+    expect(works.map((e) => e.key)).toEqual(['smith2020', 'jones2019'])
+    expect(works[0]!.year).not.toBe('1999')
+    // The project file holds a list now, and reads back as one.
+    expect(fs.files.get('project.toml')).toMatch(
+      /bibliography = \[\s*"library\.bib",\s*"refs\/more\.bib"/,
+    )
+    expect((await open(fs)).snapshot().bibliographyFiles.map((f) => f.path)).toEqual([
+      'library.bib',
+      'refs/more.bib',
+    ])
+
+    // The compiler gets one file, each key once, from the file that comes first.
+    fs.files.set(
+      'content/einleitung/einleitung.typ',
+      '= Einleitung\n\nWie @smith2020 und @jones2019 zeigen.',
+    )
+    await exportFiles(session)
+    const copy = fs.files.get('_build/bibliography.bib')!
+    expect(copy.match(/smith2020/g)).toHaveLength(1)
+    expect(copy).toContain('jones2019')
+    expect(copy).not.toContain('Nicht dieses')
+
+    // A change to the second file is read, and a file that goes missing says so and holds nothing.
+    fs.files.set('refs/more.bib', '@book{neu2024, title = {Drei}}')
+    await session.refresh(['refs/more.bib'])
+    expect(session.library().entries.map((e) => e.key)).toEqual(['smith2020', 'neu2024'])
+    fs.files.delete('refs/more.bib')
+    await session.refresh(['refs/more.bib'])
+    expect(session.snapshot().bibliographyFiles[1]).toEqual({
+      path: 'refs/more.bib',
+      works: 0,
+      shadowed: 0,
+      missing: true,
+    })
+    expect(session.library().entries.map((e) => e.key)).toEqual(['smith2020'])
+
+    // It is pointed to where it moved to, in its place in the order; or taken out.
+    fs.files.set('refs/moved.bib', '@book{neu2024, title = {Drei}}')
+    expectOk(await session.replaceBibliography('refs/more.bib', 'refs/moved.bib'))
+    expect(session.snapshot().bibliographyFiles.map((f) => f.path)).toEqual([
+      'library.bib',
+      'refs/moved.bib',
+    ])
+    expect(await session.replaceBibliography('nowhere.bib', 'refs/moved.bib')).toMatchObject({
+      ok: false,
+    })
+    expectOk(await session.removeBibliography('library.bib'))
+    expectOk(await session.removeBibliography('refs/moved.bib'))
+    expect(session.snapshot().bibliographyFiles).toEqual([])
+    expect(session.library().entries).toEqual([])
+    // No file at all is a list of none, not the default again.
+    expect((await open(fs)).snapshot().bibliographyFiles).toEqual([])
+    expect(await session.removeBibliography('library.bib')).toMatchObject({ ok: false })
   })
 
   it('is an empty library when the file is empty or missing', async () => {
     const fs = project()
     const session = await open(fs)
     expect(session.library().entries).toEqual([])
-    expect(session.snapshot().bibliographyStamp).toBe('')
+    expect(session.snapshot().bibliographyFiles).toEqual([
+      { path: 'library.bib', works: 0, shadowed: 0, missing: false },
+    ])
     fs.files.delete('library.bib')
     await session.refresh(['library.bib'])
     expect(session.library()).toEqual({ entries: [], problems: [] })
+    // Gone is not the same as empty: the list says the file is missing.
+    expect(session.snapshot().bibliographyFiles[0]!.missing).toBe(true)
   })
 
   it('reports what it could not read, and still loads the rest', async () => {

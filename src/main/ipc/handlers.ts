@@ -213,9 +213,20 @@ export function createHandlers({
       chooseImage: async ({ dialogTitle, filterName }) => ({
         path: await host.chooseImage(dialogTitle, filterName),
       }),
-      chooseBibliography: async ({ dialogTitle, filterName }) => ({
-        snapshot: await host.chooseBibliography(dialogTitle, filterName),
+      addBibliography: async ({ dialogTitle, filterName }) => ({
+        snapshot: await host.addBibliography(dialogTitle, filterName),
       }),
+      removeBibliography: async ({ path }) => {
+        await host.removeBibliography(path)
+        return { snapshot: snapshotOrThrow() }
+      },
+      relinkBibliography: async ({ path, dialogTitle, filterName }) => ({
+        snapshot: await host.relinkBibliography(path, dialogTitle, filterName),
+      }),
+      revealBibliography: ({ path }) => {
+        reveal(host.bibliographyPath(path))
+        return {}
+      },
       readBibliography: () => host.session().library(),
       renderMath: ({ source, display, font }) => math.render(source, display, font),
       addImage: async ({ name, data }) => unwrap(await host.session().addAsset(name, data)),

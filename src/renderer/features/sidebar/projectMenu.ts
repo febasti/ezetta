@@ -27,7 +27,7 @@ export function projectMenuItems(): MenuItem[] {
           project.snapshot?.footnoteRestart === 'chapter' ? 'continuous' : 'chapter',
         ),
     },
-    { label: i18n.t('project.bibliography'), onselect: () => void project.chooseBibliography() },
+    { label: i18n.t('project.bibliography'), onselect: () => settings.show('project') },
     { separator: true },
     {
       label: i18n.t('settings.open'),

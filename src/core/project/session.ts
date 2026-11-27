@@ -86,10 +86,10 @@ export interface ProjectSnapshot {
   goalWords: number | null
   /** How footnotes are numbered across the project. */
   footnoteRestart: FootnoteRestart
-  /** Changes whenever the bibliography file does, so the editor knows to read it again. */
+  /** Changes whenever a literature file does, so the editor knows to read the works again. */
   bibliographyStamp: string
-  /** The bibliography file as stored: relative to the project, or absolute for a file outside it. */
-  bibliographyPath: string
+  /** The literature files in the order they are read, with what each holds. */
+  bibliographyFiles: BibliographyFile[]
   /** Quotation marks around block quotes, from the project language like all quotation marks. */
   quoteBlockMarks: boolean
   quoteStyle: QuoteStyle
@@ -108,6 +108,18 @@ export interface ProjectSnapshot {
   /** The words of the sheets in the export: what the project's goal is measured against. */
   totalWords: number
   totalSheets: number
+}
+
+/** A literature file of the project, as last read. */
+export interface BibliographyFile {
+  /** As stored: relative to the project, or absolute for a file outside it. */
+  path: string
+  /** The works it holds. */
+  works: number
+  /** How many of them have a key that a file before it has too: those are not used. */
+  shadowed: number
+  /** The file is not there, or cannot be read. */
+  missing: boolean
 }
 
 /** An export, and the citations in it that the bibliography has no work for. */
@@ -195,11 +207,11 @@ export class ProjectSession {
   private slotFiles = new Set<TiteleiSlot>()
   private stats = new Map<string, SheetStats>()
   private hashes = new Map<string, number>()
-  /** The bibliography as last read: its path, a stamp of its text, and what it holds. */
+  /** The literature files as last read: a stamp of their paths and texts, and what they hold. */
   private bibliography = {
-    path: '',
-    stamp: '',
+    stamp: null as string | null,
     library: { entries: [], problems: [] } as BibLibrary,
+    files: [] as BibliographyFile[],
   }
   private revision = 0
   private queue: Promise<unknown> = Promise.resolve()
@@ -224,8 +236,8 @@ export class ProjectSession {
       const manifest = defaultManifest(title, language)
       await fs.mkdir(CONTENT_DIR)
       await fs.mkdir('assets')
-      if (!(await fs.exists(manifest.project.bibliography)))
-        await fs.writeFileAtomic(manifest.project.bibliography, '')
+      for (const library of manifest.project.bibliography)
+        if (!(await fs.exists(library))) await fs.writeFileAtomic(library, '')
       if (!(await fs.exists(manifest.proofing.dictionary)))
         await fs.writeFileAtomic(manifest.proofing.dictionary, '')
       await fs.writeFileAtomic(MANIFEST_FILE, serializeManifest(manifest))
@@ -277,8 +289,8 @@ export class ProjectSession {
       citationStyle: this.manifest.project.citationStyle,
       goalWords: this.manifest.goals.words ?? null,
       footnoteRestart: this.manifest.footnotes.restart,
-      bibliographyStamp: this.bibliography.stamp,
-      bibliographyPath: this.manifest.project.bibliography,
+      bibliographyStamp: this.bibliography.stamp ?? '',
+      bibliographyFiles: this.bibliography.files,
       quoteBlockMarks: this.manifest.quotes.blockMarks,
       quoteStyle: this.manifest.quotes.style,
       historyEnabled: this.manifest.history.enabled,
@@ -810,11 +822,14 @@ export class ProjectSession {
         // compiler would still print its heading).
         let bibliography: string | null = null
         if ([...citedKeys].some((key) => known.has(key))) {
-          const path = this.manifest.project.bibliography
-          const source = isExternalPath(path)
-            ? await this.fs.readExternalText(path)
-            : await this.fs.readFile(path)
-          const copy = bibliographyForTypst(source, citedKeys)
+          // Several files are one text for the copy, in their order: it keeps the first entry of a
+          // key, as the editor does, and the compiler never sees a key twice.
+          const sources: string[] = []
+          for (const path of this.manifest.project.bibliography) {
+            const text = await this.readBibliographyText(path)
+            if (text !== null) sources.push(text)
+          }
+          const copy = bibliographyForTypst(sources.join('\n\n'), citedKeys)
           if (copy !== null) {
             if (options.write) await this.fs.writeFileAtomic(`${BUILD_DIR}/bibliography.bib`, copy)
             bibliography = `/${BUILD_DIR}/bibliography.bib`
@@ -887,13 +902,13 @@ export class ProjectSession {
 
   private async rescan(changed: readonly string[] | null): Promise<string[]> {
     if (changed === null || changed.includes(MANIFEST_FILE)) await this.reloadManifest()
-    const bibliographyPath = this.manifest.project.bibliography
+    const libraries = this.manifest.project.bibliography
     if (
       changed === null ||
-      changed.includes(bibliographyPath) ||
-      bibliographyPath !== this.bibliography.path
+      changed.some((path) => libraries.includes(path)) ||
+      libraries.join('\n') !== this.bibliography.files.map((file) => file.path).join('\n')
     )
-      await this.reloadBibliography(bibliographyPath)
+      await this.reloadBibliography()
     this.disk = await this.scanDisk()
     const sheets = [...listSheets(this.disk), ...[...this.slotFiles].map(slotPath)]
     const present = new Set(sheets)
@@ -926,50 +941,113 @@ export class ProjectSession {
     return externallyChanged
   }
 
-  /** Reads the bibliography file. A missing or unreadable file is an empty library. */
-  private async reloadBibliography(path: string): Promise<void> {
-    let text = ''
+  /** The text of a literature file, in the project or outside it; null when it cannot be read. */
+  private async readBibliographyText(path: string): Promise<string | null> {
     try {
-      text = isExternalPath(path)
+      return isExternalPath(path)
         ? await this.fs.readExternalText(path)
         : await this.fs.readFile(path)
     } catch {
-      /* no bibliography yet */
+      return null
     }
-    const stamp = text === '' ? '' : `${text.length}:${contentHash(text)}`
-    if (path === this.bibliography.path && stamp === this.bibliography.stamp) return
-    this.bibliography = { path, stamp, library: parseBibtex(text) }
   }
 
   /**
-   * Makes `path` the bibliography file: relative to the project, or absolute for a file outside it
-   * (such as a Zotero export), which is read where it is and never copied. It must be readable BibTeX.
+   * Reads the literature files, in their order. A key that an earlier file has stays that file's
+   * work; a file that is missing or cannot be read holds nothing and says so.
    */
-  async setBibliography(path: string): Promise<Outcome<null>> {
+  private async reloadBibliography(): Promise<void> {
+    const paths = this.manifest.project.bibliography
+    const texts: (string | null)[] = []
+    for (const path of paths) texts.push(await this.readBibliographyText(path))
+    const stamp = paths
+      .map((path, i) => {
+        const text = texts[i] ?? null
+        return `${path}:${text === null ? '-' : `${text.length}:${contentHash(text)}`}`
+      })
+      .join('|')
+    if (stamp === this.bibliography.stamp) return
+    const seen = new Set<string>()
+    const entries: BibLibrary['entries'] = []
+    const problems: string[] = []
+    const files: BibliographyFile[] = []
+    paths.forEach((path, i) => {
+      const text = texts[i] ?? null
+      const library = parseBibtex(text ?? '')
+      let shadowed = 0
+      for (const entry of library.entries) {
+        if (seen.has(entry.key)) shadowed += 1
+        else {
+          seen.add(entry.key)
+          entries.push(entry)
+        }
+      }
+      // With several files a note says which one it is about.
+      const name = path.split('/').pop() ?? path
+      problems.push(
+        ...(paths.length > 1 ? library.problems.map((p) => `${name}: ${p}`) : library.problems),
+      )
+      files.push({ path, works: library.entries.length, shadowed, missing: text === null })
+    })
+    this.bibliography = { stamp, library: { entries, problems }, files }
+  }
+
+  /** Whether `path` can be a literature file of the project: a .bib file that can be read. */
+  private async checkBibliography(path: string): Promise<Outcome<null>> {
     if (!/\.(bib|bibtex)$/i.test(path))
-      return fail('not_a_bibliography', 'The bibliography must be a .bib file')
+      return fail('not_a_bibliography', 'A literature file must be a .bib file')
     if (!isExternalPath(path) && !isSafeRelativePath(path))
       return fail('invalid_path', 'This path is not allowed')
-    try {
-      if (isExternalPath(path)) await this.fs.readExternalText(path)
-      else await this.fs.readFile(path)
-    } catch {
+    if ((await this.readBibliographyText(path)) === null)
       return fail('not_a_bibliography', 'This file cannot be read')
-    }
+    return ok(null)
+  }
+
+  private setBibliographyFiles(paths: string[]): Promise<Outcome<null>> {
     return this.mutate(async () => {
       this.manifest = {
         ...this.manifest,
-        project: { ...this.manifest.project, bibliography: path },
+        project: { ...this.manifest.project, bibliography: paths },
       }
-      await this.reloadBibliography(path)
+      await this.reloadBibliography()
       return ok(null)
     })
   }
 
-  /** The bibliography file when it is outside the project, so that it can be watched; else null. */
-  externalBibliography(): string | null {
-    const path = this.manifest.project.bibliography
-    return isExternalPath(path) ? path : null
+  /**
+   * Adds `path` to the literature files, after the ones there: relative to the project, or absolute
+   * for a file outside it (such as a Zotero export), which is read where it is and never copied.
+   * It must be readable BibTeX. A file that is one of them already stays where it is.
+   */
+  async addBibliography(path: string): Promise<Outcome<null>> {
+    const checked = await this.checkBibliography(path)
+    if (!checked.ok) return checked
+    const paths = this.manifest.project.bibliography
+    return paths.includes(path) ? ok(null) : this.setBibliographyFiles([...paths, path])
+  }
+
+  /** Takes `path` out of the literature files. The file itself is not touched. */
+  async removeBibliography(path: string): Promise<Outcome<null>> {
+    const paths = this.manifest.project.bibliography
+    if (!paths.includes(path))
+      return fail('not_found', 'This is not a literature file of the project')
+    return this.setBibliographyFiles(paths.filter((p) => p !== path))
+  }
+
+  /** Puts `path` in the place of the literature file `old` (one that moved, or was renamed). */
+  async replaceBibliography(old: string, path: string): Promise<Outcome<null>> {
+    const paths = this.manifest.project.bibliography
+    if (!paths.includes(old))
+      return fail('not_found', 'This is not a literature file of the project')
+    const checked = await this.checkBibliography(path)
+    if (!checked.ok) return checked
+    const replaced = paths.map((p) => (p === old ? path : p))
+    return this.setBibliographyFiles([...new Set(replaced)])
+  }
+
+  /** The literature files outside the project, so that they can be watched where they are. */
+  externalBibliographies(): string[] {
+    return this.manifest.project.bibliography.filter(isExternalPath)
   }
 
   /** The works of the bibliography file, for citations. */

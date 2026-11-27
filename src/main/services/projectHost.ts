@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, stat } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
-import { basename, join, relative, resolve, sep } from 'node:path'
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { MAX_ASSET_BYTES } from '@core/project/assets'
 import { ProjectSession } from '@core/project/session'
 import type { OpError, Outcome, ProjectSnapshot } from '@core/project/session'
@@ -134,32 +134,63 @@ export class ProjectHost {
     })
   }
 
-  /**
-   * Picks a BibTeX file with the system dialog and makes it the project's bibliography. A file
-   * outside the project is kept where it is, and watched there: another program (Zotero) writes it.
-   */
-  async chooseBibliography(
-    dialogTitle: string,
-    filterName: string,
-  ): Promise<ProjectSnapshot | null> {
+  /** A picked .bib file as the project stores it: relative inside the project, else absolute. */
+  private async pickBibliography(dialogTitle: string, filterName: string): Promise<string | null> {
     const picked = await this.deps.pickBibliographyFile(dialogTitle, filterName)
     if (picked === null) return null
     const open = this.open_
     if (!open) throw new IpcFailure('no_project', 'No project is open')
     const root = resolve(open.root)
     const abs = resolve(picked)
-    const stored = isInside(root, abs) ? relative(root, abs).split(sep).join('/') : abs
-    unwrap(await open.session.setBibliography(stored))
+    return isInside(root, abs) ? relative(root, abs).split(sep).join('/') : abs
+  }
+
+  /**
+   * Picks a BibTeX file with the system dialog and adds it to the project's literature files. A
+   * file outside the project is kept where it is, and watched there: another program (Zotero)
+   * writes it.
+   */
+  async addBibliography(dialogTitle: string, filterName: string): Promise<ProjectSnapshot | null> {
+    const stored = await this.pickBibliography(dialogTitle, filterName)
+    if (stored === null) return null
+    unwrap(await this.session().addBibliography(stored))
     this.syncExternalWatch()
     return this.snapshot()
   }
 
-  /** Watches the bibliography file when it is outside the project folder. */
+  /** Takes a literature file out of the project's list; the file stays where it is. */
+  async removeBibliography(path: string): Promise<void> {
+    unwrap(await this.session().removeBibliography(path))
+    this.syncExternalWatch()
+  }
+
+  /** Picks the BibTeX file that takes the place of the literature file `path`. */
+  async relinkBibliography(
+    path: string,
+    dialogTitle: string,
+    filterName: string,
+  ): Promise<ProjectSnapshot | null> {
+    const stored = await this.pickBibliography(dialogTitle, filterName)
+    if (stored === null) return null
+    unwrap(await this.session().replaceBibliography(path, stored))
+    this.syncExternalWatch()
+    return this.snapshot()
+  }
+
+  /** Where a literature file of the project is on disk. Any other path is refused. */
+  bibliographyPath(path: string): string {
+    const open = this.open_
+    if (!open) throw new IpcFailure('no_project', 'No project is open')
+    const known = open.session.snapshot().bibliographyFiles.some((file) => file.path === path)
+    if (!known) throw new IpcFailure('not_found', 'This is not a literature file of the project')
+    return isAbsolute(path) ? path : join(open.root, path)
+  }
+
+  /** Watches the literature files that are outside the project folder. */
   private syncExternalWatch(): void {
     const open = this.open_
     if (!open) return
-    const path = open.session.externalBibliography()
-    open.watcher.setExternal(path ? [path] : [])
+    open.watcher.setExternal(open.session.externalBibliographies())
   }
 
   /** Picks an image with the system dialog and copies it into the project's `assets/` folder. */

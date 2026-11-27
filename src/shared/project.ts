@@ -145,7 +145,14 @@ export const snapshotSchema = z.object({
   goalWords: z.number().nullable(),
   footnoteRestart: z.enum(['continuous', 'chapter']),
   bibliographyStamp: z.string(),
-  bibliographyPath: z.string(),
+  bibliographyFiles: z.array(
+    z.object({
+      path: z.string(),
+      works: z.number(),
+      shadowed: z.number(),
+      missing: z.boolean(),
+    }),
+  ),
   quoteBlockMarks: z.boolean(),
   quoteStyle: z.enum([
     'auto',

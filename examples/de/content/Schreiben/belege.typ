@@ -1,6 +1,6 @@
 = Belege und Literatur <sec-belege>
 
-Belege verweisen auf Werke aus deiner Literaturdatei, hier `library.bib` im Projekt. Die Datei pflegst du außerhalb von Ezetta, zum Beispiel mit einem Literaturprogramm; Ezetta liest sie und merkt, wenn sie sich ändert. Im Projektmenü legst du fest, welche Datei gilt.
+Belege verweisen auf Werke aus deiner Literaturdatei, hier `library.bib` im Projekt. Die Datei pflegst du außerhalb von Ezetta, zum Beispiel mit einem Literaturprogramm; Ezetta liest sie und merkt, wenn sie sich ändert. Welche Dateien gelten, legst du in den Einstellungen unter „Projekt“ fest: Dort kannst du weitere hinzufügen und siehst, was jede enthält.
 
 Einen Beleg setzt du mit der Taste „Beleg“ in der Leiste oder indem du \@ tippst und das Werk suchst. Im Text erscheint er als kleine Marke, die anzeigt, wie er gedruckt wird: Kant beschreibt die Aufklärung als Ausgang aus der „selbstverschuldeten Unmündigkeit“ @kant1784[S. 481]. Die Seitenzahl gehört zum Beleg und ist im Editor ein Feld, kein Text.
 

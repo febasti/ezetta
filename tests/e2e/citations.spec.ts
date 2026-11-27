@@ -728,7 +728,7 @@ test('a group of citations is one chip, edited together, with the works in one f
   }
 })
 
-test('a bibliography file outside the project is chosen and watched where it is', async () => {
+test('the literature files are a list in the settings: one from outside the project is added, read where it is, and the first one taken out', async () => {
   const external = join(sandbox.base, 'zotero-export.bib')
   await writeFile(external, '@book{unknown1, author = {Neu, Nora}, title = {Neu}, year = {2024}}\n')
   const { app, page } = await launch(sandbox, { env: { EZETTA_TEST_BIB: external } })
@@ -736,15 +736,39 @@ test('a bibliography file outside the project is chosen and watched where it is'
     await openSheet(page, 'methoden/design.typ')
     await expect(chips(page).nth(2)).toHaveClass(/missing/)
 
-    // The file is chosen in the project menu; the citation editor does not show it.
+    // The citation editor does not show the files; the project menu leads to their list.
     await belegButton(page).click()
     await expect(dialog(page)).not.toContainText('library.bib')
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: 'Projektmenü' }).click()
-    await page.getByRole('menuitem', { name: 'Bibliographie-Datei wählen …' }).click()
+    await page.getByRole('menuitem', { name: 'Literaturdateien …' }).click()
+    const settings = page.getByRole('dialog', { name: 'Einstellungen' })
+    await expect(settings.getByRole('tab', { name: 'Projekt' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    const files = settings.getByRole('list', { name: 'Literaturdateien' }).getByRole('listitem')
+    await expect(files).toHaveCount(1)
+    await expect(files.first()).toContainText('library.bib')
+    await expect(files.first()).toContainText('Im Projektordner')
+    await expect(files.first()).toContainText(/\d+ Werke?/)
+
+    // A second file is added after it: its works come to the ones there.
+    await settings.getByRole('button', { name: 'Datei hinzufügen …' }).click()
+    await expect(files).toHaveCount(2)
+    await expect(files.nth(1)).toContainText('zotero-export.bib')
+    await expect(files.nth(1)).toContainText('1 Werk')
     await expect(chips(page).nth(2)).toHaveText('(Neu 2024)')
-    // The other works are no longer there: this file replaced the project's own.
+    await expect(chips(page).first()).not.toHaveClass(/missing/)
+    expect(await readFile(join(sandbox.projectDir, 'project.toml'), 'utf8')).toMatch(
+      /bibliography = \[\s*"library\.bib"/,
+    )
+
+    // The project's own file is taken out of the list: its works are no longer there, the file is.
+    await settings.getByRole('button', { name: 'library.bib entfernen' }).click()
+    await expect(files).toHaveCount(1)
     await expect(chips(page).first()).toHaveClass(/missing/)
+    await settings.getByRole('button', { name: 'Schließen' }).click()
 
     // The project names the file where it is; nothing was copied into the project.
     const toml = await readFile(join(sandbox.projectDir, 'project.toml'), 'utf8')
@@ -758,6 +782,19 @@ test('a bibliography file outside the project is chosen and watched where it is'
     )
     await expect(chips(page).nth(2)).toHaveText('(Neu 2025)')
     await expect(chips(page).first()).toHaveText('(Smith 1999)')
+
+    // The Literatur tab says which file the works come from, and when it is gone; the line leads
+    // to the list, where the file can be pointed to again.
+    await page
+      .locator('.toolbar')
+      .getByRole('button', { name: 'Seitenleiste', exact: true })
+      .click()
+    const pane = page.getByRole('complementary', { name: 'Seitenleiste' })
+    await expect(pane.getByRole('button', { name: 'zotero-export.bib', exact: true })).toBeVisible()
+    await rm(external)
+    await pane.getByRole('button', { name: 'zotero-export.bib fehlt' }).click()
+    await expect(files.first()).toContainText('Datei fehlt')
+    await expect(settings.getByRole('button', { name: 'Neu verknüpfen …' })).toBeVisible()
   } finally {
     await app.close()
   }

@@ -1,10 +1,13 @@
 <script lang="ts">
+  import Icon from '../../ui/Icon.svelte'
   import EmptyState from '../../ui/kit/EmptyState.svelte'
+  import Link from '../../ui/kit/Link.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Segmented from '../../ui/kit/Segmented.svelte'
   import { referencePieces } from '@core/bib/reference'
   import { i18n } from '../../i18n/i18n.svelte'
   import { setLiteratureScope, ui } from '../../lib/ui.svelte'
+  import { settings } from '../settings/settings.svelte'
   import { project } from '../sidebar/project.svelte'
   import { literature } from './literature.svelte'
   import LiteratureRow from './LiteratureRow.svelte'
@@ -15,6 +18,22 @@
   const language = $derived(project.snapshot?.language ?? 'de')
   const summary = $derived(literature.summary)
   const open = $derived(summary.missing.length + summary.checks.length > 0)
+  /** The project's literature files, and how many of them are gone. */
+  const files = $derived(project.snapshot?.bibliographyFiles ?? [])
+  const lost = $derived(files.filter((file) => file.missing).length)
+  const nameOf = (path: string): string => path.split(/[\\/]/).pop() ?? path
+  /** What the line under the count says: the one file by its name, several by their number. */
+  const filesLabel = $derived(
+    files.length === 0
+      ? i18n.t('literature.files.none')
+      : files.length === 1
+        ? lost > 0
+          ? i18n.t('literature.files.missing', { name: nameOf(files[0]!.path) })
+          : nameOf(files[0]!.path)
+        : lost > 0
+          ? i18n.t('literature.files.someMissing', { count: files.length, lost })
+          : i18n.t('literature.files.count', { count: files.length }),
+  )
 </script>
 
 <div class="literature" role="tabpanel" aria-label={i18n.t('literature.title')}>
@@ -32,6 +51,12 @@
     />
     <p class="summary">
       {i18n.t('literature.summary', { works: summary.works.length, count: summary.total })}
+    </p>
+    <!-- Where the works come from: the project's literature files, and whether one is gone. The
+         line leads to the list of them in the settings. -->
+    <p class="files" class:problem={lost > 0 || files.length === 0}>
+      {#if lost > 0}<Icon name="warning" size={12} />{/if}
+      <Link onclick={() => settings.show('project')}>{filesLabel}</Link>
     </p>
   </header>
 
@@ -113,6 +138,18 @@
     margin: 0;
     color: var(--color-label-tertiary);
     font: var(--type-caption);
+  }
+  .files {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    min-width: 0;
+    margin: 0;
+    color: var(--color-label-tertiary);
+    font: var(--type-caption);
+  }
+  .files.problem {
+    color: var(--color-warning);
   }
   .body {
     flex: 1;

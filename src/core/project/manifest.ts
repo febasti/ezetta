@@ -51,7 +51,11 @@ export interface Manifest {
     version: 1
     title: string
     language: string
-    bibliography: string
+    /**
+     * The literature files, in the order they are read: each relative to the project, or absolute
+     * for a file outside it. A key that two of them have is the work of the first. May be empty.
+     */
+    bibliography: string[]
     citationStyle: string
   }
   goals: { words?: number }
@@ -112,7 +116,7 @@ export function defaultManifest(title: string, language = 'de'): Manifest {
       version: 1,
       title,
       language,
-      bibliography: DEFAULT_BIBLIOGRAPHY,
+      bibliography: [DEFAULT_BIBLIOGRAPHY],
       citationStyle: 'apa-7',
     },
     goals: {},
@@ -144,6 +148,17 @@ export function defaultManifest(title: string, language = 'de'): Manifest {
 
 function takeKnown(table: TomlTable, known: readonly string[]): TomlTable {
   return Object.fromEntries(Object.entries(table).filter(([key]) => !known.includes(key)))
+}
+
+/**
+ * The literature files as the project file names them: one path (as every project had it), or a
+ * list of paths. Without the entry it is the project's own `library.bib`; an empty list is none.
+ */
+function readBibliography(value: unknown, fallback: string[]): string[] {
+  if (typeof value === 'string') return value === '' ? [] : [value]
+  if (!Array.isArray(value)) return fallback
+  const paths = value.filter((path): path is string => typeof path === 'string' && path !== '')
+  return [...new Set(paths)]
 }
 
 const str = (value: unknown, fallback: string): string =>
@@ -182,7 +197,7 @@ export function parseManifest(
       version: 1,
       title: base.project.title,
       language: base.project.language,
-      bibliography: str(project['bibliography'], base.project.bibliography),
+      bibliography: readBibliography(project['bibliography'], base.project.bibliography),
       citationStyle: str(project['citation_style'], base.project.citationStyle),
     },
     goals: {},
@@ -321,7 +336,9 @@ export function serializeManifest(manifest: Manifest): string {
       version: project.version,
       title: project.title,
       language: project.language,
-      bibliography: project.bibliography,
+      // One file is written as it always was, so a project with one reads the same in an older app.
+      bibliography:
+        project.bibliography.length === 1 ? project.bibliography[0]! : project.bibliography,
       citation_style: project.citationStyle,
       ...extras.project,
     },

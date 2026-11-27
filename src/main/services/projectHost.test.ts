@@ -174,8 +174,8 @@ describe('ProjectHost', () => {
     const outside = join(base, 'zotero.bib')
     await writeFile(outside, '@book{smith2020, author={Smith, J}, title={T}, year={2020}}')
     pickedBib = outside
-    const snapshot = await host.chooseBibliography('Wählen', 'BibTeX')
-    expect(snapshot?.bibliographyPath).toBe(outside)
+    const snapshot = await host.addBibliography('Wählen', 'BibTeX')
+    expect(snapshot?.bibliographyFiles.map((file) => file.path)).toEqual(['library.bib', outside])
     expect(
       host
         .session()
@@ -186,8 +186,31 @@ describe('ProjectHost', () => {
     // Nothing was copied into the project, and the file itself is untouched.
     expect(await readFile(outside, 'utf8')).toContain('smith2020')
     expect(await readFile(join(projectDir, 'project.toml'), 'utf8')).toContain(
-      `bibliography = ${JSON.stringify(outside)}`,
+      JSON.stringify(outside),
     )
+    // Only a file of the project is shown in the file manager, at its place on disk.
+    expect(host.bibliographyPath(outside)).toBe(outside)
+    expect(host.bibliographyPath('library.bib')).toBe(join(projectDir, 'library.bib'))
+    expect(() => host.bibliographyPath('/etc/passwd')).toThrow()
+
+    // It moved: the writer points to it again, and the new place is watched.
+    const moved = join(base, 'moved.bib')
+    await writeFile(moved, '@book{smith2020, author={Smith, J}, title={T}, year={2020}}')
+    pickedBib = moved
+    const relinked = await host.relinkBibliography(outside, 'Wählen', 'BibTeX')
+    expect(relinked?.bibliographyFiles.map((file) => file.path)).toEqual(['library.bib', moved])
+    expect(externalWatched.at(-1)).toEqual([moved])
+
+    // Taken out, it is no longer watched; the file itself stays.
+    await host.removeBibliography(moved)
+    expect(
+      host
+        .session()
+        .snapshot()
+        .bibliographyFiles.map((file) => file.path),
+    ).toEqual(['library.bib'])
+    expect(externalWatched.at(-1)).toEqual([])
+    expect(await readFile(moved, 'utf8')).toContain('smith2020')
   })
 
   it('stores a bibliography file inside the project as a relative path, and watches nothing extra', async () => {
@@ -195,8 +218,11 @@ describe('ProjectHost', () => {
     await host.pickAndOpen('Öffnen')
     pickedBib = join(projectDir, 'refs.bib')
     await writeFile(pickedBib, '@book{a, title={T}}')
-    const snapshot = await host.chooseBibliography('Wählen', 'BibTeX')
-    expect(snapshot?.bibliographyPath).toBe('refs.bib')
+    const snapshot = await host.addBibliography('Wählen', 'BibTeX')
+    expect(snapshot?.bibliographyFiles.map((file) => file.path)).toEqual([
+      'library.bib',
+      'refs.bib',
+    ])
     expect(externalWatched.at(-1)).toEqual([])
   })
 
@@ -204,10 +230,10 @@ describe('ProjectHost', () => {
     const host = makeHost()
     await host.pickAndOpen('Öffnen')
     pickedBib = null
-    expect(await host.chooseBibliography('Wählen', 'BibTeX')).toBeNull()
+    expect(await host.addBibliography('Wählen', 'BibTeX')).toBeNull()
     pickedBib = join(base, 'notes.txt')
     await writeFile(pickedBib, 'x')
-    await expect(host.chooseBibliography('Wählen', 'BibTeX')).rejects.toMatchObject({
+    await expect(host.addBibliography('Wählen', 'BibTeX')).rejects.toMatchObject({
       code: 'not_a_bibliography',
     })
   })

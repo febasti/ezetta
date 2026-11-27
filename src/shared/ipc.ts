@@ -493,13 +493,41 @@ export const ipc = {
       z.object({ path: z.string() }).strict(),
     ),
     /**
-     * Shows the system dialog to pick a .bib file and makes it the project's bibliography. A file
-     * outside the project folder is read where it is, never copied. The snapshot is null if cancelled.
+     * Shows the system dialog to pick a .bib file and adds it to the project's literature files. A
+     * file outside the project folder is read where it is, never copied. The snapshot is null if
+     * cancelled.
      */
-    chooseBibliography: defineInvoke(
-      'project:choose-bibliography',
+    addBibliography: defineInvoke(
+      'project:add-bibliography',
       z.object({ dialogTitle: z.string().max(200), filterName: z.string().max(100) }).strict(),
       maybeSnapshot,
+    ),
+    /** Takes a literature file out of the project's list. The file itself is not touched. */
+    removeBibliography: defineInvoke(
+      'project:remove-bibliography',
+      z.object({ path: z.string().min(1).max(4096) }).strict(),
+      withSnapshot,
+    ),
+    /**
+     * Shows the system dialog to pick the .bib file that takes the place of one of the project's
+     * (one that moved or was renamed). The snapshot is null if cancelled.
+     */
+    relinkBibliography: defineInvoke(
+      'project:relink-bibliography',
+      z
+        .object({
+          path: z.string().min(1).max(4096),
+          dialogTitle: z.string().max(200),
+          filterName: z.string().max(100),
+        })
+        .strict(),
+      maybeSnapshot,
+    ),
+    /** Shows one of the project's literature files in the system's file manager. */
+    revealBibliography: defineInvoke(
+      'project:reveal-bibliography',
+      z.object({ path: z.string().min(1).max(4096) }).strict(),
+      empty,
     ),
     /** The works of the project's bibliography file, for citations. */
     readBibliography: defineInvoke('project:read-bibliography', empty, bibliographySchema),

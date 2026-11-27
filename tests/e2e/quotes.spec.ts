@@ -16,11 +16,11 @@ Davor steht #quote[${LONG}] und danach geht es weiter.
 #quote(block: true)[Ein Block.]
 `
 
-/** The setting lives in the settings window (Cmd+,, tab "Text"). */
+/** The setting lives in the settings window (Cmd+,, tab "Projekt"). */
 async function toggleBlockMarks(page: Page): Promise<void> {
   await page.keyboard.press(`${MOD}+,`)
   const dialog = page.getByRole('dialog', { name: 'Einstellungen' })
-  await dialog.getByRole('tab', { name: 'Darstellung' }).click()
+  await dialog.getByRole('tab', { name: 'Projekt' }).click()
   await dialog.getByRole('checkbox', { name: 'Blockzitate mit Anführungszeichen' }).click()
   await dialog.getByRole('button', { name: 'Schließen' }).click()
   await expect(dialog).toHaveCount(0)

@@ -1,6 +1,6 @@
 = Citations and literature <sec-citations>
 
-Citations refer to works from your bibliography file, here `library.bib` in the project. You maintain the file outside Ezetta, with a reference manager for example; Ezetta reads it and notices when it changes. In the project menu you choose which file applies.
+Citations refer to works from your bibliography file, here `library.bib` in the project. You maintain the file outside Ezetta, with a reference manager for example; Ezetta reads it and notices when it changes. Which files apply is set in the settings under “Project”: there you can add more and see what each holds.
 
 You place a citation with the button "Citation" in the bar or by typing \@ and searching for the work. In the text it appears as a small mark that shows how it will print: Kant describes the Enlightenment as the exit from "self-incurred immaturity" @kant1784[p. 481]. The page number belongs to the citation and is a field in the editor, not text.
 

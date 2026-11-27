@@ -13,13 +13,12 @@
   import Segmented from '../../ui/kit/Segmented.svelte'
   import Select from '../../ui/kit/Select.svelte'
   import Tabs from '../../ui/kit/Tabs.svelte'
-  import { QUOTE_STYLES } from '@core/typst/quoteStyle'
   import { FONT_KINDS, FONT_SIZE, LINE_SPACING, PARAGRAPH_GAP, TEXT_WIDTH } from '../../ui/fonts'
   import { appearance, OFFERED_THEMES } from '../../ui/theme.svelte'
   import { scrollbar } from '../../ui/scrollbar'
   import { typography } from '../../ui/typography.svelte'
-  import { project } from '../sidebar/project.svelte'
   import AboutPane from './AboutPane.svelte'
+  import ProjectPane from './ProjectPane.svelte'
   import ShortcutsPane from './ShortcutsPane.svelte'
   import { SETTINGS_TABS, settings } from './settings.svelte'
 
@@ -185,35 +184,8 @@
             </FormRow>
           </Form>
         </Section>
-        <!-- Kept in the project file, not with the app: a section of its own that says so. -->
-        <Section title={i18n.t('settings.project.title')} level={4} region={false}>
-          <p class="project-hint">
-            {project.snapshot ? i18n.t('settings.project.hint') : i18n.t('settings.noProject')}
-          </p>
-          <Form>
-            <FormRow label={i18n.t('settings.quoteStyle')} for="settings-quote-style">
-              <Select
-                id="settings-quote-style"
-                value={project.snapshot?.quoteStyle ?? 'auto'}
-                disabled={!project.snapshot}
-                options={QUOTE_STYLES.map((style) => ({
-                  value: style,
-                  label: i18n.t(`quoteStyle.${style}`),
-                }))}
-                onchange={(style) => void project.setQuoteStyle(style)}
-              />
-            </FormRow>
-            <FormRow label="">
-              <Checkbox
-                checked={project.snapshot?.quoteBlockMarks === true}
-                disabled={!project.snapshot}
-                onchange={(checked) => void project.setQuoteBlockMarks(checked)}
-              >
-                {i18n.t('project.quoteBlockMarks')}
-              </Checkbox>
-            </FormRow>
-          </Form>
-        </Section>
+      {:else if settings.tab === 'project'}
+        <ProjectPane />
       {:else if settings.tab === 'shortcuts'}
         <ShortcutsPane />
       {:else}
@@ -244,11 +216,6 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-  }
-  .project-hint {
-    margin: 0 0 var(--sp-8);
-    color: var(--color-label-secondary);
-    font: var(--type-caption);
   }
   /* The writing face's sample: the editor's own type, on the paper of the editor. */
   .sample {
