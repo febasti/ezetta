@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import zlib from 'node:zlib'
 import { dirname, join } from 'node:path'
@@ -74,6 +74,8 @@ export class ProjectHistory {
       /** When loose objects are packed and packs merged (see `packs.ts`); for tests. */
       packAfter?: number
       mergeAfter?: number
+      /** A store that could not be read was set aside as `folder`, and a new one begun. */
+      onSetAside?: (folder: string) => void
     } = {},
   ) {
     this.gitdir = join(root, ...HISTORY_DIR.split('/'))
@@ -105,47 +107,102 @@ export class ProjectHistory {
    */
   snapshot(kind: VersionKind, name: string | null = null): Promise<VersionEntry | null> {
     return this.serial(async () => {
-      await this.init()
-      const { files: head, trees } = await this.headTree()
-      const files = new Map<string, string>() // path -> blob id
-      const dirty = new Set<string>() // the folders with a change somewhere inside
-      const touch = (path: string): void => {
-        const parts = path.split('/')
-        for (let i = 0; i < parts.length; i += 1) dirty.add(parts.slice(0, i).join('/'))
+      try {
+        return await this.take(kind, name)
+      } catch (cause) {
+        // A store that can no longer be read would refuse every version from now on, unseen. It
+        // is set aside, and versions go on in a new one.
+        if (!(await this.setAsideIfDamaged())) throw cause
+        return this.take(kind, name)
       }
-      let changed = 0
-      for (const path of await this.projectFiles()) {
-        const bytes = await readFile(join(this.root, ...path.split('/'))).catch(() => null)
-        if (bytes === null) continue // gone while we looked
-        const { oid } = await git.hashBlob({ object: bytes })
-        files.set(path, oid)
-        if (head.get(path) !== oid) {
-          await this.writeBlob(oid, bytes, path)
-          changed += 1
-          touch(path)
-        }
-      }
-      for (const path of head.keys())
-        if (!files.has(path)) {
-          changed += 1
-          touch(path)
-        }
-      // A version the writer names is kept even when nothing changed since the last one: the name is the point.
-      if (changed === 0 && (kind !== 'named' || head.size === 0)) return null
-      if (files.size === 0) return null
-      const tree = await this.writeTree(files, (dir) =>
-        dirty.has(dir) ? undefined : trees.get(dir),
-      )
-      const time = this.options.now?.() ?? Date.now()
-      const id = await git.commit({
-        ...this.base(),
-        tree,
-        message: encodeMessage(kind, name),
-        author: { ...AUTHOR, timestamp: Math.floor(time / 1000) },
-      })
-      await this.tidy()
-      return { id, time: Math.floor(time / 1000) * 1000, kind, name: name?.trim() || null }
     })
+  }
+
+  /**
+   * Whether the newest version can still be read: where HEAD points, and every folder of its tree.
+   * A crash of the computer can leave files of the store empty, since they are not flushed to disk
+   * one by one. A store that cannot be reached at all (no permission, a drive that is gone) is not
+   * damaged: that passes.
+   */
+  private async damaged(): Promise<boolean> {
+    this.cache = {}
+    try {
+      const head = await readFile(join(this.gitdir, 'HEAD'), 'utf8')
+      if (!head.startsWith('ref: ')) return true
+      await this.headTree()
+      return false
+    } catch (cause) {
+      const code = (cause as { code?: unknown } | null)?.code
+      // No HEAD: there is no store yet. Other errors of the file system are not damage.
+      return !(typeof code === 'string' && /^E[A-Z]+$/.test(code))
+    }
+  }
+
+  /**
+   * Moves a store that cannot be read out of the way (`history-damaged-<when>.git` beside it,
+   * never deleted: what is left in it may still be read with git), so that the next version starts
+   * a new one. False when the store is sound, or is being read by a backup, or cannot be moved.
+   */
+  private async setAsideIfDamaged(): Promise<boolean> {
+    if (this.holds > 0 || !(await this.damaged())) return false
+    const when = new Date(this.options.now?.() ?? Date.now())
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[-:]/g, '')
+      .replace('T', '-')
+    const aside = join(dirname(this.gitdir), `history-damaged-${when}.git`)
+    try {
+      await rename(this.gitdir, aside)
+    } catch (cause) {
+      this.options.log?.('the damaged versions could not be set aside', cause)
+      return false
+    }
+    this.ready = false
+    this.cache = {}
+    this.options.log?.(`the versions could not be read and were set aside: ${aside}`)
+    this.options.onSetAside?.(aside)
+    return true
+  }
+
+  private async take(kind: VersionKind, name: string | null): Promise<VersionEntry | null> {
+    await this.init()
+    const { files: head, trees } = await this.headTree()
+    const files = new Map<string, string>() // path -> blob id
+    const dirty = new Set<string>() // the folders with a change somewhere inside
+    const touch = (path: string): void => {
+      const parts = path.split('/')
+      for (let i = 0; i < parts.length; i += 1) dirty.add(parts.slice(0, i).join('/'))
+    }
+    let changed = 0
+    for (const path of await this.projectFiles()) {
+      const bytes = await readFile(join(this.root, ...path.split('/'))).catch(() => null)
+      if (bytes === null) continue // gone while we looked
+      const { oid } = await git.hashBlob({ object: bytes })
+      files.set(path, oid)
+      if (head.get(path) !== oid) {
+        await this.writeBlob(oid, bytes, path)
+        changed += 1
+        touch(path)
+      }
+    }
+    for (const path of head.keys())
+      if (!files.has(path)) {
+        changed += 1
+        touch(path)
+      }
+    // A version the writer names is kept even when nothing changed since the last one: the name is the point.
+    if (changed === 0 && (kind !== 'named' || head.size === 0)) return null
+    if (files.size === 0) return null
+    const tree = await this.writeTree(files, (dir) => (dirty.has(dir) ? undefined : trees.get(dir)))
+    const time = this.options.now?.() ?? Date.now()
+    const id = await git.commit({
+      ...this.base(),
+      tree,
+      message: encodeMessage(kind, name),
+      author: { ...AUTHOR, timestamp: Math.floor(time / 1000) },
+    })
+    await this.tidy()
+    return { id, time: Math.floor(time / 1000) * 1000, kind, name: name?.trim() || null }
   }
 
   /**
@@ -156,9 +213,10 @@ export class ProjectHistory {
    */
   private async writeBlob(oid: string, bytes: Uint8Array, path: string): Promise<void> {
     const file = join(this.gitdir, 'objects', oid.slice(0, 2), oid.slice(2))
+    // An empty file is not the object (a crash of the computer can leave one): it is written again.
     if (
       await stat(file).then(
-        () => true,
+        (info) => info.size > 0,
         () => false,
       )
     )

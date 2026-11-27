@@ -805,6 +805,10 @@ export const events = {
     /** A backup started, finished, or failed. */
     changed: defineEvent('backup:changed', backupStatusSchema),
   },
+  history: {
+    /** The versions could not be read: they were set aside under this name, and new ones begun. */
+    setAside: defineEvent('history:set-aside', z.object({ folder: z.string() }).strict()),
+  },
   project: {
     /** The project changed on disk or in the main process. */
     changed: defineEvent('project:changed', projectChangedSchema),

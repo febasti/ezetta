@@ -229,6 +229,7 @@
   "cmd.toggleGroups": "Show or hide groups",
   "cmd.toggleSheets": "Show or hide sheets",
   "notice.dismiss": "Dismiss",
+  "history.setAside": "The earlier versions could no longer be read. They are now in the project folder at .ezetta/{folder}; new versions are taken from now on.",
   "failure.title": "This part could not be shown",
   "failure.text": "The error is in the log.",
   "failure.retry": "Try again",

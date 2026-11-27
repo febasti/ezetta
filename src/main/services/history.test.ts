@@ -1,7 +1,8 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readdir, rm, truncate, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import git from 'isomorphic-git'
 import { ProjectHistory } from './history'
 
 let root: string
@@ -185,5 +186,99 @@ describe('ProjectHistory', () => {
     expect(first).not.toBeNull()
     expect(second).toBeNull()
     expect(list).toHaveLength(1)
+  })
+})
+
+// What a crash of the computer can leave behind: files of the store that are there but empty.
+describe('a store that can no longer be read', () => {
+  const store = (): string => join(root, '.ezetta', 'history.git')
+  const emptyObjects = async (): Promise<void> => {
+    const objects = join(store(), 'objects')
+    for (const dir of await readdir(objects))
+      if (dir.length === 2)
+        for (const file of await readdir(join(objects, dir)))
+          await truncate(join(objects, dir, file), 0)
+  }
+  const aside = async (): Promise<string[]> =>
+    (await readdir(join(root, '.ezetta'))).filter((name) => name.startsWith('history-damaged-'))
+
+  it('is set aside, never deleted, and the versions go on in a new one', async () => {
+    await history().snapshot('named', 'Stand 1')
+    await emptyObjects()
+    await write('content/a/eins.typ', '= Eins\n\nMehr Text.\n')
+    const told: string[] = []
+    const h = new ProjectHistory(root, {
+      now: () => (clock += 60_000),
+      onSetAside: (folder) => told.push(folder),
+    })
+    const next = await h.snapshot('auto')
+    expect(next).not.toBeNull()
+    expect(await h.read(next!.id, 'content/a/eins.typ')).toContain('Mehr Text.')
+    expect(await h.list()).toHaveLength(1)
+    // The old store is beside the new one, whole, under a name that says what it is.
+    const kept = await aside()
+    expect(kept).toHaveLength(1)
+    expect(told).toEqual([join(root, '.ezetta', kept[0]!)])
+    expect(await readdir(join(root, '.ezetta', kept[0]!))).toContain('HEAD')
+    // And the versions after it are taken as always.
+    await write('content/a/eins.typ', '= Eins\n\nNoch mehr.\n')
+    expect(await h.snapshot('auto')).not.toBeNull()
+    expect(await h.list()).toHaveLength(2)
+    expect(await aside()).toHaveLength(1)
+  })
+
+  it('is set aside too when HEAD is empty or its objects are gone', async () => {
+    await history().snapshot('auto')
+    await truncate(join(store(), 'HEAD'), 0)
+    await write('content/a/eins.typ', 'zwei\n')
+    expect(await history().snapshot('auto')).not.toBeNull()
+    expect(await aside()).toHaveLength(1)
+
+    const objects = join(store(), 'objects')
+    for (const dir of await readdir(objects))
+      if (dir.length === 2) await rm(join(objects, dir), { recursive: true })
+    await write('content/a/eins.typ', 'drei\n')
+    expect(await history().snapshot('auto')).not.toBeNull()
+    expect(await aside()).toHaveLength(2)
+  })
+
+  it('a sound store is left alone when a version fails for another reason', async () => {
+    // A store that cannot be written to: a test of permissions, which Windows does not have this way.
+    if (process.platform === 'win32') return
+    const h = history()
+    await h.snapshot('auto')
+    const objects = join(store(), 'objects')
+    const told: string[] = []
+    const again = new ProjectHistory(root, {
+      now: () => (clock += 60_000),
+      onSetAside: (folder) => told.push(folder),
+    })
+    await write('content/a/eins.typ', 'zwei\n')
+    await chmod(objects, 0o555)
+    try {
+      await expect(again.snapshot('auto')).rejects.toBeDefined()
+    } finally {
+      await chmod(objects, 0o755)
+    }
+    expect(told).toEqual([])
+    expect(await aside()).toEqual([])
+    expect(await again.snapshot('auto')).not.toBeNull()
+    expect(await again.list()).toHaveLength(2)
+  })
+
+  it('an empty object file is written again, not taken for the object', async () => {
+    const h = history()
+    await write('content/a/eins.typ', 'eins\n')
+    await h.snapshot('auto')
+    await write('content/a/eins.typ', 'zwei\n')
+    await h.snapshot('auto')
+    // The object of the first text is emptied; the newest version does not need it.
+    const { oid } = await git.hashBlob({ object: new TextEncoder().encode('eins\n') })
+    await truncate(join(store(), 'objects', oid.slice(0, 2), oid.slice(2)), 0)
+    // The same text again: its object is needed, and the empty file must not stand in for it.
+    await write('content/a/eins.typ', 'eins\n')
+    const next = await h.snapshot('auto')
+    expect(await history().read(next!.id, 'content/a/eins.typ')).toBe('eins\n')
+    expect(await aside()).toEqual([])
   })
 })

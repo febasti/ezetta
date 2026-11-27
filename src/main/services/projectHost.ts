@@ -41,6 +41,8 @@ export interface ProjectHostDeps {
   /** The system dialog to pick a BibTeX file. */
   pickBibliographyFile: (title: string, filterName: string) => Promise<string | null>
   emitChanged: (payload: ProjectChangedDto) => void
+  /** The versions could not be read: they were set aside as `folder`, and new ones begun. */
+  emitVersionsSetAside?: (payload: { folder: string }) => void
   log: (message: string, cause?: unknown) => void
   watch?: typeof watchProject
   /** The versions of a project folder. Tests pass a fake. */
@@ -422,7 +424,12 @@ export class ProjectHost {
     const watcher = watch(root, (paths) => void this.onDiskChange(session, paths), {
       onError: (cause) => this.deps.log('watcher error', cause),
     })
-    const history = this.deps.history?.(root) ?? new ProjectHistory(root, { log: this.deps.log })
+    const history =
+      this.deps.history?.(root) ??
+      new ProjectHistory(root, {
+        log: this.deps.log,
+        onSetAside: (folder) => this.deps.emitVersionsSetAside?.({ folder: basename(folder) }),
+      })
     const backup = new ProjectBackup({
       root,
       title: () => session.title(),

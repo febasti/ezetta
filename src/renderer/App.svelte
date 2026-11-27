@@ -10,7 +10,8 @@
   import { project } from './features/sidebar/project.svelte'
   import Sidebar from './features/sidebar/Sidebar.svelte'
   import { allCommands, matches } from './lib/commands'
-  import { fittedWidths, ui } from './lib/ui.svelte'
+  import { fittedWidths, notify, ui } from './lib/ui.svelte'
+  import { i18n } from './i18n/i18n.svelte'
   import RightSidebar from './features/shell/RightSidebar.svelte'
   import ExportDialog from './features/export/ExportDialog.svelte'
   import { headingNumbering } from './features/export/numbering.svelte'
@@ -37,6 +38,10 @@
       if (project.snapshot) void backup.refresh()
     })
     window.api.on.app.settingsRequested(() => settings.show())
+    // Versions that could no longer be read: said once, and it stays long enough to be read.
+    window.api.on.history.setAside(({ folder }) =>
+      notify('error', i18n.t('history.setAside', { folder }), 30_000),
+    )
     return initAppMenu()
   })
 

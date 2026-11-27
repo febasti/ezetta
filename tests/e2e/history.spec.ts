@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rm, truncate, writeFile } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import fs, { existsSync } from 'node:fs'
 import { promisify } from 'node:util'
@@ -453,4 +453,35 @@ test.describe('the way back on a new computer', () => {
       await app.close()
     }
   })
+})
+
+test('versions that can no longer be read are set aside, a notice says so, and new ones are taken', async () => {
+  const store = join(sandbox.projectDir, '.ezetta', 'history.git')
+  const first = await open()
+  try {
+    await firstVersion(first.page)
+  } finally {
+    await first.app.close()
+  }
+  // What a crash of the computer can leave: the files of the store are there, and empty.
+  const objects = join(store, 'objects')
+  for (const dir of await readdir(objects))
+    if (dir.length === 2)
+      for (const file of await readdir(join(objects, dir)))
+        await truncate(join(objects, dir, file), 0)
+  await writeFile(join(sandbox.projectDir, SHEET), `${START}\nMehr.\n`)
+
+  const { app, page } = await open()
+  try {
+    await expect(page.getByRole('alert')).toContainText('ließen sich nicht mehr lesen', {
+      timeout: 15_000,
+    })
+    const names = await readdir(join(sandbox.projectDir, '.ezetta'))
+    const aside = names.filter((name) => name.startsWith('history-damaged-'))
+    expect(aside).toHaveLength(1)
+    await expect(page.getByRole('alert')).toContainText(aside[0]!)
+    await firstVersion(page)
+  } finally {
+    await app.close()
+  }
 })

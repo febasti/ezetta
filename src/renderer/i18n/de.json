@@ -229,6 +229,7 @@
   "cmd.toggleGroups": "Gruppen ein- oder ausblenden",
   "cmd.toggleSheets": "Abschnitte ein- oder ausblenden",
   "notice.dismiss": "Schließen",
+  "history.setAside": "Die bisherigen Versionen ließen sich nicht mehr lesen. Sie liegen jetzt im Projektordner unter .ezetta/{folder}; ab jetzt werden neue Versionen angelegt.",
   "failure.title": "Dieser Bereich konnte nicht angezeigt werden",
   "failure.text": "Der Fehler steht im Protokoll.",
   "failure.retry": "Erneut versuchen",

@@ -233,6 +233,7 @@ void app.whenReady().then(async () => {
     },
     emitChanged: (payload) => sendEvent(contents(), events.project.changed, payload),
     emitBackup: (status) => sendEvent(contents(), events.backup.changed, status),
+    emitVersionsSetAside: (payload) => sendEvent(contents(), events.history.setAside, payload),
     log,
   })
 
