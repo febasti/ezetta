@@ -22,10 +22,14 @@
     captionValues: Readonly<Record<string, unknown>>
     /** The control of one value of an element, as the panel draws it. */
     control: Snippet<[ElementDef, string]>
+    /** A value as a row of the panel: its name, or another one, and its control. */
+    row: Snippet<[ElementDef, string, boolean?, string?]>
+    /** Two values of two elements as one row of the panel, under one name. */
+    pair: Snippet<[string, [ElementDef, string], [ElementDef, string]]>
     /** The size of the table's type in centimetres, for the weight of the rules and the room in cells. */
     emCm: number
   }
-  let { element, caption, values, captionValues, control, emCm }: Props = $props()
+  let { element, caption, values, captionValues, control, row, pair, emCm }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const above = $derived(captionValues['caption_position'] !== 'below')
@@ -83,22 +87,14 @@
 
 <!-- The choices about the table as a whole, over the page. -->
 <div class="choices">
-  <div class="choice">
-    <span class="short">{propLabel(element.id, PROPS['border_style']!, lang)}</span>
-    {@render control(element, 'border_style')}
-  </div>
-  <div class="choice">
-    <span class="short">{i18n.t('templates.table.cells')}</span>
-    {@render control(element, 'cell_align')}
-  </div>
+  {@render row(element, 'border_style')}
+  {@render row(element, 'cell_align', false, i18n.t('templates.table.cells'))}
   <!-- The caption: where it stands, and where its lines stand. -->
-  <div class="choice">
-    <span class="short">{i18n.t('templates.figure.caption')}</span>
-    <div class="pair">
-      {@render control(caption, 'caption_position')}
-      {@render control(caption, 'align')}
-    </div>
-  </div>
+  {@render pair(
+    i18n.t('templates.figure.caption'),
+    [caption, 'caption_position'],
+    [caption, 'align'],
+  )}
 </div>
 
 <div class="desk">
@@ -145,21 +141,10 @@
 </div>
 
 <style>
+  /* The choices over the page: rows, as the values under it are. */
   .choices {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: var(--sp-8) var(--sp-12);
-  }
-  .choice {
-    display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: var(--sp-4);
-  }
-  .pair {
-    display: flex;
     gap: var(--sp-8);
   }
   /* The page lies on the panel's ground, as on a desk. */
@@ -206,7 +191,7 @@
     background: var(--color-accent);
   }
   .field {
-    width: 96px;
+    min-width: 96px;
   }
   .short {
     color: var(--color-label-secondary);

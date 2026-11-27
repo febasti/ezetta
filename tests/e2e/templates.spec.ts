@@ -46,6 +46,15 @@ async function choose(page: Page, name: string) {
   for (let i = 0; i < count && !(await entry.isVisible()); i += 1)
     if ((await groups.nth(i).getAttribute('aria-expanded')) === 'false') await groups.nth(i).click()
   await entry.click()
+  await unfold(page)
+}
+/**
+ * Opens the sections of the properties that are closed: a page starts with its first section open
+ * and the others as one line each, and the tests are about the values in them.
+ */
+async function unfold(page: Page) {
+  const closed = editor(page).locator('.properties button.fold[aria-expanded="false"]')
+  for (let i = 0; i < 20 && (await closed.count()) > 0; i += 1) await closed.first().click()
 }
 /** The button of a built-in template's note; the menu of a template offers the same. */
 const copyButton = (page: Page) => editor(page).getByRole('button', { name: 'Kopie anlegen …' })
@@ -1721,4 +1730,34 @@ test('footnotes can be printed as margin notes, in the Tufte style', async () =>
   } finally {
     await app.close()
   }
+})
+
+test('a section of the properties folds to a line that says what it holds', async () => {
+  const { app, page } = await open()
+  await openEditor(page)
+  await makeCopy(page, 'Gefaltet')
+  // Chosen without the helper, which opens every section.
+  const nav = editor(page).getByRole('navigation', { name: 'Elemente' })
+  await nav.getByRole('button', { name: 'Überschriften', exact: true }).click()
+  await nav.getByRole('button', { name: 'Überschrift 2', exact: true }).click()
+  const properties = editor(page).locator('.columns > .properties')
+
+  // A closed section is one line with what it holds. (Which sections are open is remembered from
+  // one start to the next, so the test closes the one it is about.)
+  const arrangement = properties.getByRole('button', { name: /^Anordnung/ })
+  if ((await arrangement.getAttribute('aria-expanded')) === 'true') await arrangement.click()
+  await expect(arrangement).toHaveAttribute('aria-expanded', 'false')
+  await expect(arrangement.locator('.summary')).toContainText('Abstand davor')
+  await expect(properties.getByLabel('Abstand davor')).toHaveCount(0)
+
+  // Opened, it shows its values, and stays open on another heading.
+  await arrangement.click()
+  await expect(properties.getByLabel('Abstand davor')).toBeVisible()
+  await nav.getByRole('button', { name: 'Überschrift 3', exact: true }).click()
+  await expect(properties.getByRole('button', { name: /^Anordnung/ })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  )
+
+  await app.close()
 })

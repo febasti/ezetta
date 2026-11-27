@@ -13,6 +13,7 @@
   import ExportPanel from './ExportPanel.svelte'
   import PreviewPane from './PreviewPane.svelte'
   import { EXPORT, OPTIONS, exporting } from './export.svelte'
+  import { EXPORT_ICON, GROUP_ICONS, OPTIONS_ICON } from './groupIcons'
   import TemplateList from './TemplateList.svelte'
   import { scrollbar } from '../../ui/scrollbar'
 
@@ -26,21 +27,6 @@
     const group = ELEMENTS.find((e) => e.id === exporting.elementId)?.group
     if (group) expanded = group
   })
-  /** A symbol for each group, which is also the symbol of its only entry. */
-  const GROUP_ICONS: Record<string, IconName> = {
-    page: 'layout',
-    title: 'file',
-    text: 'typography',
-    headings: 'heading',
-    lists: 'list',
-    quotes: 'quote',
-    references: 'link',
-    indexes: 'book',
-    tables: 'table',
-    figures: 'image',
-    equations: 'formula',
-    code: 'code',
-  }
 
   // The pages follow the profile: another template, an option, the citation style.
   $effect(() => {
@@ -141,7 +127,7 @@
       <nav class="elements" use:scrollbar aria-label={i18n.t('templates.elements')}>
         <h3>{i18n.t('export.group')}</h3>
         {@render row(
-          'file-export',
+          EXPORT_ICON,
           i18n.t('export.panel'),
           panel === EXPORT,
           exporting.openCount > 0 ? exporting.openCount : null,
@@ -190,7 +176,7 @@
         {/each}
         <h3>{i18n.t('templates.options.group')}</h3>
         {@render row(
-          'adjustments',
+          OPTIONS_ICON,
           i18n.t('templates.options'),
           panel === OPTIONS,
           null,
@@ -280,7 +266,7 @@
   /* The properties take a third of a wide window, so their names fit on one line; the pages keep the rest. */
   .properties {
     flex: none;
-    width: clamp(380px, 32vw, 460px);
+    width: clamp(404px, 34vw, 484px);
     min-height: 0;
     overflow-y: auto;
     padding-right: var(--sp-8);

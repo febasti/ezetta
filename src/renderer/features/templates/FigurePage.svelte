@@ -23,10 +23,14 @@
     captionValues: Readonly<Record<string, unknown>>
     /** The control of one value of an element, as the panel draws it. */
     control: Snippet<[ElementDef, string]>
+    /** A value as a row of the panel: its name, or another one, and its control. */
+    row: Snippet<[ElementDef, string, boolean?, string?]>
+    /** Two values of two elements as one row of the panel, under one name. */
+    pair: Snippet<[string, [ElementDef, string], [ElementDef, string]]>
     /** The size of the type in centimetres, for the thickness of the frame in em. */
     emCm: number
   }
-  let { element, caption, values, captionValues, control, emCm }: Props = $props()
+  let { element, caption, values, captionValues, control, row, pair, emCm }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const place = (v: unknown): string =>
@@ -61,18 +65,13 @@
 
 <!-- The choices over the page: the caption's position and alignment, and the figure's alignment. -->
 <div class="choices">
-  <div class="choice figure">
-    <span class="short">{propLabel(element.id, PROPS['align']!, lang)}</span>
-    {@render control(element, 'align')}
-  </div>
+  {@render row(element, 'align')}
   <!-- The caption: where it stands, and where its lines stand. -->
-  <div class="choice">
-    <span class="short">{i18n.t('templates.figure.caption')}</span>
-    <div class="pair">
-      {@render control(caption, 'caption_position')}
-      {@render control(caption, 'align')}
-    </div>
-  </div>
+  {@render pair(
+    i18n.t('templates.figure.caption'),
+    [caption, 'caption_position'],
+    [caption, 'align'],
+  )}
 </div>
 
 <div class="desk">
@@ -109,24 +108,10 @@
 </div>
 
 <style>
+  /* The choices over the page: rows, as the values under it are. */
   .choices {
     display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: var(--sp-12);
-  }
-  .choice {
-    display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: var(--sp-4);
-  }
-  /* The figure's own alignment comes after the caption's choices on the page, first in the order of the panel. */
-  .choice.figure {
-    order: 2;
-  }
-  .pair {
-    display: flex;
     gap: var(--sp-8);
   }
   /* The page lies on the panel's ground, as on a desk. */
@@ -173,7 +158,7 @@
     background: var(--color-accent);
   }
   .field {
-    width: 96px;
+    min-width: 96px;
   }
   .short {
     color: var(--color-label-secondary);

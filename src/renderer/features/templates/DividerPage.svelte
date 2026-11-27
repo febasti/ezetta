@@ -127,7 +127,7 @@
     background: var(--color-accent);
   }
   .field {
-    width: 96px;
+    min-width: 96px;
   }
   .short {
     color: var(--color-label-secondary);

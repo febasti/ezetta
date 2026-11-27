@@ -12,10 +12,11 @@
     isModifier,
     isShown,
   } from '@core/export/elements'
-  import { checkValue } from '@core/export/style'
+  import { COLOR_TOKENS, checkValue } from '@core/export/style'
   import { INHERIT } from '@core/export/custom'
   import { headingNumberingOf } from '@core/export/numbering'
   import { exporting as editor, EXPORT, OPTIONS } from '../export/export.svelte'
+  import { GROUP_ICONS, OPTIONS_ICON } from '../export/groupIcons'
   import DocumentField from '../export/DocumentField.svelte'
   import Link from '../../ui/kit/Link.svelte'
   import { elementFont, findFamily, hasItalic, hasWeight } from '@core/export/fonts'
@@ -42,9 +43,10 @@
     lengthCm,
     measureCm,
     panelLayout,
+    placedProps,
     words,
   } from './schematics'
-  import type { Field, Schematic } from './schematics'
+  import type { Field, PanelGroup, Schematic } from './schematics'
   import { numberIn } from '@core/export/template'
   import { fontProblemText } from './fontProblems'
   import type { ElementDef, PropDef } from '@core/export/elements'
@@ -72,6 +74,8 @@
   import EpigraphPage from './EpigraphPage.svelte'
   import DividerPage from './DividerPage.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
+  import FoldSection from './FoldSection.svelte'
+  import { isOpen, setOpen } from './folds.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Segmented from '../../ui/kit/Segmented.svelte'
   import Select from '../../ui/kit/Select.svelte'
@@ -145,11 +149,6 @@
   /** The value whose field is pointed at or has the focus, so its drawing marks it brighter. */
   let hot = $state<{ element: string; prop: string } | null>(null)
   const hotIn = (el: ElementDef): string | null => (hot?.element === el.id ? hot.prop : null)
-  /** Where a part stands on the page, for its name: left, centre or right. */
-  const partAlign = (el: ElementDef): string | undefined => {
-    const a = valuesOf(el)['align']
-    return a === 'center' || a === 'right' ? a : a === 'left' ? 'left' : undefined
-  }
   /** The fields of a drawing that the element's values let show (the size only for a custom paper). */
   const placedIn = (s: Schematic, values: Readonly<Record<string, unknown>>) =>
     Object.entries(s.places).filter(([, at]) => isShown(at!.prop, values)) as [string, Field][]
@@ -187,6 +186,57 @@
   /** Whether a value is taken from above now: unset here, and something above gives it. */
   const inheritsNow = (el: ElementDef, prop: string): boolean =>
     !explicit(el, prop) && canInherit(el, prop)
+  /** All values of a section: the rows and what its drawings place, in the element's order. */
+  const idsOf = (el: ElementDef, group: PanelGroup): string[] => {
+    const mine = new Set([...group.ids, ...group.schematics.flatMap(placedProps)])
+    return el.props.filter((id) => mine.has(id))
+  }
+  /** A length or a factor with the language's decimal mark. */
+  const localNumber = (text: string): string => (lang === 'de' ? text.replace('.', ',') : text)
+  /**
+   * What a section holds, in one line, for while it is closed: its values as they apply, in the
+   * order of its rows. The type speaks for itself ("Libertinus Serif · 2 em · Fett"); elsewhere a
+   * number, a colour or a text has its name before it ("Abstand davor 1,5 em"). What is off or not
+   * there is left out.
+   */
+  function summaryOf(el: ElementDef, group: PanelGroup): string {
+    const values = valuesOf(el)
+    const parts: string[] = []
+    for (const id of idsOf(el, group)) {
+      const def = PROPS[id]!
+      const value = values[id] ?? null
+      if (!isShown(id, values) || value === null || value === '' || value === false) continue
+      if (def.type === 'bool') {
+        parts.push(propLabel(el.id, def, lang))
+        continue
+      }
+      if (def.type === 'enum') {
+        if (value !== 'none') parts.push(def.valueLabels?.[String(value)]?.[lang] ?? String(value))
+        continue
+      }
+      const text =
+        def.type === 'color'
+          ? (COLOR_TOKENS.find((token) => token.id === value)?.[lang] ?? String(value))
+          : def.type === 'length' || def.type === 'factor'
+            ? localNumber(String(value)).replace(/^(-?[\d.,]+)([a-z%]+)$/, '$1 $2')
+            : String(value)
+      parts.push(
+        group.id === 'type' && def.type !== 'factor'
+          ? text
+          : `${propLabel(el.id, def, lang)} ${text}`,
+      )
+    }
+    // As many as fit on the line whole; that there are more is said, not shown as a cut word.
+    const fit: string[] = []
+    let room = 34
+    for (const part of parts) {
+      if (fit.length > 0 && part.length + 3 > room) break
+      fit.push(part)
+      room -= part.length + 3
+    }
+    if (fit.length === 0) return i18n.t('templates.summary.none')
+    return fit.join(' · ') + (fit.length < parts.length ? ' …' : '')
+  }
   /** What a label says about its value when pointed at: where it comes from, while it is taken from there. */
   const origin = (el: ElementDef, prop: string): string | undefined =>
     inheritsNow(el, prop)
@@ -199,8 +249,7 @@
     const def = PROPS[prop]!
     if (def.type === 'enum') return def.valueLabels?.[String(value)]?.[lang] ?? String(value)
     if (def.type === 'length' || def.type === 'factor') {
-      const text = String(value)
-      return lang === 'de' ? text.replace('.', ',') : text
+      return localNumber(String(value))
     }
     return String(value)
   }
@@ -256,10 +305,12 @@
             : field === 'hyphenate'
               ? i18n.t('export.hyphenate')
               : i18n.t('export.citationStyle')
-        return [{ field, label }]
+        return [{ field, label, bool: field === 'hyphenate' }]
       }
       const option = exportTemplate?.options.find((o) => o.id === field.slice('option:'.length))
-      return option && !option.hidden ? [{ field, label: option.label[lang] }] : []
+      return option && !option.hidden
+        ? [{ field, label: option.label[lang], bool: option.type === 'bool' }]
+        : []
     }),
   )
 
@@ -510,28 +561,68 @@
   {/if}
 {/snippet}
 
-{#snippet row(element: ElementDef, id: string, stacked = false)}
+{#snippet row(element: ElementDef, id: string, stacked = false, name?: string)}
   {@const def = PROPS[id]!}
   {@const key = `${element.id}.${id}`}
   {@const control = `prop-${element.id}-${id}`}
-  <div
-    class="row"
-    class:stacked
-    class:inherited={inheritsNow(element, id)}
-    class:refused={editor.refused === key}
-  >
-    <label for={control} title={origin(element, id)}>{propLabel(element.id, def, lang)}</label>
-    <div class="control" title={origin(element, id)}>
-      {@render controlOf(element, id)}
-      {@render revertOf(element, id)}
+  {#if def.type === 'bool' && !TOGGLE_ICONS[id] && id !== 'justify'}
+    <!-- A switch is a box with its name after it, flush with the names of the other rows. Under a
+         group's name it shows a short one and keeps its whole name for screen readers. -->
+    <div class="row check">
+      <Checkbox
+        id={control}
+        label={name ? propLabel(element.id, def, lang) : undefined}
+        checked={valuesOf(element)[id] === true}
+        disabled={readOnly}
+        onchange={(on) => void editor.set(element.id, id, on)}
+        >{name ?? propLabel(element.id, def, lang)}</Checkbox
+      >
     </div>
-    {#if editor.refused === key}
-      <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
-    {/if}
-    {#if problemFor(element, id)}
-      {@const problem = problemFor(element, id)!}
-      <p class="missing">{fontProblemText(problem)}</p>
-    {/if}
+  {:else}
+    <div
+      class="row"
+      class:stacked
+      class:inherited={inheritsNow(element, id)}
+      class:refused={editor.refused === key}
+    >
+      <label for={control} title={origin(element, id)}
+        >{name ?? propLabel(element.id, def, lang)}</label
+      >
+      <div class="control" title={origin(element, id)}>
+        <!-- A number takes half of the line, as in a line it shares; anything else all of it. -->
+        <span class="cell {def.type}">
+          {@render controlOf(element, id)}
+          {@render revertOf(element, id, true)}
+        </span>
+      </div>
+      {#if editor.refused === key}
+        <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
+      {/if}
+      {#if problemFor(element, id)}
+        {@const problem = problemFor(element, id)!}
+        <p class="missing">{fontProblemText(problem)}</p>
+      {/if}
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet pair(name: string, first: [ElementDef, string], second: [ElementDef, string])}
+  <!-- Two values of two elements under one name (where a caption stands, and how its lines are set):
+       the two halves of a line, as the values of one element share one. -->
+  <div class="row">
+    <span class="label">{name}</span>
+    <div class="control together" role="group" aria-label={name}>
+      {#each [first, second] as [owner, id] (`${owner.id}.${id}`)}
+        <span
+          class="part {PROPS[id]!.type}"
+          class:inherited={inheritsNow(owner, id)}
+          title={origin(owner, id)}
+        >
+          {@render controlOf(owner, id)}
+          {@render revertOf(owner, id, true)}
+        </span>
+      {/each}
+    </div>
   </div>
 {/snippet}
 
@@ -548,12 +639,13 @@
   {/if}
 {/snippet}
 
-{#snippet revertOf(element: ElementDef, id: string)}
+{#snippet revertOf(element: ElementDef, id: string, place = false)}
   <!-- A value taken from above shows in the quieter tone of an empty field; typing sets it here.
        A value set here has a button after it that takes it from above again, and says what it
        brings back ("Zurück zu 1,4 em („Alle Überschriften“)"). A template that comes with the app
        cannot be changed, so it has none. Its room is kept while the value is taken from above, so
-       the field does not move when it comes. -->
+       the field does not move when it comes; in a row (`place`) it is kept for every value, so the
+       fields of all rows end on one line. -->
   {#if !readOnly && canInherit(element, id)}
     <span class="revert" class:away={!explicit(element, id)}>
       <IconButton
@@ -563,11 +655,16 @@
         onclick={() => void editor.set(element.id, id, INHERIT)}
       />
     </span>
+  {:else if place}
+    <span class="gutter"></span>
   {/if}
 {/snippet}
 
 {#snippet together(element: ElementDef, line: PanelLine)}
-  <!-- Values that belong together, side by side under one name (the size with the line spacing). -->
+  {@const toggles = line.props.some((id) => TOGGLE_ICONS[id] !== undefined)}
+  <!-- Values that belong together, side by side under one name (the size with the line spacing):
+       two halves of the line, each a field and the place of its way back. A line with switches (the
+       weight with italic and underline) is the menu, then the switches, then the menu's way back. -->
   <div
     class="row"
     class:inherited={line.props.every((id) => inheritsNow(element, id))}
@@ -576,14 +673,13 @@
     <label for="prop-{element.id}-{line.props[0]}" title={origin(element, line.props[0]!)}
       >{line.shared![lang]}</label
     >
-    <div class="control together">
+    <div class="control together" class:toggles>
       {#each line.props as id (id)}
         <span
           class="part {PROPS[id]!.type}"
           class:glyph={GLYPHS[id] !== undefined}
           class:own={explicit(element, id)}
           class:inherited={inheritsNow(element, id)}
-          class:end={id === 'hyphenate'}
           title={origin(element, id)}
         >
           {#if FIELD_ICONS[id]}
@@ -592,9 +688,14 @@
             </span>
           {/if}
           {@render controlOf(element, id)}
-          {@render revertOf(element, id)}
+          {#if !toggles}{@render revertOf(element, id, true)}{/if}
         </span>
       {/each}
+      {#if toggles}
+        {#each line.props.filter((id) => PROPS[id]!.type !== 'bool') as id (id)}
+          {@render revertOf(element, id, true)}
+        {/each}
+      {/if}
     </div>
     {#if line.props.some((id) => editor.refused === `${element.id}.${id}`)}
       <p class="invalid" role="alert">{i18n.t('templates.invalid')}</p>
@@ -677,10 +778,12 @@
 {/snippet}
 
 {#snippet lineLook(element: ElementDef)}
-  <!-- What the divider looks like: its values as rows, under its switch on the page. -->
+  <!-- What the divider looks like: its values as rows under the page, named by its switch. -->
+  <h5 class="subhead">{propLabel(element.id, PROPS['divider']!, lang)}</h5>
   <div class="rows">
     {#each ['divider_color', 'divider_thickness', 'divider_gap'] as id (id)}
-      {@render row(element, id)}
+      <!-- Under the divider's name the values need no "of the line". -->
+      {@render row(element, id, false, PROPS[id]![lang])}
     {/each}
   </div>
 {/snippet}
@@ -708,7 +811,8 @@
 {/snippet}
 
 {#snippet headingLine(element: ElementDef, side: 'above' | 'below')}
-  <!-- What a line of the heading looks like: its values as rows, under its switch on the page. -->
+  <!-- What a line of the heading looks like: its values as rows under the page, named by its switch. -->
+  <h5 class="subhead">{propLabel(element.id, PROPS[`line_${side}`]!, lang)}</h5>
   <div class="rows">
     {#each ['color', 'thickness', 'width', 'distance'] as field (field)}
       {@render row(element, `line_${side}_${field}`)}
@@ -729,7 +833,7 @@
   <!-- The sides that have a line, as four switches in one row, and what the lines look like. -->
   <div class="row">
     <span class="label">{i18n.t('templates.quote.lines')}</span>
-    <div class="control sides" role="group" aria-label={i18n.t('templates.quote.lines')}>
+    <div class="control plain sides" role="group" aria-label={i18n.t('templates.quote.lines')}>
       {#each ['border_top', 'border_bottom', 'border_left', 'border_right'] as id (id)}
         <Checkbox
           checked={values[id] === true}
@@ -750,12 +854,20 @@
 {/snippet}
 
 {#snippet tableValues(element: ElementDef)}
-  <!-- The values of a table that are not a place on its page: its grounds, its bold header, its
-       rules, its cells, as rows. -->
+  <!-- The values of a table that are not a place on its page, as rows in two groups: what the
+       header row looks like, and the rows and cells under it. Under the group's name a value has a
+       short one. -->
+  <h5 class="subhead">{i18n.t('templates.table.head')}</h5>
   <div class="rows">
-    {#each ['header_fill', 'stripe_fill', 'header_bold', 'rule_strong_width', 'rule_width', 'inset'] as id (id)}
-      {@render row(element, id)}
-    {/each}
+    {@render row(element, 'header_fill', false, i18n.t('templates.table.ground'))}
+    {@render row(element, 'rule_strong_width', false, i18n.t('templates.table.rule'))}
+    {@render row(element, 'header_bold', false, i18n.t('templates.table.bold'))}
+  </div>
+  <h5 class="subhead">{i18n.t('templates.table.body')}</h5>
+  <div class="rows">
+    {@render row(element, 'stripe_fill', false, i18n.t('templates.table.stripes'))}
+    {@render row(element, 'rule_width', false, i18n.t('templates.table.rule'))}
+    {@render row(element, 'inset')}
   </div>
 {/snippet}
 
@@ -804,20 +916,39 @@
     {@const shown = group.ids.filter((id) => isShown(id, values) && !custom.includes(id))}
     {@const drawn = group.schematics.filter((s) => placedIn(s, values).length > 0)}
     {@const running = !!RUNNING[element.id] && group.ids.some((id) => custom.includes(id))}
-    <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left out. -->
+    <!-- A group whose properties are all hidden for now (the rule of footnotes in the margin) is left
+         out, and so is one the template sets nothing in while only the set values are listed. -->
     {#if shown.length > 0 || drawn.length > 0 || running || paragraphs || headings || quotes || quoteFill || quoteBorder || epigraphs || dividers || lists || pageSetup || figurePage || framePage || tablePage || notesPage}
       {@const colourOnly =
         group.id === 'type' && group.ids.length === 1 && group.ids[0] === 'color'}
       <!-- A type group with nothing but the colour (a list's text) is the text's colour: no sample of
            a type the element does not set. -->
-      <Section
+      <FoldSection
         title={shape.titled
           ? colourOnly
             ? i18n.t('templates.section.text')
             : group[lang]
           : undefined}
-        level={4}
-        region={false}
+        summary={summaryOf(element, group)}
+        open={isOpen(
+          group.id,
+          group === shape.groups[0] ||
+            drawn.length > 0 ||
+            running ||
+            paragraphs ||
+            headings ||
+            quotes ||
+            epigraphs ||
+            dividers ||
+            lists ||
+            pageSetup ||
+            figurePage ||
+            framePage ||
+            tablePage ||
+            notesPage,
+        )}
+        foldable={!only}
+        ontoggle={(open) => setOpen(group.id, open)}
       >
         {#if group.id === 'type' && !colourOnly}
           <!-- A line of sample text in the type of the element, as the style resolves it. -->
@@ -836,6 +967,7 @@
             {element}
             {values}
             control={controlHere}
+            {row}
             measure={measureCm(editor.resolved['page'] ?? {})}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
           />
@@ -850,6 +982,8 @@
             {values}
             captionValues={valuesOf(caption)}
             control={controlHere}
+            {row}
+            {pair}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
           />
           {@render tableValues(element)}
@@ -863,6 +997,8 @@
             {values}
             captionValues={valuesOf(caption)}
             control={controlHere}
+            {row}
+            {pair}
             emCm={bodyCm()}
           />
         {/if}
@@ -877,6 +1013,7 @@
             {values}
             binding={editor.profile?.binding ?? null}
             control={controlHere}
+            {row}
           />
         {/if}
         {#if lists}
@@ -922,12 +1059,17 @@
             {element}
             {values}
             control={controlHere}
+            {row}
             refused={editor.refused}
             numbering={headingNumberingOf(editor.resolved)}
             measure={measureCm(editor.resolved['page'] ?? {})}
             emCm={lengthCm(values['size'], bodyCm()) ?? bodyCm()}
-            look={headingLine}
           />
+          {#each ['above', 'below'] as const as side (side)}
+            {#if element.props.includes(`line_${side}`) && values[`line_${side}`] === true}
+              {@render headingLine(element, side)}
+            {/if}
+          {/each}
         {/if}
         {#if paragraphs}
           <!-- The body text: two paragraphs, each value where it is set on them. -->
@@ -936,14 +1078,8 @@
         {/if}
         {#if running}
           <!-- A header or a footer: a page with its places, where they are on it. -->
-          <RunningLine
-            {element}
-            {values}
-            facing={facing(element)}
-            control={controlHere}
-            {space}
-            look={lineLook}
-          />
+          <RunningLine {element} {values} facing={facing(element)} control={controlHere} {space} />
+          {#if values['divider'] === true}{@render lineLook(element)}{/if}
           {@render runningOptions(element)}
         {/if}
         <div class="rows">
@@ -960,7 +1096,7 @@
             {@render drawing(element, schematic)}
           {/each}
         {/if}
-      </Section>
+      </FoldSection>
     {/if}
   {/each}
   {#each shape.lines.filter( (l) => (l.toggle === 'divider' ? !RUNNING[element.id] : !HEADINGS[element.id]) ) as section (section.toggle)}
@@ -986,7 +1122,7 @@
 {/snippet}
 
 {#if detail && only}
-  <div class="properties">
+  <div class="properties only">
     {#each members as member (member.id)}
       {@render sections(member)}
     {/each}
@@ -994,7 +1130,10 @@
 {:else if detail}
   {#if showOptions}
     <section class="properties" aria-label={i18n.t('templates.options')}>
-      <h3 class="title">{i18n.t('templates.options')}</h3>
+      <header class="head">
+        <Icon name={OPTIONS_ICON} size={16} />
+        <h3 class="title">{i18n.t('templates.options')}</h3>
+      </header>
       {#if readOnly}
         <ReadonlyNote />
       {:else}
@@ -1064,24 +1203,30 @@
     </section>
   {:else}
     <section class="properties" aria-label={element[lang]}>
-      <h3 class="title">{element[lang]}</h3>
+      <header class="head">
+        <Icon name={GROUP_ICONS[element.group] ?? 'file'} size={16} />
+        <h3 class="title">{element[lang]}</h3>
+      </header>
       {#if documentFields.length > 0}
         <!-- What this document sets about the element, whichever template it uses: a section of
              its own above the template's, as "Dokument einrichten" has them. -->
         <Section title={i18n.t('templates.document.title')} level={4}>
-          <p class="short note">
-            {i18n.t('templates.document.hint')}
+          {#snippet action()}
             <Link onclick={() => (editor.elementId = EXPORT)}>{i18n.t('export.panel')}</Link>
-          </p>
-          <div class="rows document">
-            {#each documentFields as { field, label } (field)}
+          {/snippet}
+          <div class="rows">
+            {#each documentFields as { field, label, bool } (field)}
               {@const control = `document-${element.id}-${field.replace(':', '-')}`}
-              <div class="row">
-                <label for={control}>{label}</label>
-                <div class="control">
-                  <DocumentField {field} id={control} {label} />
+              {#if bool}
+                <div class="row check"><DocumentField {field} id={control} named /></div>
+              {:else}
+                <div class="row">
+                  <label for={control}>{label}</label>
+                  <div class="control plain document">
+                    <DocumentField {field} id={control} {label} />
+                  </div>
                 </div>
-              </div>
+              {/if}
             {/each}
           </div>
         </Section>
@@ -1101,32 +1246,42 @@
       {#each members as member, index (member.id)}
         {@const { gap, head } = panelLayout(member)}
         {@const open = index === 0 || partOpen(member)}
-        <!-- A part of the element (a caption, a part of the title page): a line above it, then the
-             space above it where there is one, then its name, standing where the part stands on the
-             page, with that place beside it. A part opens and closes by its name, so a page of
-             many parts stays short. -->
-        <div class:member={index > 0}>
-          {#if gap && isShown(gap, valuesOf(member))}
-            {@render space(member, gap)}
-          {/if}
-          {#if index > 0}
-            <div class="sub-line">
-              <h3 class="sub" style:text-align={partAlign(member)}>
-                <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a part's name that opens and closes it, a heading with its chevron: the kit has no disclosure -->
-                <button
-                  type="button"
-                  class="disclose"
-                  aria-expanded={open}
-                  onclick={() => (openParts[member.id] = !open)}
-                >
-                  <Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} />
-                  {member[lang]}
-                </button>
-              </h3>
-              {#if head}{@render controlOf(member, head)}{/if}
-            </div>
-          {/if}
-        </div>
+        {@const spaced = gap !== undefined && isShown(gap, valuesOf(member))}
+        <!-- A part of the element (a caption, a part of the title page) is a line of its own under a
+             hairline: its name, which opens and closes it, so a page of many parts stays short, and
+             at the end of the line the space above the part and where it stands on the page. The
+             parts of a page are a list this way, their values in columns. -->
+        {#if index === 0}
+          {#if spaced}<div class="rows lead">{@render row(member, gap!)}</div>{/if}
+        {:else}
+          <div class="member">
+            <h3 class="sub">
+              <!-- eslint-disable-next-line svelte/no-restricted-html-elements -- a part's name that opens and closes it, a heading with its chevron: the kit has no disclosure -->
+              <button
+                type="button"
+                class="disclose"
+                aria-expanded={open}
+                onclick={() => (openParts[member.id] = !open)}
+              >
+                <Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} />
+                {member[lang]}
+              </button>
+            </h3>
+            {#if spaced}
+              <span
+                class="above"
+                class:inherited={inheritsNow(member, gap!)}
+                title={propLabel(member.id, PROPS[gap!]!, lang)}
+              >
+                <svg class="span" viewBox="0 0 12 20" width="12" height="20" aria-hidden="true">
+                  <path d="M2 0.5H10M6 0.5V19.5M2 19.5H10" />
+                </svg>
+                {@render controlHere(member, gap!)}
+              </span>
+            {/if}
+            {#if head}{@render controlOf(member, head)}{/if}
+          </div>
+        {/if}
         {#if open}{@render sections(member)}{/if}
       {/each}
     </section>
@@ -1134,40 +1289,91 @@
 {/if}
 
 <style>
+  /* The panel keeps a margin at its right, where the buttons stand that take a value from above
+     again: the fields, the drawings and the lines between the sections end on one edge, left of it.
+     Alone among another panel's sections (`only`), that panel keeps the margin. */
   .properties {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    padding-right: var(--sp-24);
+  }
+  .properties.only {
+    padding-right: 0;
+  }
+  /* The name of the panel stays in sight while its values scroll under it, a hairline below it. It
+     reaches over the margin at the right, so nothing shows beside it. */
+  .head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-8);
+    margin-right: calc(-1 * var(--sp-24));
+    padding: 0 var(--sp-24) var(--sp-12) 0;
+    background: var(--color-window);
+    color: var(--color-label-secondary);
+  }
+  .head::after {
+    content: '';
+    position: absolute;
+    right: var(--sp-24);
+    bottom: 0;
+    left: 0;
+    border-bottom: 1px solid var(--color-separator);
+  }
+  .head + :global(*) {
+    margin-top: var(--sp-16);
   }
   .title {
-    margin: 0 0 var(--sp-16);
+    margin: 0;
     color: var(--color-label);
     font: var(--type-title);
+  }
+  /* What names the rows under it, where a section holds more than one group of them. */
+  .subhead {
+    margin: var(--sp-8) 0 0;
+    color: var(--color-label-secondary);
+    font: var(--type-caption);
   }
   .properties > :global(.callout) {
     margin-bottom: var(--sp-16);
   }
-  /* The document's own settings: under their hint. */
-  .rows.document {
-    margin-top: var(--sp-8);
+  /* The space above the element itself, before its sections. */
+  .rows.lead {
+    margin-bottom: var(--sp-16);
   }
-  /* The part of an element shown under it (the source of an epigraph, a caption). */
+  /* A part of an element shown under it (the source of an epigraph, a caption): a line under a
+     hairline, its name first, then the space above it and where it stands. */
   .member {
-    margin: var(--sp-16) 0 var(--sp-8);
-    padding-top: var(--sp-8);
-    border-top: 1px solid var(--color-separator);
-  }
-  .sub-line {
     display: flex;
     align-items: center;
     gap: var(--sp-8);
-    margin-top: var(--sp-8);
+    min-height: var(--control-md);
+    padding: var(--sp-12) 0;
+    border-top: 1px solid var(--color-separator);
+  }
+  .member + :global(.section) {
+    padding-top: var(--sp-4);
   }
   .sub {
     flex: 1;
+    min-width: 0;
     margin: 0;
     color: var(--color-label);
     font: var(--type-title);
+  }
+  .above {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: var(--sp-4);
+  }
+  .above .span path {
+    fill: none;
+    stroke: var(--color-accent);
+    stroke-width: 1;
   }
   /* A part's name opens and closes it: the name with a chevron before it, as wide as it is. */
   .disclose {
@@ -1215,53 +1421,54 @@
   .space.inherited .short {
     color: var(--color-label-tertiary);
   }
-  /* Values side by side in one line: the fields as wide as their numbers, a menu the rest. */
-  .together {
+  /* A line of controls is two halves. A cell is a field and, after it, the place of the button that
+     takes the value from above again: kept for every value, so all fields end on one line. */
+  .control {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--sp-4);
+    align-items: start;
+    min-width: 0;
   }
+  .cell,
   .part {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
+    display: flex;
+    align-items: flex-start;
     gap: 2px;
     min-width: 0;
   }
-  .part.length {
-    width: 84px;
+  /* One value has the whole line; a number's field is as wide as half of it, under the numbers of
+     the lines above, and its way back stands at the end of the line like every other. */
+  .cell {
+    grid-column: 1 / -1;
   }
-  .part.factor {
-    width: 68px;
+  .cell.length > :global(.length),
+  .cell.factor > :global(.length) {
+    flex: none;
+    width: calc((100% - var(--sp-24) - var(--sp-24) - var(--sp-4)) / 2);
   }
-  .part.factor:has(.field-icon),
-  .part.length:has(.field-icon) {
-    width: 100px;
+  .cell:not(.length, .factor) > :global(:is(.select, .text-field, .length, .font-picker)),
+  .part > :global(:is(.select, .text-field, .length)) {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+  /* A line with switches: the menu takes what the switches leave. */
+  .control.toggles {
+    display: flex;
+    align-items: center;
+  }
+  .toggles .part.enum {
+    flex: 1;
   }
   .part :global(.segmented button) {
     padding: 0 var(--sp-8);
   }
-  .part.enum {
-    flex: 1;
-  }
-  /* A choice drawn as pictures is as wide as they are. */
-  .part.glyph {
-    flex: none;
-  }
-  /* A switch that ends a line stands at its end, its name after it. */
-  .part.end {
-    margin-left: auto;
-  }
-  .switch-after :global(.switch) {
-    flex-direction: row-reverse;
-    gap: var(--sp-8);
-  }
-  .part :global(.text-field),
-  .part :global(.select) {
-    width: 100%;
-    min-width: 0;
-  }
   .field-icon {
     display: inline-flex;
     flex: none;
+    align-items: center;
+    height: var(--control-md);
     color: var(--color-label-tertiary);
   }
   /* A drawing with the fields around it: three columns, the drawing in the middle. */
@@ -1383,66 +1590,35 @@
     flex-direction: column;
     gap: var(--sp-8);
   }
-  /* The divider's look in one row: its colour and its two lengths, each with its name above it. */
-  /* The setting of the lines takes two thirds of the row, hyphenation the rest. */
-  .settings {
-    display: flex;
-    align-items: stretch;
-    gap: var(--sp-8);
-  }
-  .settings .choice,
-  .settings .toggle {
-    display: flex;
-    min-width: 0;
-  }
-  .settings .choice {
-    flex: 2;
-  }
-  .settings .toggle {
-    flex: 1;
-  }
-  .settings :global(.cards) {
-    flex: 1;
-  }
-  .line-look {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-8);
-  }
-  .line-look .short,
-  .caption,
   .note {
     margin: 0;
-  }
-  .look.wrap {
-    flex-wrap: wrap;
-    row-gap: var(--sp-8);
-  }
-  .look {
-    display: flex;
-    align-items: flex-end;
-    gap: var(--sp-12);
-  }
-  .cell {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--sp-4);
   }
   /* A property: its name in a column of its own, the control beside it. */
   .row {
     display: grid;
     grid-template-columns: calc(var(--form-label-width) + var(--sp-24)) minmax(0, 1fr);
     gap: var(--sp-4) var(--sp-12);
-    align-items: center;
+    align-items: start;
+    margin-right: calc(-1 * var(--sp-24));
   }
-  .row.stacked {
+  .row.check {
+    margin-right: 0;
+  }
+  .row.stacked,
+  .row.check {
     grid-template-columns: minmax(0, 1fr);
   }
-  label {
+  /* A name stands at the height of its control's first line, whatever is under that (the name of a
+     choice drawn as pictures) and however many lines the name takes. */
+  .row > label,
+  .row > .label {
     min-width: 0;
+    padding-top: calc((var(--control-md) - 18px) / 2);
     color: var(--color-label);
     font: var(--type-body);
+  }
+  .row.check :global(.checkbox) {
+    min-height: var(--control-md);
   }
   /* A value the template takes from the element above it: its name is quieter. */
   .row.inherited label {
@@ -1457,20 +1633,27 @@
   .place.inherited :global(:is(input, select):not(:focus)),
   .place.inherited :global(.name),
   .space.inherited :global(:is(input, select):not(:focus)),
-  .space.inherited :global(.name) {
+  .space.inherited :global(.name),
+  .above.inherited :global(:is(input, select):not(:focus)) {
     color: var(--color-label-tertiary);
   }
   /* The way back to the value from above: always in sight where a value is set here. */
   .revert {
     display: inline-flex;
     flex: none;
+    align-items: center;
   }
   .revert.away {
     visibility: hidden;
   }
-  /* A part of a line with that button is as wide as its field and the button. */
-  .part:is(.length, .factor):has(.revert) {
-    width: auto;
+  /* Its place in a row, at the end of the cell and as high as the field. */
+  :is(.cell, .part, .toggles) > :is(.revert, .gutter) {
+    width: var(--control-sm);
+    height: var(--control-md);
+    margin-left: auto;
+  }
+  .gutter {
+    flex: none;
   }
   .with-revert {
     display: inline-flex;
@@ -1478,37 +1661,25 @@
     gap: 2px;
     min-width: 0;
   }
-  .control {
+  /* Controls that are not a field and its way back: side by side. */
+  .control.plain {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--sp-4);
-    min-width: 0;
   }
-  .row > .label {
-    color: var(--color-label);
-    font: var(--type-body);
+  /* The document's own fields end where the template's do. */
+  .control.document {
+    padding-right: var(--sp-24);
+  }
+  .control.sides {
+    padding-right: var(--sp-24);
+  }
+  .control.document > :global(:is(.select, .text-field)) {
+    flex: 1;
   }
   /* The four sides of a quote's lines: switches with their names, side by side. */
   .control.sides {
-    flex-wrap: wrap;
     gap: var(--sp-4) var(--sp-12);
-  }
-  .control > :global(.select),
-  .control > :global(.text-field) {
-    flex: 1;
-  }
-  .count {
-    display: block;
-    min-width: 0;
-  }
-  .count :global(.text-field) {
-    width: 100%;
-  }
-  .control > .count {
-    width: 96px;
-  }
-  .part .count {
-    flex: 1;
   }
   .grid {
     display: grid;

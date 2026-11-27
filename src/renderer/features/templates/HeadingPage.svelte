@@ -30,10 +30,10 @@
     /** The width of the text on the page, and the size of the heading's type, both in centimetres. */
     measure: number
     emCm: number
-    /** The look of a line, right under its switch while it is on. */
-    look?: Snippet<[ElementDef, 'above' | 'below']>
+    /** A value as a row of the panel: its name, or another one, and its control. */
+    row: Snippet<[ElementDef, string, boolean?, string?]>
   }
-  let { element, values, control, refused, numbering, measure, emCm, look }: Props = $props()
+  let { element, values, control, row, refused, numbering, measure, emCm }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const has = (id: string): boolean => element.props.includes(id)
@@ -85,21 +85,12 @@
     {@render control(element, id)}
     <label for="prop-{element.id}-{id}">{name(id)}</label>
   </div>
-  {#if values[id] === true && look}<div class="look">{@render look(element, side)}</div>{/if}
 {/snippet}
 
 <!-- The choices that are about the whole heading, over the page: where it breaks, where it stands. -->
 <div class="choices">
-  {#if has('break_before')}
-    <div class="choice">
-      <span class="short">{name('break_before')}</span>
-      {@render control(element, 'break_before')}
-    </div>
-  {/if}
-  <div class="choice">
-    <span class="short">{name('align')}</span>
-    {@render control(element, 'align')}
-  </div>
+  {#if has('break_before')}{@render row(element, 'break_before')}{/if}
+  {@render row(element, 'align')}
 </div>
 
 {#snippet inside()}
@@ -153,21 +144,11 @@
 </div>
 
 <style>
-  /* The look of a line, under its switch, set in from the page's edge. */
-  .look {
-    padding: var(--sp-4) 0 var(--sp-4) var(--sp-24);
-  }
+  /* The choices over the page: rows, as the values under it are. */
   .choices {
     display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: var(--sp-12);
-  }
-  .choice {
-    display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: var(--sp-4);
+    gap: var(--sp-8);
   }
   /* The page lies on the panel's ground, as on a desk. */
   .desk {
@@ -228,7 +209,7 @@
     background: var(--color-accent);
   }
   .field {
-    width: 96px;
+    min-width: 96px;
   }
   .short {
     color: var(--color-label-secondary);

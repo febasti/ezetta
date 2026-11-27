@@ -21,8 +21,10 @@
     binding: unknown
     /** The control of one value, as the panel draws it. */
     control: Snippet<[ElementDef, string]>
+    /** A value as a row of the panel: its name, or another one, and its control. */
+    row: Snippet<[ElementDef, string, boolean?, string?]>
   }
-  let { element, values, binding, control }: Props = $props()
+  let { element, values, binding, control, row }: Props = $props()
 
   const lang = $derived(i18n.locale)
   const name = (id: string): string => propLabel(element.id, PROPS[id]!, lang)
@@ -65,18 +67,24 @@
   </div>
 {/snippet}
 
-<div class="desk">
-  <!-- The choices that change the whole page. -->
-  <div class="choices">
-    {@render field('facing', i18n.t('templates.page.pages'), 'choice')}
-    <div class="columns">
-      {@render field('columns', i18n.t('templates.page.columns'), 'choice')}
-      {#if box.columns > 1}
-        {@render field('column_gap', name('column_gap'), 'choice')}
-      {/if}
+<!-- The choices that change the whole page, over it: rows, as the values under it are. -->
+<div class="choices">
+  {@render row(element, 'facing', false, i18n.t('templates.page.pages'))}
+  {@render row(element, 'columns', false, i18n.t('templates.page.columns'))}
+  {#if box.columns > 1}
+    <div
+      role="group"
+      onpointerenter={() => (hot = 'column_gap')}
+      onpointerleave={() => (hot = null)}
+      onfocusin={() => (hot = 'column_gap')}
+      onfocusout={() => (hot = null)}
+    >
+      {@render row(element, 'column_gap')}
     </div>
-  </div>
+  {/if}
+</div>
 
+<div class="desk">
   <div class="stage">
     {@render field('margin_inside', insideName, 'left')}
     {@render field('margin_outside', outsideName, 'right')}
@@ -189,28 +197,16 @@
     border-radius: var(--r-lg);
     background: var(--color-panel);
   }
+  /* The choices over the page: rows, as the values under it are. */
   .choices {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--sp-12);
-  }
-  .columns {
-    display: flex;
     flex-direction: column;
-    align-items: flex-end;
     gap: var(--sp-8);
   }
   .field {
     display: flex;
     flex-direction: column;
     gap: var(--sp-4);
-  }
-  .field.choice {
-    align-items: flex-start;
-  }
-  .columns .field.choice {
-    align-items: flex-end;
   }
   .short {
     color: var(--color-label-secondary);

@@ -147,7 +147,7 @@
   /* A number or a length is a short field, as in the template's own panels. */
   .short {
     display: block;
-    width: 96px;
+    width: calc((100% - var(--sp-24) - var(--sp-4)) / 2);
   }
   .short :global(.text-field) {
     width: 100%;

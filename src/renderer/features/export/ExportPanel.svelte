@@ -14,6 +14,7 @@
   import { elementById } from '@core/export/elements'
   import DocumentField from './DocumentField.svelte'
   import { exporting } from './export.svelte'
+  import { EXPORT_ICON } from './groupIcons'
 
   const info = $derived(exporting.info)
   const profile = $derived(exporting.profile)
@@ -34,6 +35,7 @@
 {#if info && profile}
   <section class="panel" aria-label={i18n.t('export.panel')}>
     <header class="head">
+      <Icon name={EXPORT_ICON} size={16} />
       <h3 class="title">{i18n.t('export.panel')}</h3>
       {#if template}
         <p class="sub">{i18n.t('export.withTemplate', { name: template.name[lang] })}</p>
@@ -228,25 +230,52 @@
 {/if}
 
 <style>
+  /* The margin at the right is the template's panels': the place of their way back to a value. */
   .panel {
     min-width: 0;
+    padding-right: var(--sp-24);
   }
-  /* The title, the template it is for, and what is open, in one block. */
+  /* The name of the panel and the template it is for stay in sight while the rest scrolls under
+     them, a hairline below: the head of every panel of the dialog. */
   .head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: flex;
-    flex-direction: column;
-    gap: var(--sp-4);
-    margin-bottom: var(--sp-16);
+    align-items: center;
+    gap: var(--sp-8);
+    margin-right: calc(-1 * var(--sp-24));
+    padding: 0 var(--sp-24) var(--sp-12) 0;
+    background: var(--color-window);
+    color: var(--color-label-secondary);
+  }
+  .head::after {
+    content: '';
+    position: absolute;
+    right: var(--sp-24);
+    bottom: 0;
+    left: 0;
+    border-bottom: 1px solid var(--color-separator);
+  }
+  .head + :global(*) {
+    margin-top: var(--sp-16);
   }
   .title {
+    flex: none;
     margin: 0;
     color: var(--color-label);
     font: var(--type-title);
   }
   .sub {
+    flex: 1;
+    min-width: 0;
     margin: 0;
+    overflow: hidden;
     color: var(--color-label-secondary);
     font: var(--type-body);
+    text-align: right;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .mark {
     display: inline-flex;
@@ -259,7 +288,11 @@
   .panel > :global(.callout) {
     margin-bottom: var(--sp-16);
   }
-  /* The first section follows the head: no space above it. */
+  /* A section the footer leads to comes to rest under the head, not behind it. */
+  .panel :global(.section) {
+    scroll-margin-top: calc(var(--sp-32) + var(--sp-8));
+  }
+  /* The first section follows the head or what is said under it: no space above it. */
   .head + :global(.section),
   .result + :global(.section),
   .panel > :global(.callout) + :global(.section) {
@@ -268,6 +301,10 @@
   /* The colours bring a section of their own: its space below is the outer section's. */
   .palette :global(.section:last-child) {
     padding-bottom: 0;
+  }
+  /* The names and the fields stand where the template's properties have theirs, on every panel. */
+  .panel :global(.form) {
+    grid-template-columns: calc(var(--form-label-width) + var(--sp-24)) minmax(0, 1fr);
   }
   .checks {
     display: flex;

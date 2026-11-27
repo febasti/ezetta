@@ -112,16 +112,18 @@
 {/if}
 
 <style>
-  /* The name of the chosen picture under it, quietly, as wide as the track. */
+  /* The name of the chosen picture under it, quietly, from the track's left edge: a longer name
+     does not move the track, so it stays in line with the controls above and below it. */
   .with-name {
     display: inline-flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     gap: 2px;
     min-width: 0;
   }
   .chosen {
     max-width: 100%;
+    padding-left: 2px;
     overflow: hidden;
     color: var(--color-label-secondary);
     font: var(--type-caption);
