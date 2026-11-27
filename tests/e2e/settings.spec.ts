@@ -373,7 +373,7 @@ test('the project page sets whether versions are kept and where the project is b
     const section = dialog(page).getByRole('region', { name: 'Versionen und Sicherung' })
 
     // Versions are kept unless the writer says otherwise; the choice is the project file's.
-    const auto = section.getByRole('checkbox', { name: 'Automatisch Versionen speichern' })
+    const auto = section.getByRole('switch', { name: 'Automatisch Versionen speichern' })
     await expect(auto).toBeChecked()
     await auto.uncheck()
     await expect.poll(toml).toMatch(/\[history\]\s+enabled = false/)

@@ -12,6 +12,7 @@
   import ListRow from '../../ui/kit/ListRow.svelte'
   import Section from '../../ui/kit/Section.svelte'
   import Select from '../../ui/kit/Select.svelte'
+  import Switch from '../../ui/kit/Switch.svelte'
   import { backup } from '../history/backup.svelte'
   import { history } from '../history/history.svelte'
   import { project } from '../sidebar/project.svelte'
@@ -124,9 +125,9 @@
   <Section title={i18n.t('settings.versions.title')} level={4}>
     <Form>
       <FormRow label="">
-        <Checkbox checked={history.enabled} onchange={(on) => void history.setEnabled(on)}>
+        <Switch checked={history.enabled} onchange={(on) => void history.setEnabled(on)}>
           {i18n.t('history.auto')}
-        </Checkbox>
+        </Switch>
         <span class="more">
           <Link onclick={() => look('versions')}>{i18n.t('settings.versions.look')}</Link>
         </span>

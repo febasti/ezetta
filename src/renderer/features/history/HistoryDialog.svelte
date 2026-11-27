@@ -5,6 +5,7 @@
   import { i18n } from '../../i18n/i18n.svelte'
   import Button from '../../ui/kit/Button.svelte'
   import Icon from '../../ui/Icon.svelte'
+  import Switch from '../../ui/kit/Switch.svelte'
   import Checkbox from '../../ui/kit/Checkbox.svelte'
   import Dialog from '../../ui/kit/Dialog.svelte'
   import EmptyState from '../../ui/kit/EmptyState.svelte'
@@ -117,9 +118,9 @@
         </div>
       {:else}
         <div class="bar">
-          <Checkbox checked={history.enabled} onchange={(on) => void history.setEnabled(on)}>
+          <Switch checked={history.enabled} onchange={(on) => void history.setEnabled(on)}>
             {i18n.t('history.auto')}
-          </Checkbox>
+          </Switch>
           {#if history.enabled && !history.naming}
             <Button onclick={startNaming}>{i18n.t('history.save')}</Button>
           {/if}
